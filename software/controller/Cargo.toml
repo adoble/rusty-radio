@@ -16,6 +16,7 @@ esp-backtrace = { version = "0.14.2", features = [
     "println",
 ] }
 esp-hal = { version = "0.21.0", features = ["esp32"] }
+esp-hal-embassy = { version = "0.4.0", features = ["esp32", "log", "integrated-timers"] }
 esp-println = { version = "0.12.0", features = ["esp32", "log"] }
 log = { version = "0.4.22" }
 portable-atomic = "1.9.0"
