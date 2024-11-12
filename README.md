@@ -11,3 +11,5 @@ An interim internet radio module.
 - ESP Rust installtion set up environment variable.  A file was created at 'C:\Users\T440s\export-esp.ps1' showing the injected environment variables. 
 
 - Generated rust project with `cargo generate esp-rs/esp-template`. See the [GitHub repo](https://github.com/esp-rs/esp-template). Project is called `controller`.
+
+- Embassy code examples taken from https://github.com/esp-rs/esp-hal/tree/main/examples/src/bin
