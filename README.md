@@ -28,3 +28,5 @@ https://crates.io/crates/picoserve
 
 
 - [Using the RGB LED on the dev board](https://github.com/kayhannay/esp32-rgb-led/blob/main/src/main.rs)
+
+- HTTP no-std example: https://github.com/Nereuxofficial/nostd-wifi-lamp/blob/main/src/main.rs
