@@ -15,3 +15,13 @@ An interim internet radio module.
 - Embassy code examples taken from https://github.com/esp-rs/esp-hal/tree/main/examples/src/bin
 
 - Using the [ESP32-C3-DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#) board 
+
+- How to  use Embassy in the [Embassy Book](https://embassy.dev/book/)
+
+- Instead of implementing a buffer, try using an Embassy `Channel`. See [this example](https://dev.to/theembeddedrustacean/sharing-data-among-tasks-in-rust-embassy-synchronization-primitives-59hk)
+
+- HHTP Client: Possible crates to try:
+https://docs.embassy.dev/embassy-net/...
+https://github.com/smoltcp-rs/smoltcp
+https://github.com/drogue-iot/reqwless
+https://crates.io/crates/picoserve
