@@ -25,3 +25,6 @@ https://docs.embassy.dev/embassy-net/...
 https://github.com/smoltcp-rs/smoltcp
 https://github.com/drogue-iot/reqwless
 https://crates.io/crates/picoserve
+
+
+- [Using the RGB LED on the dev board](https://github.com/kayhannay/esp32-rgb-led/blob/main/src/main.rs)
