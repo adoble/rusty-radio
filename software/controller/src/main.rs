@@ -92,13 +92,6 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let timg1 = TimerGroup::new(peripherals.TIMG1);
 
-    esp_hal_embassy::init(timg0.timer0);
-
-    spawner.spawn(run()).ok();
-    spawner.spawn(toggle_pin(output_toggle_pin)).ok();
-    spawner.spawn(button_monitor(button_pin)).ok();
-    spawner.spawn(bing()).ok();
-
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
     //let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
@@ -172,4 +165,11 @@ async fn main(spawner: Spawner) {
     esp_println::println!("{:?}", controller.is_connected());
 
     // TODO get ip address
+
+    esp_hal_embassy::init(timg0.timer0);
+
+    spawner.spawn(run()).ok();
+    spawner.spawn(toggle_pin(output_toggle_pin)).ok();
+    spawner.spawn(button_monitor(button_pin)).ok();
+    spawner.spawn(bing()).ok();
 }
