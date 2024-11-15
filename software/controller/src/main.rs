@@ -63,6 +63,14 @@ async fn button_monitor(mut pin: Input<'static, AnyPin>) {
     }
 }
 
+#[embassy_executor::task]
+async fn bing() {
+    loop {
+        esp_println::println!("Bing!");
+        Timer::after(Duration::from_millis(5_000)).await;
+    }
+}
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
@@ -89,6 +97,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(run()).ok();
     spawner.spawn(toggle_pin(output_toggle_pin)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
+    spawner.spawn(bing()).ok();
 
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
@@ -136,7 +145,8 @@ async fn main(spawner: Spawner) {
 
     if let Ok((res, _count)) = res {
         for ap in res {
-            esp_println::println!("AP:{:?}", ap);
+            //esp_println::println!("AP:{:?}", ap);
+            esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
         }
     }
 
@@ -162,9 +172,4 @@ async fn main(spawner: Spawner) {
     esp_println::println!("{:?}", controller.is_connected());
 
     // TODO get ip address
-
-    loop {
-        esp_println::println!("Bing!");
-        Timer::after(Duration::from_millis(5_000)).await;
-    }
 }
