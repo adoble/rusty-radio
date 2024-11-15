@@ -22,7 +22,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_hal::{prelude::*, rng::Rng};
 
 use embedded_io::*;
-use esp_wifi::wifi::WifiApDevice;
+use esp_wifi::wifi::{WifiApDevice, WifiController};
 use esp_wifi::{
     init,
     wifi::{
@@ -69,6 +69,23 @@ async fn bing() {
     loop {
         esp_println::println!("Bing!");
         Timer::after(Duration::from_millis(5_000)).await;
+    }
+}
+
+// THIS DOES NOT WORK!
+// But as it is not required leaving it here for the moment
+// TODO Get wifi_scan to work as an async function or delete it.
+#[embassy_executor::task]
+async fn wifi_scan(controller: &'static mut WifiController<'static>) {
+    esp_println::println!("Start WiFi Scan");
+    let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
+    esp_println::println!("Scan result:{:?}", res); // <------ Err
+
+    if let Ok((res, _count)) = res {
+        for ap in res {
+            //esp_println::println!("AP:{:?}", ap);
+            esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
+        }
     }
 }
 
@@ -133,16 +150,16 @@ async fn main(spawner: Spawner) {
     controller.start().unwrap();
     esp_println::println!("Is wifi started: {:?}", controller.is_started());
 
-    esp_println::println!("Start WiFi Scan");
-    let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
-    esp_println::println!("Scan result:{:?}", res); // <------ Err
+    // esp_println::println!("Start WiFi Scan");
+    // let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
+    // esp_println::println!("Scan result:{:?}", res); // <------ Err
 
-    if let Ok((res, _count)) = res {
-        for ap in res {
-            //esp_println::println!("AP:{:?}", ap);
-            esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
-        }
-    }
+    // if let Ok((res, _count)) = res {
+    //     for ap in res {
+    //         //esp_println::println!("AP:{:?}", ap);
+    //         esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
+    //     }
+    // }
 
     esp_println::println!("{:?}", controller.get_capabilities());
     esp_println::println!("Wi-Fi connect: {:?}", controller.connect());
@@ -154,6 +171,7 @@ async fn main(spawner: Spawner) {
         match res {
             Ok(connected) => {
                 if connected {
+                    esp_println::println!("Wifi {} is connected", SSID);
                     break;
                 }
             }
@@ -163,7 +181,6 @@ async fn main(spawner: Spawner) {
             }
         }
     }
-    esp_println::println!("{:?}", controller.is_connected());
 
     // TODO get ip address
 
