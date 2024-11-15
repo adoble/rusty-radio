@@ -10,6 +10,8 @@
 #![no_main]
 
 use embassy_executor::Spawner;
+use embassy_net::driver::Driver;
+use embassy_net::Stack;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
@@ -22,7 +24,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_hal::{prelude::*, rng::Rng};
 
 use embedded_io::*;
-use esp_wifi::wifi::{WifiApDevice, WifiController};
+use esp_wifi::wifi::{WifiApDevice, WifiController, WifiDevice, WifiDeviceMode};
 use esp_wifi::{
     init,
     wifi::{
@@ -35,6 +37,10 @@ use esp_wifi::{
 use smoltcp::iface::SocketStorage;
 use smoltcp::wire::IpAddress;
 use smoltcp::wire::Ipv4Address;
+use static_cell::StaticCell;
+
+static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
+static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -93,6 +99,11 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
     }
 }
 
+// #[embassy_executor::task]
+// async fn start_tcp_stack(stack: &'static Stack<dyn Driver>) {
+//     stack.run().await
+// }
+
 // THIS DOES NOT WORK!
 // But as it is not required leaving it here for the moment
 // TODO Get wifi_scan to work as an async function or delete it.
@@ -142,11 +153,15 @@ async fn main(spawner: Spawner) {
     )
     .unwrap();
 
+    let wifi = peripherals.WIFI;
+    let (wifi_device, mut controller) =
+        esp_wifi::wifi::new_with_mode(&init, wifi, WifiStaDevice).unwrap();
+
     // Configure wifi
-    let mut wifi = peripherals.WIFI;
-    let mut socket_set_entries: [SocketStorage; 3] = Default::default();
-    let (wifi_interface, wifi_device, mut controller, sockets) =
-        create_network_interface(&init, wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
+    // let mut wifi = peripherals.WIFI;
+    // let mut socket_set_entries: [SocketStorage; 3] = Default::default();
+    // let (wifi_interface, wifi_device, mut controller, sockets) =
+    //     create_network_interface(&init, wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
 
     // Client config start
     let mut auth_method = AuthMethod::WPA2Personal;
@@ -154,8 +169,7 @@ async fn main(spawner: Spawner) {
         auth_method = AuthMethod::None;
     }
 
-    let client_config = Configuration::Client(ClientConfiguration {
-        // ANCHOR_END: client_config_start
+    let wifi_config = Configuration::Client(ClientConfiguration {
         ssid: SSID.try_into().unwrap(),
         password: PASSWORD.try_into().unwrap(),
         auth_method,          // TODO: Is AuthMethod::WPA2Personal the default?
@@ -163,7 +177,7 @@ async fn main(spawner: Spawner) {
     });
 
     // let client_config = Configuration::Client(.....);
-    let res = controller.set_configuration(&client_config);
+    let res = controller.set_configuration(&wifi_config);
     esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
     controller.start().unwrap();
@@ -202,6 +216,24 @@ async fn main(spawner: Spawner) {
     // }
 
     // TODO get ip address
+    // Init network stack
+
+    let config = embassy_net::Config::dhcpv4(Default::default());
+    let seed = 1234; // very random, very secure seed  TODO
+
+    let stack = &*STACK.init(embassy_net::Stack::new(
+        wifi_device,
+        config,
+        RESOURCES.init(embassy_net::StackResources::new()),
+        seed,
+    ));
+
+    // let stack = &*make_static!(Stack::new(
+    //     wifi_interface,
+    //     config,
+    //     make_static!(StackResources::<3>::new()),
+    //     seed
+    // ));
 
     esp_hal_embassy::init(timg0.timer0);
 
