@@ -30,3 +30,5 @@ https://crates.io/crates/picoserve
 - [Using the RGB LED on the dev board](https://github.com/kayhannay/esp32-rgb-led/blob/main/src/main.rs)
 
 - HTTP no-std example: https://github.com/Nereuxofficial/nostd-wifi-lamp/blob/main/src/main.rs
+
+- Useful video on how to do wifi and http connectionwith `reqwless` is [here](https://www.youtube.com/watch?v=AC4nZ67Qj20).
