@@ -22,11 +22,12 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_hal::{prelude::*, rng::Rng};
 
 use embedded_io::*;
+use esp_wifi::wifi::WifiApDevice;
 use esp_wifi::{
     init,
     wifi::{
         utils::create_network_interface, AccessPointInfo, AuthMethod, ClientConfiguration,
-        Configuration, WifiError, WifiStaDevice,
+        Configuration, WifiError, WifiMode, WifiStaDevice,
     },
     wifi_interface::WifiStack,
     EspWifiInitFor,
@@ -106,7 +107,7 @@ async fn main(spawner: Spawner) {
     // Configure wifi
     let mut wifi = peripherals.WIFI;
     let mut socket_set_entries: [SocketStorage; 3] = Default::default();
-    let (iface, device, mut controller, sockets) =
+    let (wifi_interface, wifi_device, mut controller, sockets) =
         create_network_interface(&init, &mut wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
 
     // Client config start
