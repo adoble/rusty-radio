@@ -72,22 +72,43 @@ async fn bing() {
     }
 }
 
-// THIS DOES NOT WORK!
-// But as it is not required leaving it here for the moment
-// TODO Get wifi_scan to work as an async function or delete it.
 #[embassy_executor::task]
-async fn wifi_scan(controller: &'static mut WifiController<'static>) {
-    esp_println::println!("Start WiFi Scan");
-    let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
-    esp_println::println!("Scan result:{:?}", res); // <------ Err
+async fn wifi_connect(mut controller: WifiController<'static>) {
+    esp_println::println!("Wait to get wifi connected");
 
-    if let Ok((res, _count)) = res {
-        for ap in res {
-            //esp_println::println!("AP:{:?}", ap);
-            esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
+    loop {
+        let res = controller.is_connected();
+        match res {
+            Ok(connected) => {
+                if connected {
+                    esp_println::println!("Wifi {} is connected", SSID);
+                    break;
+                }
+            }
+            Err(err) => {
+                esp_println::println!("{:?}", err);
+                loop {}
+            }
         }
     }
 }
+
+// THIS DOES NOT WORK!
+// But as it is not required leaving it here for the moment
+// TODO Get wifi_scan to work as an async function or delete it.
+// #[embassy_executor::task]
+// async fn wifi_scan(controller: &'static mut WifiController<'static>) {
+//     esp_println::println!("Start WiFi Scan");
+//     let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
+//     esp_println::println!("Scan result:{:?}", res); // <------ Err
+
+//     if let Ok((res, _count)) = res {
+//         for ap in res {
+//             //esp_println::println!("AP:{:?}", ap);
+//             esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
+//         }
+//     }
+// }
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -125,7 +146,7 @@ async fn main(spawner: Spawner) {
     let mut wifi = peripherals.WIFI;
     let mut socket_set_entries: [SocketStorage; 3] = Default::default();
     let (wifi_interface, wifi_device, mut controller, sockets) =
-        create_network_interface(&init, &mut wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
+        create_network_interface(&init, wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
 
     // Client config start
     let mut auth_method = AuthMethod::WPA2Personal;
@@ -140,8 +161,6 @@ async fn main(spawner: Spawner) {
         auth_method,          // TODO: Is AuthMethod::WPA2Personal the default?
         ..Default::default()  // ANCHOR: client_config_end
     });
-    esp_println::println!("SSID: {}", SSID);
-    esp_println::println!("PASSWORD: {}", PASSWORD);
 
     // let client_config = Configuration::Client(.....);
     let res = controller.set_configuration(&client_config);
@@ -165,28 +184,29 @@ async fn main(spawner: Spawner) {
     esp_println::println!("Wi-Fi connect: {:?}", controller.connect());
 
     // Wait to get connected
-    esp_println::println!("Wait to get connected");
-    loop {
-        let res = controller.is_connected();
-        match res {
-            Ok(connected) => {
-                if connected {
-                    esp_println::println!("Wifi {} is connected", SSID);
-                    break;
-                }
-            }
-            Err(err) => {
-                esp_println::println!("{:?}", err);
-                loop {}
-            }
-        }
-    }
+    // esp_println::println!("Wait to get connected");
+    // loop {
+    //     let res = controller.is_connected();
+    //     match res {
+    //         Ok(connected) => {
+    //             if connected {
+    //                 esp_println::println!("Wifi {} is connected", SSID);
+    //                 break;
+    //             }
+    //         }
+    //         Err(err) => {
+    //             esp_println::println!("{:?}", err);
+    //             loop {}
+    //         }
+    //     }
+    // }
 
     // TODO get ip address
 
     esp_hal_embassy::init(timg0.timer0);
 
     spawner.spawn(run()).ok();
+    spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(toggle_pin(output_toggle_pin)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(bing()).ok();
