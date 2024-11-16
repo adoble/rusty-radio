@@ -40,7 +40,7 @@ use smoltcp::wire::Ipv4Address;
 use static_cell::StaticCell;
 
 static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
-static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
+static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -180,7 +180,10 @@ async fn main(spawner: Spawner) {
     let res = controller.set_configuration(&wifi_config);
     esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
-    controller.start().unwrap();
+    match controller.start().await {
+        Ok(_) => esp_println::println!("WiFi controller started"),
+        Err(err) => esp_println::println!("ERROR: WiFi controller not started, error is {:?}", err),
+    }
     esp_println::println!("Is wifi started: {:?}", controller.is_started());
 
     // esp_println::println!("Start WiFi Scan");
@@ -195,7 +198,13 @@ async fn main(spawner: Spawner) {
     // }
 
     esp_println::println!("{:?}", controller.get_capabilities());
-    esp_println::println!("Wi-Fi connect: {:?}", controller.connect());
+    let res = controller.connect().await;
+    match res {
+        Ok(_) => esp_println::println!("Wi-Fi connected"),
+        Err(_) => esp_println::println!("ERROR: Wi-Fi could not connect!"),
+    }
+
+    //esp_println::println!("Wi-Fi connect: {:?}", controller.connect());
 
     // Wait to get connected
     // esp_println::println!("Wait to get connected");
