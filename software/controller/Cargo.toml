@@ -50,8 +50,10 @@ portable-atomic = { version = "1.9.0", default-features = false }
 heapless = { version = "0.8.0", default-features = false }
 static_cell = { version = "2.1.0", features = ["nightly"] }
 embassy-net-driver = "0.2.0"
-reqwless = "0.13.0"
+# See https://github.com/drogue-iot/reqwless/issues/93
+reqwless = { version = "0.12.1" }
 embassy-sync = "0.6.0"
+embedded-nal-async = "0.8.0"
 
 [profile.dev]
 # Rust debug is too slow.

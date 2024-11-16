@@ -10,7 +10,8 @@
 #![no_main]
 
 use embassy_executor::Spawner;
-use embassy_net::driver::Driver;
+use embassy_net::dns::DnsSocket;
+use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal;
@@ -25,20 +26,13 @@ use esp_hal::timer::timg::TimerGroup;
 // };
 use esp_hal::{prelude::*, rng::Rng};
 
-use embedded_io::*;
-use esp_wifi::wifi::{WifiApDevice, WifiController, WifiDevice, WifiDeviceMode};
+use esp_wifi::wifi::{WifiController, WifiDevice};
 use esp_wifi::{
     init,
-    wifi::{
-        utils::create_network_interface, AccessPointInfo, AuthMethod, ClientConfiguration,
-        Configuration, WifiError, WifiMode, WifiStaDevice,
-    },
-    wifi_interface::WifiStack,
+    wifi::{AuthMethod, ClientConfiguration, Configuration, WifiStaDevice},
     EspWifiInitFor,
 };
-use smoltcp::iface::SocketStorage;
-use smoltcp::wire::IpAddress;
-use smoltcp::wire::Ipv4Address;
+use reqwless::client::HttpClient;
 use static_cell::StaticCell;
 
 static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
@@ -89,19 +83,39 @@ async fn button_monitor(mut pin: Input<'static, AnyPin>) {
     }
 }
 
+const BUFFER_SIZE: usize = 8192;
+
 /// This task only accesses the web when  ACCESS_WEB_SIGNAL is signalled.
 #[embassy_executor::task]
 async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
+    let mut rx_buffer = [0; 8192];
+    let mut tx_buffer = [0; 8192];
+
     loop {
         ACCESS_WEB_SIGNAL.wait().await;
+
+        esp_println::println!("Access web task");
 
         loop {
             if stack.is_link_up() {
                 break;
             }
-            esp_println::println!("Please wait until WiFi connection has been made.");
+            Timer::after(Duration::from_millis(500)).await;
         }
-        esp_println::println!("Access web");
+        esp_println::println!("Waiting to get IP address...");
+        loop {
+            if let Some(config) = stack.config_v4() {
+                esp_println::println!("Got IP: {}", config.address);
+                break;
+            }
+            Timer::after(Duration::from_millis(500)).await;
+        }
+
+        let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
+        let tcp_client = TcpClient::new(stack, &client_state);
+        let dns = DnsSocket::new(&stack);
+        let mut http_client = HttpClient::new(&tcp_client, &dns);
+
         ACCESS_WEB_SIGNAL.reset();
     }
 }
