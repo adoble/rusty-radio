@@ -83,20 +83,49 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
     esp_println::println!("Wait to get wifi connected");
 
     loop {
-        let res = controller.is_connected();
-        match res {
-            Ok(connected) => {
-                if connected {
-                    esp_println::println!("Wifi {} is connected", SSID);
-                    break;
-                }
+        if !matches!(controller.is_started(), Ok(true)) {
+            let mut auth_method = AuthMethod::WPA2Personal;
+            if PASSWORD.is_empty() {
+                auth_method = AuthMethod::None;
             }
-            Err(err) => {
-                esp_println::println!("{:?}", err);
-                loop {}
+
+            let wifi_config = Configuration::Client(ClientConfiguration {
+                ssid: SSID.try_into().unwrap(),
+                password: PASSWORD.try_into().unwrap(),
+                auth_method,          // TODO: Is AuthMethod::WPA2Personal the default?
+                ..Default::default()  // ANCHOR: client_config_end
+            });
+            let res = controller.set_configuration(&wifi_config);
+            esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
+
+            esp_println::println!("Starting wifi");
+            controller.start().await.unwrap();
+            esp_println::println!("Wifi started!");
+        }
+
+        match controller.connect().await {
+            Ok(_) => esp_println::println!("Wifi connected!"),
+            Err(e) => {
+                esp_println::println!("Failed to connect to wifi: {e:?}");
+                Timer::after(Duration::from_millis(5000)).await
             }
         }
     }
+    // loop {
+    //     let res = controller.is_connected();
+    //     match res {
+    //         Ok(connected) => {
+    //             if connected {
+    //                 esp_println::println!("Wifi {} is connected", SSID);
+    //                 break;
+    //             }
+    //         }
+    //         Err(err) => {
+    //             esp_println::println!("{:?}", err);
+    //             loop {}
+    //         }
+    //     }
+    // }
 }
 
 // #[embassy_executor::task]
@@ -164,45 +193,45 @@ async fn main(spawner: Spawner) {
     //     create_network_interface(&init, wifi, WifiStaDevice, &mut socket_set_entries).unwrap();
 
     // Client config start
-    let mut auth_method = AuthMethod::WPA2Personal;
-    if PASSWORD.is_empty() {
-        auth_method = AuthMethod::None;
-    }
-
-    let wifi_config = Configuration::Client(ClientConfiguration {
-        ssid: SSID.try_into().unwrap(),
-        password: PASSWORD.try_into().unwrap(),
-        auth_method,          // TODO: Is AuthMethod::WPA2Personal the default?
-        ..Default::default()  // ANCHOR: client_config_end
-    });
-
-    // let client_config = Configuration::Client(.....);
-    let res = controller.set_configuration(&wifi_config);
-    esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
-
-    match controller.start().await {
-        Ok(_) => esp_println::println!("WiFi controller started"),
-        Err(err) => esp_println::println!("ERROR: WiFi controller not started, error is {:?}", err),
-    }
-    esp_println::println!("Is wifi started: {:?}", controller.is_started());
-
-    // esp_println::println!("Start WiFi Scan");
-    // let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
-    // esp_println::println!("Scan result:{:?}", res); // <------ Err
-
-    // if let Ok((res, _count)) = res {
-    //     for ap in res {
-    //         //esp_println::println!("AP:{:?}", ap);
-    //         esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
-    //     }
+    // let mut auth_method = AuthMethod::WPA2Personal;
+    // if PASSWORD.is_empty() {
+    //     auth_method = AuthMethod::None;
     // }
 
-    esp_println::println!("{:?}", controller.get_capabilities());
-    let res = controller.connect().await;
-    match res {
-        Ok(_) => esp_println::println!("Wi-Fi connected"),
-        Err(_) => esp_println::println!("ERROR: Wi-Fi could not connect!"),
-    }
+    // let wifi_config = Configuration::Client(ClientConfiguration {
+    //     ssid: SSID.try_into().unwrap(),
+    //     password: PASSWORD.try_into().unwrap(),
+    //     auth_method,          // TODO: Is AuthMethod::WPA2Personal the default?
+    //     ..Default::default()  // ANCHOR: client_config_end
+    // });
+
+    // // let client_config = Configuration::Client(.....);
+    // let res = controller.set_configuration(&wifi_config);
+    // esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
+
+    // match controller.start().await {
+    //     Ok(_) => esp_println::println!("WiFi controller started"),
+    //     Err(err) => esp_println::println!("ERROR: WiFi controller not started, error is {:?}", err),
+    // }
+    // esp_println::println!("Is wifi started: {:?}", controller.is_started());
+
+    // // esp_println::println!("Start WiFi Scan");
+    // // let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
+    // // esp_println::println!("Scan result:{:?}", res); // <------ Err
+
+    // // if let Ok((res, _count)) = res {
+    // //     for ap in res {
+    // //         //esp_println::println!("AP:{:?}", ap);
+    // //         esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
+    // //     }
+    // // }
+
+    // esp_println::println!("{:?}", controller.get_capabilities());
+    // let res = controller.connect().await;
+    // match res {
+    //     Ok(_) => esp_println::println!("Wi-Fi connected"),
+    //     Err(_) => esp_println::println!("ERROR: Wi-Fi could not connect!"),
+    // }
 
     //esp_println::println!("Wi-Fi connect: {:?}", controller.connect());
 
