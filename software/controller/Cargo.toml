@@ -10,7 +10,7 @@ embassy-executor = "0.6.2"
 embassy-time = "0.3.2"
 embedded-hal-async = "1.0.0"
 #embassy-net = {version = "0.4.0", features = ["proto-ipv4"]}
-embassy-net = { version = "0.4.0", features = [ "tcp", "udp", "dhcpv4", "medium-ethernet"] }
+embassy-net = { version = "0.4.0", features = [ "tcp", "udp", "dhcpv4", "dns", "medium-ethernet", "dns", "medium-ip", "proto-ipv4"] }
 embedded-io = "0.6.1"
 esp-alloc = "0.5.0"
 esp-backtrace = { version = "0.14.2", features = [
@@ -31,6 +31,8 @@ esp-wifi = { version = "0.10.1", features = [
     "wifi-default",
     "utils",
     "phy-enable-usb",
+    "embassy-net",
+    "async",
 ] }
 smoltcp = { version = "0.11.0", default-features = false, features = [
     "proto-igmp",
@@ -46,6 +48,8 @@ smoltcp = { version = "0.11.0", default-features = false, features = [
 log = { version = "0.4.22" }
 portable-atomic = { version = "1.9.0", default-features = false }
 heapless = { version = "0.8.0", default-features = false }
+static_cell = { version = "2.1.0", features = ["nightly"] }
+embassy-net-driver = "0.2.0"
 
 [profile.dev]
 # Rust debug is too slow.
