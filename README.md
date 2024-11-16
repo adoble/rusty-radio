@@ -31,4 +31,4 @@ https://crates.io/crates/picoserve
 
 - HTTP no-std example: https://github.com/Nereuxofficial/nostd-wifi-lamp/blob/main/src/main.rs
 
-- Useful video on how to do wifi and http connectionwith `reqwless` is [here](https://www.youtube.com/watch?v=AC4nZ67Qj20).
+- Useful video on how to do wifi and http connectionwith `reqwless` is [here](https://www.youtube.com/watch?v=AC4nZ67Qj20). Also using his code from [GitHub](https://github.com/flyaruu/esp32-nostd/blob/main/src/main.rs)
