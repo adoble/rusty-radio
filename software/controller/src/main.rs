@@ -164,7 +164,7 @@ async fn main(spawner: Spawner) {
         config
     });
 
-    esp_alloc::heap_allocator!(72 * 1024);
+    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     let output_toggle_pin = Output::new(io.pins.gpio2, Level::High);
@@ -192,7 +192,7 @@ async fn main(spawner: Spawner) {
     // Init network stack
 
     let config = embassy_net::Config::dhcpv4(Default::default());
-    let seed = 1234; // very random, very secure seed  TODO
+    let seed = 1234; // very random, very secure seed  TODO use RNG
 
     let stack = &*STACK.init(embassy_net::Stack::new(
         wifi_device,
