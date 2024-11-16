@@ -12,6 +12,8 @@
 use embassy_executor::Spawner;
 use embassy_net::driver::Driver;
 use embassy_net::Stack;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
@@ -42,6 +44,10 @@ use static_cell::StaticCell;
 static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
+/// Signal that the web shoudl be accessed
+/// TODO Maybe replace bool with something more meaningful
+static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
+
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
 
@@ -70,12 +76,33 @@ async fn button_monitor(mut pin: Input<'static, AnyPin>) {
         pin.wait_for_falling_edge().await;
 
         // Debounce
+        // TODO see also https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/debounce.rs
         Timer::after(Duration::from_millis(DEBOUNCE_DURATION)).await;
 
         if pin.is_low() {
             // Pin is still low so acknowledge
             esp_println::println!("Button pressed after debounce!");
+
+            // Now access the web by sending a signal
+            ACCESS_WEB_SIGNAL.signal(true)
         }
+    }
+}
+
+/// This task only accesses the web when  ACCESS_WEB_SIGNAL is signalled.
+#[embassy_executor::task]
+async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
+    loop {
+        ACCESS_WEB_SIGNAL.wait().await;
+
+        loop {
+            if stack.is_link_up() {
+                break;
+            }
+            esp_println::println!("Please wait until WiFi connection has been made.");
+        }
+        esp_println::println!("Access web");
+        ACCESS_WEB_SIGNAL.reset();
     }
 }
 
@@ -218,4 +245,5 @@ async fn main(spawner: Spawner) {
     spawner.spawn(toggle_pin(output_toggle_pin)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(bing()).ok();
+    spawner.spawn(access_web(stack)).ok();
 }
