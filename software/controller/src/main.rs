@@ -45,6 +45,8 @@ static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = Static
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
 
+const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit
+
 #[embassy_executor::task]
 async fn run() {
     loop {
@@ -66,7 +68,14 @@ async fn toggle_pin(mut pin: Output<'static, AnyPin>) {
 async fn button_monitor(mut pin: Input<'static, AnyPin>) {
     loop {
         pin.wait_for_falling_edge().await;
-        esp_println::println!("Button pressed!");
+
+        // Debounce
+        Timer::after(Duration::from_millis(DEBOUNCE_DURATION)).await;
+
+        if pin.is_low() {
+            // Pin is still low so acknowledge
+            esp_println::println!("Button pressed after debounce!");
+        }
     }
 }
 
@@ -192,7 +201,7 @@ async fn main(spawner: Spawner) {
     // Init network stack
 
     let config = embassy_net::Config::dhcpv4(Default::default());
-    let seed = 1234; // very random, very secure seed  TODO use RNG
+    let seed = 1234; // very random, very secure seed  TODO use  esp_hal::rng::Rng
 
     let stack = &*STACK.init(embassy_net::Stack::new(
         wifi_device,
