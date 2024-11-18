@@ -19,7 +19,8 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
-use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
+//use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
+use esp_hal::gpio::{AnyPin, Input, Io, Pull};
 use esp_hal::timer::timg::TimerGroup;
 // use esp_hal::{
 //     prelude::*,
@@ -38,10 +39,13 @@ use reqwless::client::HttpClient;
 use reqwless::request;
 use static_cell::StaticCell;
 
-static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
+const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
+
+// static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
+static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS>> = StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
-/// Signal that the web shoudl be accessed
+/// Signal that the web should be accessed
 /// TODO Maybe replace bool with something more meaningful
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
@@ -49,23 +53,6 @@ const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
 
 const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit
-
-#[embassy_executor::task]
-async fn run() {
-    loop {
-        esp_println::println!("Hello world from embassy using esp-hal-async!");
-        Timer::after(Duration::from_millis(1_000)).await;
-    }
-}
-// Blink something
-#[embassy_executor::task]
-async fn toggle_pin(mut pin: Output<'static, AnyPin>) {
-    loop {
-        pin.toggle();
-        //esp_println::println!("Hello world from embassy using esp-hal-async!");
-        Timer::after(Duration::from_millis(50)).await;
-    }
-}
 
 #[embassy_executor::task]
 async fn button_monitor(mut pin: Input<'static, AnyPin>) {
@@ -86,12 +73,13 @@ async fn button_monitor(mut pin: Input<'static, AnyPin>) {
     }
 }
 
-const BUFFER_SIZE: usize = 8192;
+// const BUFFER_SIZE: usize = 8192;
+const BUFFER_SIZE: usize = 2560;
 
 /// This task only accesses the web when  ACCESS_WEB_SIGNAL is signalled.
 #[embassy_executor::task]
 async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
-    let mut rx_buffer = [0; 8192];
+    let mut rx_buffer = [0; BUFFER_SIZE];
 
     loop {
         ACCESS_WEB_SIGNAL.wait().await;
@@ -104,22 +92,23 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
             }
             Timer::after(Duration::from_millis(500)).await;
         }
-        esp_println::println!("Waiting to get IP address...");
-        loop {
-            if let Some(config) = stack.config_v4() {
-                esp_println::println!("Got IP: {}", config.address);
-                break;
-            }
-            Timer::after(Duration::from_millis(500)).await;
-        }
+        // esp_println::println!("Waiting to get IP address...");
+        // loop {
+        //     if let Some(config) = stack.config_v4() {
+        //         esp_println::println!("Got IP: {}", config.address);
+        //         break;
+        //     }
+        //     Timer::after(Duration::from_millis(500)).await;
+        // }
 
         // let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
-        let client_state = TcpClientState::<3, BUFFER_SIZE, BUFFER_SIZE>::new();
+        // let client_state = TcpClientState::<3, BUFFER_SIZE, BUFFER_SIZE>::new();
+        let client_state = TcpClientState::<NUMBER_SOCKETS, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
         let dns = DnsSocket::new(&stack);
         let mut http_client = HttpClient::new(&tcp_client, &dns);
 
-        esp_println::println!("Setting up  request");
+        esp_println::println!("Setting up request");
 
         let mut request = http_client
             .request(
@@ -141,15 +130,15 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
         ACCESS_WEB_SIGNAL.reset();
 
         // ???
-        Timer::after(Duration::from_millis(3000)).await;
+        //Timer::after(Duration::from_millis(3000)).await;
     }
 }
 
 #[embassy_executor::task]
-async fn bing() {
+async fn notification_task() {
     loop {
-        esp_println::println!("Bing!");
-        Timer::after(Duration::from_millis(5_000)).await;
+        esp_println::println!("Press button to access web page!");
+        Timer::after(Duration::from_millis(3_000)).await;
     }
 }
 
@@ -186,21 +175,6 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
             }
         }
     }
-    // loop {
-    //     let res = controller.is_connected();
-    //     match res {
-    //         Ok(connected) => {
-    //             if connected {
-    //                 esp_println::println!("Wifi {} is connected", SSID);
-    //                 break;
-    //             }
-    //         }
-    //         Err(err) => {
-    //             esp_println::println!("{:?}", err);
-    //             loop {}
-    //         }
-    //     }
-    // }
 }
 
 // Run the network stack.
@@ -210,26 +184,9 @@ async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevi
     stack.run().await
 }
 
-// THIS DOES NOT WORK!
-// But as it is not required leaving it here for the moment
-// TODO Get wifi_scan to work as an async function or delete it.
-// #[embassy_executor::task]
-// async fn wifi_scan(controller: &'static mut WifiController<'static>) {
-//     esp_println::println!("Start WiFi Scan");
-//     let res: Result<(heapless::Vec<AccessPointInfo, 10>, usize), WifiError> = controller.scan_n();
-//     esp_println::println!("Scan result:{:?}", res); // <------ Err
-
-//     if let Ok((res, _count)) = res {
-//         for ap in res {
-//             //esp_println::println!("AP:{:?}", ap);
-//             esp_println::println!("AP SSID {}, CHANNEL {}", ap.ssid, ap.channel);
-//         }
-//     }
-// }
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    esp_println::logger::init_logger_from_env();
+    //esp_println::logger::init_logger_from_env();
     esp_println::println!("Init!");
 
     // let peripherals = esp_hal::init(esp_hal::Config::default());
@@ -242,7 +199,6 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let output_toggle_pin = Output::new(io.pins.gpio2, Level::High);
     let button_pin = Input::new(io.pins.gpio1, Pull::Up);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
@@ -278,11 +234,9 @@ async fn main(spawner: Spawner) {
 
     esp_hal_embassy::init(timg0.timer0);
 
-    spawner.spawn(run()).ok();
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();
-    spawner.spawn(toggle_pin(output_toggle_pin)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
-    spawner.spawn(bing()).ok();
+    spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
 }
