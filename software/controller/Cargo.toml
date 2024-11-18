@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-embassy-executor = "0.6.2"
+embassy-executor = {version = "0.6.2", features = ["task-arena-size-32768"]}
 embassy-time = "0.3.2"
 embedded-hal-async = "1.0.0"
 #embassy-net = {version = "0.4.0", features = ["proto-ipv4"]}
@@ -51,7 +51,7 @@ heapless = { version = "0.8.0", default-features = false }
 static_cell = { version = "2.1.0", features = ["nightly"] }
 embassy-net-driver = "0.2.0"
 # See https://github.com/drogue-iot/reqwless/issues/93
-reqwless = { version = "0.12.1" }
+reqwless = "0.12.1"
 embassy-sync = "0.6.0"
 embedded-nal-async = "0.8.0"
 
