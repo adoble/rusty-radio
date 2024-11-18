@@ -114,7 +114,7 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
         }
 
         // let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
-        let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
+        let client_state = TcpClientState::<3, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
         let dns = DnsSocket::new(&stack);
         let mut http_client = HttpClient::new(&tcp_client, &dns);
