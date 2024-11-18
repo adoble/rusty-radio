@@ -9,6 +9,8 @@
 #![no_std]
 #![no_main]
 
+use core::str::from_utf8;
+
 use embassy_executor::Spawner;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
@@ -33,6 +35,7 @@ use esp_wifi::{
     EspWifiInitFor,
 };
 use reqwless::client::HttpClient;
+use reqwless::request;
 use static_cell::StaticCell;
 
 static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
@@ -89,7 +92,6 @@ const BUFFER_SIZE: usize = 8192;
 #[embassy_executor::task]
 async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
     let mut rx_buffer = [0; 8192];
-    let mut tx_buffer = [0; 8192];
 
     loop {
         ACCESS_WEB_SIGNAL.wait().await;
@@ -111,12 +113,35 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
             Timer::after(Duration::from_millis(500)).await;
         }
 
+        // let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
         let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
         let dns = DnsSocket::new(&stack);
         let mut http_client = HttpClient::new(&tcp_client, &dns);
 
+        esp_println::println!("Setting up  request");
+
+        let mut request = http_client
+            .request(
+                request::Method::GET,
+                "http://andrew-doble.hier-im-netz.de/ir/stations.txt",
+            )
+            .await
+            .unwrap();
+
+        esp_println::println!("Sending request, reading response");
+        let response = request.send(&mut rx_buffer).await.unwrap();
+
+        esp_println::println!("Getting body");
+
+        let body = from_utf8(response.body().read_to_end().await.unwrap()).unwrap();
+        esp_println::println!("Http body:");
+        esp_println::println!("{body}");
+
         ACCESS_WEB_SIGNAL.reset();
+
+        // ???
+        Timer::after(Duration::from_millis(3000)).await;
     }
 }
 
@@ -235,7 +260,7 @@ async fn main(spawner: Spawner) {
     .unwrap();
 
     let wifi = peripherals.WIFI;
-    let (wifi_device, mut controller) =
+    let (wifi_device, controller) =
         esp_wifi::wifi::new_with_mode(&init, wifi, WifiStaDevice).unwrap();
 
     // TODO get ip address
