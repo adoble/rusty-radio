@@ -1,10 +1,4 @@
-//! embassy hello world
-//!
-//! This is an example of running the embassy executor with multiple tasks
-//! concurrently.
-
-//% CHIPS: esp32 esp32c2 esp32c3 esp32c6 esp32h2 esp32s2 esp32s3
-//% FEATURES: embassy esp-hal-embassy/integrated-timers
+//! An internet radio
 
 #![no_std]
 #![no_main]
@@ -22,11 +16,7 @@ use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
 use esp_hal::gpio::{AnyPin, Input, Io, Pull};
 use esp_hal::timer::timg::TimerGroup;
-// use esp_hal::{
-//     prelude::*,
-//     rng::Rng,
-//     time::{self, Duration},
-// };
+
 use esp_hal::{prelude::*, rng::Rng};
 
 use esp_wifi::wifi::{WifiController, WifiDevice};
@@ -204,7 +194,7 @@ async fn main(spawner: Spawner) {
     esp_println::println!("Init!");
 
     // let peripherals = esp_hal::init(esp_hal::Config::default());
-    let peripherals = esp_hal::init({
+    let mut peripherals = esp_hal::init({
         let mut config = esp_hal::Config::default();
         config.cpu_clock = CpuClock::max();
         config
@@ -224,7 +214,7 @@ async fn main(spawner: Spawner) {
     let init = init(
         EspWifiInitFor::Wifi,
         timg1.timer0,
-        Rng::new(peripherals.RNG),
+        Rng::new(&mut peripherals.RNG),
         peripherals.RADIO_CLK,
     )
     .unwrap();
@@ -233,11 +223,14 @@ async fn main(spawner: Spawner) {
     let (wifi_device, controller) =
         esp_wifi::wifi::new_with_mode(&init, wifi, WifiStaDevice).unwrap();
 
-    // TODO get ip address
     // Init network stack
 
     let config = embassy_net::Config::dhcpv4(Default::default());
-    let seed = 1234; // very random, very secure seed  TODO use  esp_hal::rng::Rng
+
+    let mut esp32_rng = Rng::new(&mut peripherals.RNG);
+
+    //let seed = 1234; // very random, very secure seed  TODO use  esp_hal::rng::Rng
+    let seed: u64 = esp32_rng.random().into();
 
     let stack = &*STACK.init(embassy_net::Stack::new(
         wifi_device,
