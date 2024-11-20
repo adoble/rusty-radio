@@ -19,6 +19,7 @@ use esp_hal::timer::timg::TimerGroup;
 
 use esp_hal::{prelude::*, rng::Rng};
 
+use embedded_io_async::Read;
 use esp_wifi::wifi::{WifiController, WifiDevice};
 use esp_wifi::{
     init,
@@ -37,10 +38,10 @@ const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 
 // The number of sockets specified for StackResources needs to be the same or higher then the number of sockets specified
-// in setting up the TcpClientState. Getting this wrong resukts in the program crashing - and tokk me a long time
+// in setting up the TcpClientState. Getting this wrong resukts in the program crashing - and took me a long time
 // to figure out the cause.
 // This is checked at compilation time by this macro.
-// An alterantive woudl be to use the same constant for seeting up both StackResources and TcpClientState
+// An alterantive would be to use the same constant for setting up both StackResources and TcpClientState
 const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
 
 //const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
@@ -55,7 +56,7 @@ static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
 
-const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit
+const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
 #[embassy_executor::task]
 async fn button_monitor(mut pin: Input<'static, AnyPin>) {
@@ -95,17 +96,7 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
             }
             Timer::after(Duration::from_millis(500)).await;
         }
-        // esp_println::println!("Waiting to get IP address...");
-        // loop {
-        //     if let Some(config) = stack.config_v4() {
-        //         esp_println::println!("Got IP: {}", config.address);
-        //         break;
-        //     }
-        //     Timer::after(Duration::from_millis(500)).await;
-        // }
 
-        // let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
-        // let client_state = TcpClientState::<3, BUFFER_SIZE, BUFFER_SIZE>::new();
         let client_state =
             TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
@@ -127,9 +118,39 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
 
         esp_println::println!("Getting body");
 
-        let body = from_utf8(response.body().read_to_end().await.unwrap()).unwrap();
         esp_println::println!("Http body:");
-        esp_println::println!("{body}");
+
+        // This approach can be used to read a stream
+        let mut reader = response.body().reader();
+        let mut small_buffer: [u8; 32] = [0; 32];
+
+        loop {
+            let res = reader.read(&mut small_buffer).await;
+            match res {
+                Ok(size) if size == 0 => {
+                    esp_println::println!("EOF");
+                    break;
+                }
+                Ok(size) if size > 0 => {
+                    let content = from_utf8(&small_buffer).unwrap();
+                    esp_println::print!("{content}");
+                    continue;
+                }
+                Err(err) => {
+                    esp_println::println!("Error in reading {:?}", err);
+                    break;
+                }
+                _ => {
+                    esp_println::println!("Unknown read condition");
+                    break;
+                }
+            }
+        }
+
+        // This approach is better to read a page
+        // let body = from_utf8(response.body().read_to_end().await.unwrap()).unwrap();
+        // esp_println::println!("Http body:");
+        // esp_println::println!("{body}");
 
         ACCESS_WEB_SIGNAL.reset();
 
