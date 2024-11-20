@@ -41,7 +41,8 @@ use static_cell::StaticCell;
 
 const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
 
-// static RESOURCES: StaticCell<embassy_net::StackResources<2>> = StaticCell::new();
+// The number of sockets specified here needs to be the same or higher then the number of sockets specified
+// in setting up the TcpClientState
 static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS>> = StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
