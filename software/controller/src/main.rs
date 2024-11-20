@@ -39,15 +39,27 @@ use reqwless::client::HttpClient;
 use reqwless::request;
 use static_cell::StaticCell;
 
-const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
+use static_assertions::{self, const_assert};
 
-// The number of sockets specified here needs to be the same or higher then the number of sockets specified
-// in setting up the TcpClientState
-static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS>> = StaticCell::new();
+static_assertions::const_assert!(true);
+
+const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
+const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
+
+// The number of sockets specified for StackResources needs to be the same or higher then the number of sockets specified
+// in setting up the TcpClientState. Getting this wrong resukts in the program crashing - and tokk me a long time
+// to figure out the cause.
+// This is checked at compilation time by this macro.
+// An alterantive woudl be to use the same constant for seeting up both StackResources and TcpClientState
+const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
+
+//const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
+
+static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
+    StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
-/// Signal that the web should be accessed
-/// TODO Maybe replace bool with something more meaningful
+// Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
 const SSID: &str = env!("WLAN-SSID");
@@ -104,7 +116,8 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
 
         // let client_state = TcpClientState::<1, BUFFER_SIZE, BUFFER_SIZE>::new();
         // let client_state = TcpClientState::<3, BUFFER_SIZE, BUFFER_SIZE>::new();
-        let client_state = TcpClientState::<NUMBER_SOCKETS, BUFFER_SIZE, BUFFER_SIZE>::new();
+        let client_state =
+            TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
         let dns = DnsSocket::new(&stack);
         let mut http_client = HttpClient::new(&tcp_client, &dns);

@@ -54,6 +54,7 @@ embassy-net-driver = "0.2.0"
 reqwless = "0.12.1"
 embassy-sync = "0.6.0"
 embedded-nal-async = "0.8.0"
+static_assertions = "1.1.0"
 
 [profile.dev]
 # Rust debug is too slow.
