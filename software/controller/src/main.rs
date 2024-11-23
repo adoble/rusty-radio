@@ -10,6 +10,7 @@ use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::channel::Channel;
 use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
@@ -52,6 +53,8 @@ static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = Static
 
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
+
+static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -132,8 +135,9 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
                     break;
                 }
                 Ok(size) if size > 0 => {
-                    let content = from_utf8(&small_buffer).unwrap();
-                    esp_println::print!("{content}");
+                    //let content = from_utf8(&small_buffer).unwrap();
+                    //esp_println::print!("{content}");
+                    CHANNEL.send(small_buffer).await;
                     continue;
                 }
                 Err(err) => {
@@ -147,7 +151,7 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
             }
         }
 
-        // This approach is better to read a page
+        // This approach is better to read a page (for instance, the stations list)
         // let body = from_utf8(response.body().read_to_end().await.unwrap()).unwrap();
         // esp_println::println!("Http body:");
         // esp_println::println!("{body}");
@@ -156,6 +160,15 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
 
         // ???
         //Timer::after(Duration::from_millis(3000)).await;
+    }
+}
+
+#[embassy_executor::task]
+async fn process_channel() {
+    loop {
+        let data = CHANNEL.receive().await;
+        let content = from_utf8(&data).unwrap();
+        esp_println::print!("{content}");
     }
 }
 
@@ -267,4 +280,5 @@ async fn main(spawner: Spawner) {
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
+    spawner.spawn(process_channel()).ok();
 }
