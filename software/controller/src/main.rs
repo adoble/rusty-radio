@@ -56,6 +56,8 @@ static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal
 
 static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
+static TEST_MUSIC: &[u8; 55302] = include_bytes!("resources/music-16b-2c-8000hz.mp3");
+
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
 
