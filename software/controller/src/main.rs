@@ -3,6 +3,7 @@
 #![no_std]
 #![no_main]
 
+use core::borrow::BorrowMut;
 use core::str::from_utf8;
 
 use embassy_executor::Spawner;
@@ -10,12 +11,16 @@ use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+//use embassy_sync::blocking_mutex::CriticalSectionMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal;
+use embassy_sync::{blocking_mutex, mutex};
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
 use esp_hal::gpio::{AnyPin, Input, Io, Pull};
+use esp_hal::spi::master::Spi;
+use esp_hal::spi::{FullDuplexMode, SpiMode};
 use esp_hal::timer::timg::TimerGroup;
 
 use esp_hal::{prelude::*, rng::Rng};
@@ -44,6 +49,11 @@ const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 // This is checked at compilation time by this macro.
 // An alterantive would be to use the same constant for setting up both StackResources and TcpClientState
 const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
+
+// static SPI: CriticalSectionMutex<Option<Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode>>> =
+// CriticalSectionMutex::new(None);
+type SpiAsyncMutex =
+    mutex::Mutex<CriticalSectionRawMutex, Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode>>;
 
 //const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
 
@@ -224,6 +234,22 @@ async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevi
     stack.run().await
 }
 
+#[embassy_executor::task]
+async fn decode_mp3(spi: &'static SpiAsyncMutex) {
+    loop {
+        Timer::after(Duration::from_millis(5000)).await;
+        esp_println::println!("decode_mp3");
+    }
+}
+
+#[embassy_executor::task]
+async fn display_task(spi: &'static SpiAsyncMutex) {
+    loop {
+        Timer::after(Duration::from_millis(5000)).await;
+        esp_println::println!("display_task");
+    }
+}
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     //esp_println::logger::init_logger_from_env();
@@ -277,10 +303,24 @@ async fn main(spawner: Spawner) {
 
     esp_hal_embassy::init(timg0.timer0);
 
+    // SPI
+    let sclk = io.pins.gpio5;
+    let miso = io.pins.gpio7;
+    let mosi = io.pins.gpio6;
+    let mp3cs = io.pins.gpio9;
+    //let xdcs = io.pins.gpio10;
+
+    let spi: Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode> =
+        Spi::new(peripherals.SPI2, 100.kHz(), SpiMode::Mode0).with_pins(sclk, mosi, miso, mp3cs);
+    static SPI: StaticCell<SpiAsyncMutex> = StaticCell::new();
+    let spi = SPI.init(mutex::Mutex::new(spi));
+
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
     spawner.spawn(process_channel()).ok();
+    spawner.spawn(decode_mp3(spi)).ok();
+    spawner.spawn(display_task(spi)).ok();
 }
