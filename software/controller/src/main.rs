@@ -3,7 +3,6 @@
 #![no_std]
 #![no_main]
 
-use core::borrow::BorrowMut;
 use core::str::from_utf8;
 
 use embassy_executor::Spawner;
@@ -40,6 +39,10 @@ use static_assertions::{self, const_assert};
 
 static_assertions::const_assert!(true);
 
+use vs1053_driver::Vs1053Driver;
+
+mod vs1053_driver;
+
 const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 
@@ -50,8 +53,8 @@ const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 // An alterantive would be to use the same constant for setting up both StackResources and TcpClientState
 const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
 
-// static SPI: CriticalSectionMutex<Option<Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode>>> =
-// CriticalSectionMutex::new(None);
+// See https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/sharing.rs. Altough for the RP
+// it also works for the esp32
 type SpiAsyncMutex =
     mutex::Mutex<CriticalSectionRawMutex, Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode>>;
 
