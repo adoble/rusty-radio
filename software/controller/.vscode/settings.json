@@ -3,4 +3,9 @@
     "rust-analyzer.cargo.target": "riscv32imc-unknown-none-elf",
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true,
+
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "cross/Cargo.toml",
+    ]
 }

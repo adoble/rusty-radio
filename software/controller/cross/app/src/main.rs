@@ -1,8 +1,10 @@
-//! An internet radio
-
-#![no_std]
 #![no_main]
+#![no_std]
+// Make std available when testing
+//#![cfg_attr(not(test), no_std)]
 
+//! An internet radio
+//!
 use core::str::from_utf8;
 
 use embassy_executor::Spawner;
@@ -11,9 +13,10 @@ use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::blocking_mutex::CriticalSectionMutex;
+//use embassy_sync::blocking_mutex;
 use embassy_sync::channel::Channel;
+use embassy_sync::mutex;
 use embassy_sync::signal;
-use embassy_sync::{blocking_mutex, mutex};
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
@@ -39,9 +42,7 @@ use static_assertions::{self, const_assert};
 
 static_assertions::const_assert!(true);
 
-use vs1053_driver::Vs1053Driver;
-
-mod vs1053_driver;
+//use vs1053_driver::Vs1053Driver;
 
 const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
@@ -69,7 +70,7 @@ static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal
 
 static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
-static TEST_MUSIC: &[u8; 55302] = include_bytes!("../resources/music-16b-2c-8000hz.mp3");
+static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -238,7 +239,7 @@ async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevi
 }
 
 #[embassy_executor::task]
-async fn decode_mp3(spi: &'static SpiAsyncMutex) {
+async fn decode_mp3(_spi: &'static SpiAsyncMutex) {
     loop {
         Timer::after(Duration::from_millis(5000)).await;
         esp_println::println!("decode_mp3");
@@ -246,7 +247,7 @@ async fn decode_mp3(spi: &'static SpiAsyncMutex) {
 }
 
 #[embassy_executor::task]
-async fn display_task(spi: &'static SpiAsyncMutex) {
+async fn display_task(_spi: &'static SpiAsyncMutex) {
     loop {
         Timer::after(Duration::from_millis(5000)).await;
         esp_println::println!("display_task");
