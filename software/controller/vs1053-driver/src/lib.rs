@@ -32,15 +32,17 @@ where
         Ok(driver)
     }
 
-    pub async fn sci_read(&mut self, addr: u8, data: &mut [u8]) -> Result<(), DriverError> {
+    pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
         // Note: XDCS is managed by self.spi_device : SpiDevice
 
+        let mut buf: [u8; 2] = [0; 2];
+
         self.spi_device
-            .transaction(&mut [Operation::Write(&[READ, addr]), Operation::Read(data)])
+            .transaction(&mut [Operation::Write(&[READ, addr]), Operation::Read(&mut buf)])
             .await
             .map_err(|_| DriverError::SpiRead)?;
 
-        Ok(())
+        Ok(u16::from_be_bytes(buf))
     }
 
     #[allow(unused_variables)]
@@ -84,15 +86,6 @@ mod tests {
         ];
         let spi_device = SpiMock::new(&spi_expectations); // Assuming this is a SpiBus
 
-        // let xdcs_expectations = [
-        //     PinTransaction::set(PinState::Low),
-        //     PinTransaction::set(PinState::High),
-        // ];
-        // let xdcs_expectations: [PinTransaction; 0] = [];
-        // let xdcs = PinMock::new(&xdcs_expectations);
-
-        //let spi_device = ExclusiveDevice::new(spi_bus, xdcs, NoDelay).unwrap();
-
         // let mp3cs_expectations = [
         //     PinTransaction::set(PinState::Low),
         //     PinTransaction::set(PinState::High),
@@ -109,15 +102,15 @@ mod tests {
 
         let mut driver = Vs1053Driver::new(spi_device, mp3cs, dreq).unwrap();
 
-        let mut buf: [u8; 2] = [0; 2];
-        let _ = driver.sci_read(0x11, &mut buf).await.unwrap();
+        let value = driver.sci_read(0x11).await.unwrap();
+        // 0xAABB = 43707
+        assert_eq!(value, 43707);
 
         let (mut spi_device, mut mp3cs, mut dreq) = driver.release();
 
-        //let mut spi_bus = spi_device.bus();
         spi_device.done();
         mp3cs.done();
-        //xdcs.done();
+
         dreq.done();
     }
 }
