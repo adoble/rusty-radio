@@ -9,6 +9,10 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 
 use embedded_hal::digital::OutputPin;
 
+mod registers;
+
+use registers::Registers;
+
 const SCI_READ: u8 = 0b0000_0011;
 const SCI_WRITE: u8 = 0b0000_0010;
 
@@ -151,5 +155,11 @@ mod tests {
         spi_device.done();
         mp3cs.done();
         dreq.done();
+    }
+
+    #[test]
+    fn registers_conversion_test() {
+        let val: u8 = Registers::Vs1053RegStatus as u8;
+        assert_eq!(val, 0x01);
     }
 }
