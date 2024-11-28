@@ -9,7 +9,8 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 
 use embedded_hal::digital::OutputPin;
 
-const READ: u8 = 0b0000_0011;
+const SCI_READ: u8 = 0b0000_0011;
+const SCI_WRITE: u8 = 0b0000_0010;
 
 pub struct Vs1053Driver<SPI, MP3CS, DREQ> {
     spi_device: SPI,
@@ -38,7 +39,10 @@ where
         let mut buf: [u8; 2] = [0; 2];
 
         self.spi_device
-            .transaction(&mut [Operation::Write(&[READ, addr]), Operation::Read(&mut buf)])
+            .transaction(&mut [
+                Operation::Write(&[SCI_READ, addr]),
+                Operation::Read(&mut buf),
+            ])
             .await
             .map_err(|_| DriverError::SpiRead)?;
 
@@ -46,8 +50,19 @@ where
     }
 
     #[allow(unused_variables)]
-    pub async fn sci_write(&mut self, _addr: u8, _data: u16) -> Result<(), DriverError> {
-        todo!()
+    pub async fn sci_write(&mut self, addr: u8, data: u16) -> Result<(), DriverError> {
+        let mut buf: [u8; 4] = [0; 4];
+        buf[0] = SCI_WRITE;
+        buf[1] = addr;
+        buf[2] = data.to_be_bytes()[0];
+        buf[3] = data.to_be_bytes()[1];
+
+        self.spi_device
+            .transaction(&mut [Operation::Write(&buf)])
+            .await
+            .map_err(|_| DriverError::SpiWrite)?;
+
+        Ok(())
     }
 
     // Destroys the driver and releases the peripherals
@@ -76,15 +91,13 @@ mod tests {
     #[async_std::test]
     //#[embassy_executor::test]
     async fn sci_read_test() {
-        // See https://github.com/rust-embedded/embedded-hal/blob/master/docs/migrating-from-0.2-to-1.0.md#for-end-users
-
         let spi_expectations = [
             SpiTransaction::transaction_start(),
-            SpiTransaction::write_vec(vec![READ, 0x11]),
+            SpiTransaction::write_vec(vec![SCI_READ, 0x11]),
             SpiTransaction::read_vec(vec![0xAA, 0xBB]),
             SpiTransaction::transaction_end(),
         ];
-        let spi_device = SpiMock::new(&spi_expectations); // Assuming this is a SpiBus
+        let spi_device = SpiMock::new(&spi_expectations);
 
         // let mp3cs_expectations = [
         //     PinTransaction::set(PinState::Low),
@@ -110,7 +123,33 @@ mod tests {
 
         spi_device.done();
         mp3cs.done();
+        dreq.done();
+    }
 
+    #[async_std::test]
+    async fn sci_write_test() {
+        let spi_expectations = [
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_WRITE, 0x11, 0xAA, 0xBB]),
+            SpiTransaction::transaction_end(),
+        ];
+        let spi_device = SpiMock::new(&spi_expectations);
+
+        let mp3cs_expectations: [PinTransaction; 0] = [];
+        let mp3cs = PinMock::new(&mp3cs_expectations);
+
+        let dreq_expectations: [PinTransaction; 0] = [];
+        let mut dreq = PinMock::new(&dreq_expectations);
+
+        let mut driver = Vs1053Driver::new(spi_device, mp3cs, dreq).unwrap();
+
+        // 0xAABB = 43707
+        driver.sci_write(0x11, 43707).await.unwrap();
+
+        let (mut spi_device, mut mp3cs, mut dreq) = driver.release();
+
+        spi_device.done();
+        mp3cs.done();
         dreq.done();
     }
 }
