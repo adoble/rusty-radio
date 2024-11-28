@@ -8,6 +8,7 @@ embedded-hal = "1.0.0"
 embedded-hal-async = "1.0.0"
 
 [dev-dependencies]
+embedded-hal-bus = { version = "0.2.0", features = ["async"] }
 embedded-hal-mock = {version = "0.11.1", features= ["embedded-hal-async"]}
 async-std = {version = "1.13.0", features = ["attributes"]}
 
