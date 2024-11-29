@@ -15,6 +15,9 @@
 // 1.0× mode, thus CLKI=XTALI. After you have configured a higher clock through SCI_CLOCKF
 // and waited for DREQ to rise, you can use a higher SPI speed as well.
 
+// NEED TO SET THE SPEED OF THE SPI EXTERNALLY!
+
+use embedded_hal::digital::OutputPin;
 use embedded_hal_async::digital::Wait;
 use embedded_hal_async::spi::{Operation, SpiDevice};
 
@@ -28,29 +31,42 @@ use registers::Registers;
 const SCI_READ: u8 = 0b0000_0011;
 const SCI_WRITE: u8 = 0b0000_0010;
 
-pub struct Vs1053Driver<SPI, DREQ> {
+pub struct Vs1053Driver<SPI, DREQ, RST> {
     spi_control_device: SPI,
     spi_data_device: SPI,
-
     dreq: DREQ,
+    reset: RST,
 }
 
-impl<SPI, DREQ> Vs1053Driver<SPI, DREQ>
+impl<SPI, DREQ, RST> Vs1053Driver<SPI, DREQ, RST>
 where
     SPI: SpiDevice,
     DREQ: Wait, // See https://docs.rs/embedded-hal-async/1.0.0/embedded_hal_async/digital/index.html
+    RST: OutputPin,
 {
     pub fn new(
         spi_control_device: SPI,
         spi_data_device: SPI,
         dreq: DREQ,
+        reset: RST,
     ) -> Result<Self, DriverError> {
         let driver = Vs1053Driver {
             spi_control_device,
             spi_data_device,
             dreq,
+            reset,
         };
         Ok(driver)
+    }
+
+    pub async fn reset(&self) -> Result<(), DriverError> {
+        Ok(())
+    }
+
+    pub fn begin(&mut self) -> Result<(), DriverError> {
+        self.reset.set_high().map_err(|_| DriverError::Reset)?;
+
+        Ok(())
     }
 
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
@@ -96,8 +112,13 @@ where
     }
 
     // Destroys the driver and releases the peripherals
-    pub fn release(self) -> (SPI, SPI, DREQ) {
-        (self.spi_control_device, self.spi_data_device, self.dreq)
+    pub fn release(self) -> (SPI, SPI, DREQ, RST) {
+        (
+            self.spi_control_device,
+            self.spi_data_device,
+            self.dreq,
+            self.reset,
+        )
     }
 }
 
@@ -105,9 +126,10 @@ where
 pub enum DriverError {
     SpiRead,
     SpiWrite,
-
     // An error in waiting for the DREQ signal
     DReq,
+    // An error in setting the reset pin
+    Reset,
 }
 
 #[cfg(test)]
@@ -146,17 +168,23 @@ mod tests {
         //let dreq_expectations: [PinTransaction; 0] = [];
         let dreq = PinMock::new(&dreq_expectations);
 
-        let mut driver = Vs1053Driver::new(spi_control_device, spi_data_device, dreq).unwrap();
+        let reset_expectations = [PinTransaction::set(State::High)];
+        let reset = PinMock::new(&reset_expectations);
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset).unwrap();
+        driver.begin().unwrap();
 
         let value = driver.sci_read(0x11).await.unwrap();
         // 0xAABB = 43707
         assert_eq!(value, 43707);
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq) = driver.release();
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset) = driver.release();
 
         spi_control_device.done();
         spi_data_device.done();
         dreq.done();
+        reset.done();
     }
 
     #[async_std::test]
@@ -178,16 +206,22 @@ mod tests {
         let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
         let dreq = PinMock::new(&dreq_expectations);
 
-        let mut driver = Vs1053Driver::new(spi_control_device, spi_data_device, dreq).unwrap();
+        let reset_expectations = [PinTransaction::set(State::High)];
+        let reset = PinMock::new(&reset_expectations);
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset).unwrap();
+        driver.begin().unwrap();
 
         // 0xAABB = 43707
         driver.sci_write(0x11, 43707).await.unwrap();
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq) = driver.release();
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset) = driver.release();
 
         spi_control_device.done();
         spi_data_device.done();
         dreq.done();
+        reset.done();
     }
 
     #[test]
