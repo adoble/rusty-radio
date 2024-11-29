@@ -18,6 +18,7 @@
 // NEED TO SET THE SPEED OF THE SPI EXTERNALLY!
 
 use embedded_hal::digital::OutputPin;
+use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::digital::Wait;
 use embedded_hal_async::spi::{Operation, SpiDevice};
 
@@ -26,35 +27,39 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 mod registers;
 
 //use embedded_hal_bus::spi::DeviceError;
-use registers::Registers;
+use registers::{Mode, Register};
 
 const SCI_READ: u8 = 0b0000_0011;
 const SCI_WRITE: u8 = 0b0000_0010;
 
-pub struct Vs1053Driver<SPI, DREQ, RST> {
+pub struct Vs1053Driver<SPI, DREQ, RST, DLY> {
     spi_control_device: SPI,
     spi_data_device: SPI,
     dreq: DREQ,
     reset: RST,
+    delay: DLY,
 }
 
-impl<SPI, DREQ, RST> Vs1053Driver<SPI, DREQ, RST>
+impl<SPI, DREQ, RST, DLY> Vs1053Driver<SPI, DREQ, RST, DLY>
 where
     SPI: SpiDevice,
     DREQ: Wait, // See https://docs.rs/embedded-hal-async/1.0.0/embedded_hal_async/digital/index.html
     RST: OutputPin,
+    DLY: DelayNs,
 {
     pub fn new(
         spi_control_device: SPI,
         spi_data_device: SPI,
         dreq: DREQ,
         reset: RST,
+        delay: DLY,
     ) -> Result<Self, DriverError> {
         let driver = Vs1053Driver {
             spi_control_device,
             spi_data_device,
             dreq,
             reset,
+            delay,
         };
         Ok(driver)
     }
@@ -63,8 +68,39 @@ where
         Ok(())
     }
 
-    pub fn begin(&mut self) -> Result<(), DriverError> {
+    /// The should be called during the initialisation of the program, i.e. after the power
+    /// has come up.
+
+    pub async fn begin(&mut self) -> Result<(), DriverError> {
         self.reset.set_high().map_err(|_| DriverError::Reset)?;
+
+        self.reset_device().await?;
+
+        Ok(())
+    }
+
+    /// Reset the device.
+    /// Assumes that the clock frequency is 12.288 MHz.
+    pub async fn reset_device(&mut self) -> Result<(), DriverError> {
+        self.reset.set_low().map_err(|_| DriverError::Reset)?;
+        self.delay.delay_ms(100).await;
+        self.reset.set_high().map_err(|_| DriverError::Reset)?;
+
+        // From data sheet: After a hardware reset (or at power-up) DREQ will stay
+        // down for around 22000 clock cycles, which means an approximate 1.8 ms
+        // delay if VS1053b is run at 12.288 MHz.
+        // Rather than using a delay, just wait until DREQ has gone high
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
+        Ok(())
+    }
+
+    async fn soft_reset(&mut self) -> Result<(), DriverError> {
+        self.sci_write(Register::Mode.into(), Mode::SdiNew | Mode::Reset)
+            .await?;
 
         Ok(())
     }
@@ -112,12 +148,13 @@ where
     }
 
     // Destroys the driver and releases the peripherals
-    pub fn release(self) -> (SPI, SPI, DREQ, RST) {
+    pub fn release(self) -> (SPI, SPI, DREQ, RST, DLY) {
         (
             self.spi_control_device,
             self.spi_data_device,
             self.dreq,
             self.reset,
+            self.delay,
         )
     }
 }
@@ -137,6 +174,7 @@ mod tests {
     use super::*;
 
     use embedded_hal_async::spi::SpiBus;
+    use embedded_hal_mock::eh1::delay::{NoopDelay, StdSleep};
     //use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
     use embedded_hal_mock::eh1::digital::{
         Mock as PinMock, State as PinState, State, Transaction as PinTransaction,
@@ -168,18 +206,20 @@ mod tests {
         //let dreq_expectations: [PinTransaction; 0] = [];
         let dreq = PinMock::new(&dreq_expectations);
 
-        let reset_expectations = [PinTransaction::set(State::High)];
+        let reset_expectations: [PinTransaction; 0] = [];
         let reset = PinMock::new(&reset_expectations);
 
+        let delay = NoopDelay::new();
+
         let mut driver =
-            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset).unwrap();
-        driver.begin().unwrap();
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
 
         let value = driver.sci_read(0x11).await.unwrap();
         // 0xAABB = 43707
         assert_eq!(value, 43707);
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset) = driver.release();
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+            driver.release();
 
         spi_control_device.done();
         spi_data_device.done();
@@ -206,17 +246,19 @@ mod tests {
         let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
         let dreq = PinMock::new(&dreq_expectations);
 
-        let reset_expectations = [PinTransaction::set(State::High)];
+        let reset_expectations: [PinTransaction; 0] = [];
         let reset = PinMock::new(&reset_expectations);
 
+        let delay = NoopDelay::new();
+
         let mut driver =
-            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset).unwrap();
-        driver.begin().unwrap();
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
 
         // 0xAABB = 43707
         driver.sci_write(0x11, 43707).await.unwrap();
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset) = driver.release();
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+            driver.release();
 
         spi_control_device.done();
         spi_data_device.done();
@@ -226,7 +268,7 @@ mod tests {
 
     #[test]
     fn registers_conversion_test() {
-        let val: u8 = Registers::Vs1053RegStatus as u8;
+        let val: u8 = Register::Status.into();
         assert_eq!(val, 0x01);
     }
 }
