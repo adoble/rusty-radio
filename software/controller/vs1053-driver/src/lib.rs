@@ -10,6 +10,11 @@
 // and  https://docs.embassy.dev/embassy-embedded-hal/git/default/shared_bus/asynch/spi/index.html
 // for hints on how to set this up, but with the same SPI peripheral.
 
+// Note (about clock speed from the VS1053 data sheet p23):
+//  Although the timing is derived from the internal clock CLKI, the system always starts up in
+// 1.0× mode, thus CLKI=XTALI. After you have configured a higher clock through SCI_CLOCKF
+// and waited for DREQ to rise, you can use a higher SPI speed as well.
+
 use embedded_hal_async::digital::Wait;
 use embedded_hal_async::spi::{Operation, SpiDevice};
 
@@ -17,6 +22,7 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 
 mod registers;
 
+//use embedded_hal_bus::spi::DeviceError;
 use registers::Registers;
 
 const SCI_READ: u8 = 0b0000_0011;
@@ -50,6 +56,11 @@ where
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
         // Note: XCS is managed by self.spi_device : SpiDevice
 
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
         let mut buf: [u8; 2] = [0; 2];
 
         self.spi_control_device
@@ -65,6 +76,11 @@ where
 
     #[allow(unused_variables)]
     pub async fn sci_write(&mut self, addr: u8, data: u16) -> Result<(), DriverError> {
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
         let mut buf: [u8; 4] = [0; 4];
         buf[0] = SCI_WRITE;
         buf[1] = addr;
@@ -89,6 +105,9 @@ where
 pub enum DriverError {
     SpiRead,
     SpiWrite,
+
+    // An error in waiting for the DREQ signal
+    DReq,
 }
 
 #[cfg(test)]
@@ -98,7 +117,7 @@ mod tests {
     use embedded_hal_async::spi::SpiBus;
     //use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
     use embedded_hal_mock::eh1::digital::{
-        Mock as PinMock, State as PinState, Transaction as PinTransaction,
+        Mock as PinMock, State as PinState, State, Transaction as PinTransaction,
     };
     use embedded_hal_mock::eh1::spi::{Mock as SpiMock, Transaction as SpiTransaction};
 
@@ -123,11 +142,8 @@ mod tests {
         // let mp3cs_expectations: [PinTransaction; 0] = [];
         // let mp3cs = PinMock::new(&mp3cs_expectations);
 
-        // let dreq_expectations = [
-        //     PinTransaction::get(PinState::High),
-        //     PinTransaction::get(PinState::Low),
-        // ];
-        let dreq_expectations: [PinTransaction; 0] = [];
+        let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
+        //let dreq_expectations: [PinTransaction; 0] = [];
         let dreq = PinMock::new(&dreq_expectations);
 
         let mut driver = Vs1053Driver::new(spi_control_device, spi_data_device, dreq).unwrap();
@@ -158,7 +174,8 @@ mod tests {
         // let mp3cs_expectations: [PinTransaction; 0] = [];
         // let mp3cs = PinMock::new(&mp3cs_expectations);
 
-        let dreq_expectations: [PinTransaction; 0] = [];
+        //let dreq_expectations: [PinTransaction; 0] = [];
+        let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
         let dreq = PinMock::new(&dreq_expectations);
 
         let mut driver = Vs1053Driver::new(spi_control_device, spi_data_device, dreq).unwrap();
