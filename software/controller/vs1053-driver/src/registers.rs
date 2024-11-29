@@ -1,38 +1,67 @@
+use core::ops::BitOr;
+
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone)]
-pub enum Registers {
-    Vs1053RegMode = 0x00,       // Mode control
-    Vs1053RegStatus = 0x01,     // Status of VS1053b
-    Vs1053RegBass = 0x02,       // Built-in bass/treble control
-    Vs1053RegClockf = 0x03,     // Clock frequency + multiplier
-    Vs1053RegDecodetime = 0x04, // Decode time in seconds
-    Vs1053RegAudata = 0x05,     // Misc. audio data
-    Vs1053RegWram = 0x06,       // RAM write/read
-    Vs1053RegWramaddr = 0x07,   // Base address for RAM write/read
-    Vs1053RegHdat0 = 0x08,      // Stream header data 0
-    Vs1053RegHdat1 = 0x09,      // Stream header data 1
-    Vs1053RegVolume = 0x0B,     // Volume control
-    Vs1053GpioDdr = 0xC017,     // Direction
-    Vs1053GpioIdata = 0xC018,   // Values read from pins
-    Vs1053GpioOdata = 0xC019,   // Values set to the pins
-    Vs1053IntEnable = 0xC01A,   // Interrupt enable
+pub enum Register {
+    Mode = 0x00,        // Mode control
+    Status = 0x01,      // Status of VS1053b
+    Bass = 0x02,        // Built-in bass/treble control
+    Clockf = 0x03,      // Clock frequency + multiplier
+    Decodetime = 0x04,  // Decode time in seconds
+    Audata = 0x05,      // Misc. audio data
+    Wram = 0x06,        // RAM write/read
+    Wramaddr = 0x07,    // Base address for RAM write/read
+    Hdat0 = 0x08,       // Stream header data 0
+    Hdat1 = 0x09,       // Stream header data 1
+    Volume = 0x0B,      // Volume control
+    GpioDdr = 0xC017,   // Direction
+    GpioIdata = 0xC018, // Values read from pins
+    GpioOdata = 0xC019, // Values set to the pins
+    IntEnable = 0xC01A, // Interrupt enable
 }
+
+impl From<Register> for u8 {
+    fn from(value: Register) -> Self {
+        value as u8
+    }
+}
+
+/// Mode constants
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone)]
+pub enum Mode {
+    Diff = 0x0001,     // Differential, 0: normal in-phase audio, 1: left channel inverted
+    Layer12 = 0x0002,  // Allow MPEG layers I & II
+    Reset = 0x0004,    // Soft reset
+    Cancel = 0x0008,   // Cancel decoding current file
+    Earspklo = 0x0010, // EarSpeaker low setting
+    Tests = 0x0020,    // Allow SDI tests
+    Stream = 0x0040,   // Stream mode
+    SdiNew = 0x0800,   // VS1002 native SPI modes
+    Adpcm = 0x1000,    // PCM/ADPCM recording active
+    Line1 = 0x4000,    // MIC/LINE1 selector, 0: MICP, 1: LINE1
+    Clkrange = 0x8000, // Input clock range, 0: 12..13 MHz, 1: 24..26 MHz
+}
+
+impl From<Mode> for u16 {
+    fn from(value: Mode) -> Self {
+        value as u16
+    }
+}
+
+impl BitOr for Mode {
+    type Output = u16;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self as u16 | rhs as u16
+    }
+}
+
 // TODO No idea yet where these are used?
 //
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone)]
 pub enum OtherConstants {
-    Vs1053ModeSmDiff = 0x0001, // Differential, 0: normal in-phase audio, 1: left channel inverted
-    Vs1053ModeSmLayer12 = 0x0002, // Allow MPEG layers I & II
-    Vs1053ModeSmReset = 0x0004, // Soft reset
-    Vs1053ModeSmCancel = 0x0008, // Cancel decoding current file
-    Vs1053ModeSmEarspklo = 0x0010, // EarSpeaker low setting
-    Vs1053ModeSmTests = 0x0020, // Allow SDI tests
-    Vs1053ModeSmStream = 0x0040, // Stream mode
-    Vs1053ModeSmSdinew = 0x0800, // VS1002 native SPI modes
-    Vs1053ModeSmAdpcm = 0x1000, // PCM/ADPCM recording active
-    Vs1053ModeSmLine1 = 0x4000, // MIC/LINE1 selector, 0: MICP, 1: LINE1
-    Vs1053ModeSmClkrange = 0x8000, // Input clock range, 0: 12..13 MHz, 1: 24..26 MHz
     Vs1053SciAiaddr = 0x0A, // Indicates the start address of the application code written earlier ,  // with SCI_WRAMADDR and SCI_WRAM registers.
     Vs1053SciAictrl0 = 0x0C, // SCI_AICTRL register 0. Used to access the user's application program
     Vs1053SciAictrl1 = 0x0D, // SCI_AICTRL register 1. Used to access the user's application program
