@@ -106,7 +106,7 @@ where
         self.sci_write(Register::Clockf.into(), 0x6000).await?;
 
         // Set volume to a confortable level
-        self.set_volume(40, 40);
+        self.set_volume(40, 40).await?;
 
         // TODO bass leveb
 
@@ -224,15 +224,7 @@ mod tests {
         let spi_data_expectations: [SpiTransaction<u8>; 0] = [];
         let spi_data_device = SpiMock::new(&spi_data_expectations);
 
-        // let mp3cs_expectations = [
-        //     PinTransaction::set(PinState::Low),
-        //     PinTransaction::set(PinState::High),
-        // ];
-        // let mp3cs_expectations: [PinTransaction; 0] = [];
-        // let mp3cs = PinMock::new(&mp3cs_expectations);
-
         let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
-        //let dreq_expectations: [PinTransaction; 0] = [];
         let dreq = PinMock::new(&dreq_expectations);
 
         let reset_expectations: [PinTransaction; 0] = [];
@@ -295,11 +287,6 @@ mod tests {
         reset.done();
     }
 
-    #[test]
-    fn registers_conversion_test() {
-        let val: u8 = Register::Status.into();
-        assert_eq!(val, 0x01);
-    }
 
     #[test]
     fn volume_test() {

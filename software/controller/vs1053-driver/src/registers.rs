@@ -71,3 +71,25 @@ pub enum OtherConstants {
     Vs1053SciWramaddr = 0x07, // Base address for RAM write/read
     Vs1053ParaPlayspeed = 0x1E04, // 0,1 = normal speed, 2 = 2x, 3 = 3x etc
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registers_conversion_test() {
+        let val: u8 = Register::Status.into();
+        assert_eq!(val, 0x01);
+    }
+
+    #[test]
+    fn simple_or_test() {
+        let v = Mode::Diff | Mode::SdiNew;
+
+        assert_eq!(v, 0x0801);
+        // TODO this doe not work. Maybe start using bitflags crate if this
+        // chaining is required
+        // let v = Mode::Diff | Mode::SdiNew | Mode::Stream;
+        // assert_eq!(v, 0x0841);
+    }
+}
