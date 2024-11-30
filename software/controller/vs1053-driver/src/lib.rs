@@ -76,6 +76,9 @@ where
 
         self.reset_device().await?;
 
+        // TODO add this as in the adafruit driver
+        // return (sciRead(VS1053_REG_STATUS) >> 4) & 0x0F;
+
         Ok(())
     }
 
@@ -95,6 +98,18 @@ where
             .await
             .map_err(|_| DriverError::DReq)?;
 
+        // TODO do we need to do this. Experiment with taking it away!
+        self.soft_reset().await?;
+
+        // Set the clock divider. This has to be done as soon as pssible after a soft reset
+        // TODO change "soft reset" to "software reset" as this is the name in the data sheet
+        self.sci_write(Register::Clockf.into(), 0x6000).await?;
+
+        // Set volume to a confortable level
+        self.set_volume(40, 40);
+
+        // TODO bass leveb
+
         Ok(())
     }
 
@@ -102,7 +117,20 @@ where
         self.sci_write(Register::Mode.into(), Mode::SdiNew | Mode::Reset)
             .await?;
 
+        self.delay.delay_us(2).await;
+
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
         Ok(())
+    }
+
+    pub async fn set_volume(&mut self, left: u8, right: u8) -> Result<(), DriverError> {
+        let volume = ((right as u16) << 8) | left as u16;
+
+        self.sci_write(Register::Volume.into(), volume).await
     }
 
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
@@ -174,6 +202,7 @@ mod tests {
     use super::*;
 
     use embedded_hal_async::spi::SpiBus;
+    use embedded_hal_mock::common::Generic;
     use embedded_hal_mock::eh1::delay::{NoopDelay, StdSleep};
     //use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
     use embedded_hal_mock::eh1::digital::{
@@ -270,5 +299,34 @@ mod tests {
     fn registers_conversion_test() {
         let val: u8 = Register::Status.into();
         assert_eq!(val, 0x01);
+    }
+
+    #[test]
+    fn volume_test() {
+        let spi_data_device = SpiMock::new(&[]);
+        let dreq = PinMock::new(&[]);
+        let reset = PinMock::new(&[]);
+        let delay = NoopDelay::new();
+
+        // Volume 40, 40 =  0x2828
+        let spi_control_expectations = [
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_WRITE, 0x0b, 0x28, 0x28]),
+            SpiTransaction::transaction_end(),
+        ];
+        let spi_control_device = SpiMock::new(&[]);
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
+
+        driver.set_volume(40, 40);
+
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+            driver.release();
+
+        spi_control_device.done();
+        spi_data_device.done();
+        dreq.done();
+        reset.done();
     }
 }
