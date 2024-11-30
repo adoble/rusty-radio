@@ -24,9 +24,11 @@ use embedded_hal_async::spi::{Operation, SpiDevice};
 
 //use embedded_hal::digital::OutputPin;
 
+mod dump_registers;
 mod registers;
 
 //use embedded_hal_bus::spi::DeviceError;
+use dump_registers::DumpRegisters;
 use registers::{Mode, Register};
 
 const SCI_READ: u8 = 0b0000_0011;
@@ -131,6 +133,24 @@ where
         let volume = ((right as u16) << 8) | left as u16;
 
         self.sci_write(Register::Volume.into(), volume).await
+    }
+
+    /// Dumps the values of selected registers into a `DumpRegisters` structure.
+    /// This function is only used for debugging!
+    pub async fn dump_registers(&mut self) -> Result<DumpRegisters, DriverError> {
+        let mode = self.sci_read(Register::Mode.into()).await?;
+        let status = self.sci_read(Register::Status.into()).await?;
+        let clock_f = self.sci_read(Register::Clockf.into()).await?;
+        let volume = self.sci_read(Register::Volume.into()).await?;
+
+        let dr = DumpRegisters {
+            mode,
+            status,
+            clock_f,
+            volume,
+        };
+
+        Ok(dr)
     }
 
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
@@ -303,6 +323,68 @@ mod tests {
             Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
 
         driver.set_volume(40, 40).await.unwrap();
+
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
+            driver.release();
+
+        spi_control_device.done();
+        spi_data_device.done();
+        dreq.done();
+        reset.done();
+    }
+
+    #[async_std::test]
+    async fn dump_registers_test() {
+        let spi_control_expectations = [
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::Mode.into()]),
+            SpiTransaction::read_vec(vec![0xAB, 0xCD]),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::Status.into()]),
+            SpiTransaction::read_vec(vec![0xAB, 0xCD]),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::Clockf.into()]),
+            SpiTransaction::read_vec(vec![0x98, 0x76]),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::Volume.into()]),
+            SpiTransaction::read_vec(vec![0xAB, 0xCD]),
+            SpiTransaction::transaction_end(),
+        ];
+        let spi_control_device = SpiMock::new(&spi_control_expectations);
+
+        let spi_data_expectations: [SpiTransaction<u8>; 0] = [];
+        let spi_data_device = SpiMock::new(&spi_data_expectations);
+
+        let dreq_expectations = [
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+        ];
+        let dreq = PinMock::new(&dreq_expectations);
+
+        let reset_expectations: [PinTransaction; 0] = [];
+        let reset = PinMock::new(&reset_expectations);
+
+        let delay = NoopDelay::new();
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
+
+        let result_dr = driver.dump_registers().await.unwrap();
+
+        assert_eq!(
+            DumpRegisters {
+                mode: 0xABCD,
+                status: 0xABCD,
+                clock_f: 0x9876,
+                volume: 0xABCD
+            },
+            result_dr
+        );
 
         let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();
