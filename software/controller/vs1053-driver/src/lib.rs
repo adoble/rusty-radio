@@ -201,13 +201,8 @@ pub enum DriverError {
 mod tests {
     use super::*;
 
-    use embedded_hal_async::spi::SpiBus;
-    use embedded_hal_mock::common::Generic;
-    use embedded_hal_mock::eh1::delay::{NoopDelay, StdSleep};
-    //use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
-    use embedded_hal_mock::eh1::digital::{
-        Mock as PinMock, State as PinState, State, Transaction as PinTransaction,
-    };
+    use embedded_hal_mock::eh1::delay::NoopDelay;
+    use embedded_hal_mock::eh1::digital::{Mock as PinMock, State, Transaction as PinTransaction};
     use embedded_hal_mock::eh1::spi::{Mock as SpiMock, Transaction as SpiTransaction};
 
     #[async_std::test]
@@ -239,7 +234,7 @@ mod tests {
         // 0xAABB = 43707
         assert_eq!(value, 43707);
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();
 
         spi_control_device.done();
@@ -278,7 +273,7 @@ mod tests {
         // 0xAABB = 43707
         driver.sci_write(0x11, 43707).await.unwrap();
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();
 
         spi_control_device.done();
@@ -287,28 +282,29 @@ mod tests {
         reset.done();
     }
 
-
-    #[test]
-    fn volume_test() {
+    #[async_std::test]
+    async fn volume_test() {
         let spi_data_device = SpiMock::new(&[]);
-        let dreq = PinMock::new(&[]);
         let reset = PinMock::new(&[]);
         let delay = NoopDelay::new();
 
         // Volume 40, 40 =  0x2828
         let spi_control_expectations = [
             SpiTransaction::transaction_start(),
-            SpiTransaction::write_vec(vec![SCI_WRITE, 0x0b, 0x28, 0x28]),
+            SpiTransaction::write_vec(vec![SCI_WRITE, 0x0B, 0x28, 0x28]),
             SpiTransaction::transaction_end(),
         ];
-        let spi_control_device = SpiMock::new(&[]);
+        let spi_control_device = SpiMock::new(&spi_control_expectations);
+
+        let dreq_expectations = [PinTransaction::wait_for_state(State::High)];
+        let dreq = PinMock::new(&dreq_expectations);
 
         let mut driver =
             Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
 
-        driver.set_volume(40, 40);
+        driver.set_volume(40, 40).await.unwrap();
 
-        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut delay) =
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();
 
         spi_control_device.done();
