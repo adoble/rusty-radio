@@ -1,6 +1,7 @@
 #![no_main]
 #![no_std]
 
+// Simple test of the VS1053 driver to generate signals on the spi pins.
 // Based on this example : https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/shared_bus.rs
 // TODO Use https://docs.embassy.dev/embassy-embedded-hal/git/default/shared_bus/asynch/spi/struct.SpiDeviceWithConfig.html
 //      to change the speed of the spi devices

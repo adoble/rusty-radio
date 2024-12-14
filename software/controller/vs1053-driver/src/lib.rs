@@ -9,6 +9,8 @@
 // See https://docs.esp-rs.org/esp-hal/esp-hal/0.22.0/esp32c3/esp_hal/spi/master/index.html#shared-spi-access
 // and  https://docs.embassy.dev/embassy-embedded-hal/git/default/shared_bus/asynch/spi/index.html
 // for hints on how to set this up, but with the same SPI peripheral.
+// Also look at embassy_embedded_hal::shared_bus::asynch::spi:SpiDeviceWithConfig (see https://docs.embassy.dev/embassy-embedded-hal/git/default/shared_bus/asynch/spi/struct.SpiDeviceWithConfig.html)
+// to see how to individually configure the speed of a SpiDevice.
 
 // Note (about clock speed from the VS1053 data sheet p23):
 //  Although the timing is derived from the internal clock CLKI, the system always starts up in
