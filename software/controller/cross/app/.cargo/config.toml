@@ -12,7 +12,7 @@ rustflags = [
   # ALSO see this for a what options are required: https://docs.esp-rs.org/esp-hal/esp-wifi/0.10.1/esp32c3/esp_wifi/
   "-C", "force-frame-pointers",
   "-C", "link-arg=-Tlinkall.x",
-  "-C", "link-arg=-Trom_functions.x",
+  #"-C", "link-arg=-Trom_functions.x",
 ]
 
 target = "riscv32imc-unknown-none-elf"

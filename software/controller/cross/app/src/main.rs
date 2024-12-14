@@ -20,9 +20,9 @@ use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
-use esp_hal::gpio::{AnyPin, Input, Io, Pull};
-use esp_hal::spi::master::Spi;
-use esp_hal::spi::{FullDuplexMode, SpiMode};
+use esp_hal::gpio::{AnyPin, Input, Pull};
+use esp_hal::spi::master::{Config, Spi};
+use esp_hal::spi::SpiMode;
 use esp_hal::timer::timg::TimerGroup;
 
 use esp_hal::{prelude::*, rng::Rng};
@@ -32,7 +32,8 @@ use esp_wifi::wifi::{WifiController, WifiDevice};
 use esp_wifi::{
     init,
     wifi::{AuthMethod, ClientConfiguration, Configuration, WifiStaDevice},
-    EspWifiInitFor,
+    //EspWifiInitFor,
+    EspWifiController,
 };
 use reqwless::client::HttpClient;
 use reqwless::request;
@@ -54,12 +55,9 @@ const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 // An alterantive would be to use the same constant for setting up both StackResources and TcpClientState
 const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
 
-// See https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/sharing.rs. Altough for the RP
-// it also works for the esp32
-type SpiAsyncMutex =
-    mutex::Mutex<CriticalSectionRawMutex, Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode>>;
-
 //const NUMBER_SOCKETS: usize = 3; // Used by more than one package and needs to be in sync
+
+static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
 
 static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
     StaticCell::new();
@@ -217,11 +215,11 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
             esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
             esp_println::println!("Starting wifi");
-            controller.start().await.unwrap();
+            controller.start_async().await.unwrap();
             esp_println::println!("Wifi started!");
         }
 
-        match controller.connect().await {
+        match controller.connect_async().await {
             Ok(_) => esp_println::println!("Wifi connected!"),
             Err(e) => {
                 esp_println::println!("Failed to connect to wifi: {e:?}");
@@ -238,22 +236,6 @@ async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevi
     stack.run().await
 }
 
-#[embassy_executor::task]
-async fn decode_mp3(_spi: &'static SpiAsyncMutex) {
-    loop {
-        Timer::after(Duration::from_millis(5000)).await;
-        esp_println::println!("decode_mp3");
-    }
-}
-
-#[embassy_executor::task]
-async fn display_task(_spi: &'static SpiAsyncMutex) {
-    loop {
-        Timer::after(Duration::from_millis(5000)).await;
-        esp_println::println!("display_task");
-    }
-}
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     //esp_println::logger::init_logger_from_env();
@@ -268,8 +250,9 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
-    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    let button_pin = Input::new(io.pins.gpio1, Pull::Up);
+    let button_pin = Input::new(peripherals.GPIO1, Pull::Up);
+    // let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+    // let button_pin = Input::new(io.pins.gpio1, Pull::Up);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let timg1 = TimerGroup::new(peripherals.TIMG1);
@@ -277,17 +260,29 @@ async fn main(spawner: Spawner) {
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
     //let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
-    let init = init(
-        EspWifiInitFor::Wifi,
-        timg1.timer0,
-        Rng::new(&mut peripherals.RNG),
-        peripherals.RADIO_CLK,
-    )
-    .unwrap();
+
+    //static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
+    let init = ESP_WIFI_CONTROLLER.uninit().write(
+        init(
+            //EspWifiInitFor::Wifi,
+            timg1.timer0,
+            Rng::new(&mut peripherals.RNG),
+            peripherals.RADIO_CLK,
+        )
+        .unwrap(),
+    );
+
+    // let init = init(
+    //     //EspWifiInitFor::Wifi,
+    //     timg1.timer0,
+    //     Rng::new(&mut peripherals.RNG),
+    //     peripherals.RADIO_CLK,
+    // )
+    // .unwrap();
 
     let wifi = peripherals.WIFI;
     let (wifi_device, controller) =
-        esp_wifi::wifi::new_with_mode(&init, wifi, WifiStaDevice).unwrap();
+        esp_wifi::wifi::new_with_mode(init, wifi, WifiStaDevice).unwrap();
 
     // Init network stack
 
@@ -307,24 +302,10 @@ async fn main(spawner: Spawner) {
 
     esp_hal_embassy::init(timg0.timer0);
 
-    // SPI
-    let sclk = io.pins.gpio5;
-    let miso = io.pins.gpio7;
-    let mosi = io.pins.gpio6;
-    let mp3cs = io.pins.gpio9;
-    //let xdcs = io.pins.gpio10;
-
-    let spi: Spi<'static, esp_hal::peripherals::SPI2, FullDuplexMode> =
-        Spi::new(peripherals.SPI2, 100.kHz(), SpiMode::Mode0).with_pins(sclk, mosi, miso, mp3cs);
-    static SPI: StaticCell<SpiAsyncMutex> = StaticCell::new();
-    let spi = SPI.init(mutex::Mutex::new(spi));
-
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
     spawner.spawn(process_channel()).ok();
-    spawner.spawn(decode_mp3(spi)).ok();
-    spawner.spawn(display_task(spi)).ok();
 }
