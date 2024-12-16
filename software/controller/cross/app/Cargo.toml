@@ -31,6 +31,10 @@ esp-wifi = { version = "0.11.0", features = ["esp32c3", "wifi",] }
 static_cell = "2.1.0"
 embassy-net-driver = "0.2.0"
 embassy-sync = "0.6.1"
+embedded-hal-bus = { version = "0.2.0", features = ["async"] }
+embassy-embedded-hal = "0.2.0"
+
+
 
 # Using older version.See https://github.com/drogue-iot/reqwless/issues/93
 reqwless = "0.12.1"
@@ -38,6 +42,8 @@ reqwless = "0.12.1"
 embedded-nal-async = "0.8.0"
 static_assertions = "1.1.0"
 embedded-io-async = "0.6.1"
+
+vs1053-driver = {path = "../../vs1053-driver"}
 
 [dev-dependencies]
 embedded-hal-mock = {version = "0.11.1", features = ["eh1", "embedded-hal-async"]}
