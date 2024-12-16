@@ -874,8 +874,8 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
-			(property "Reference" "U"
-				(at -25.4 30.48 0)
+			(property "Reference" "U1"
+				(at 2.1941 -26.9931 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -884,7 +884,7 @@
 				)
 			)
 			(property "Value" "ESP32-C3-DevKitM-1"
-				(at -25.4 27.94 0)
+				(at 2.1941 -29.4174 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -942,7 +942,7 @@
 				)
 			)
 			(symbol "ESP32-C3-DevKitM-1_1_0"
-				(text "ESP32-C3-DevKitM-1"
+				(text "ESP32-C3-DevKit-M1"
 					(at 0 2.54 0)
 					(effects
 						(font
@@ -2067,6 +2067,16 @@
 		)
 		(uuid "36a6d99b-9083-4dcf-90b2-e19bed22731c")
 	)
+	(polyline
+		(pts
+			(xy 167.64 49.53) (xy 176.53 49.53)
+		)
+		(stroke
+			(width 0)
+			(type dash)
+		)
+		(uuid "4267adc1-4543-4929-841b-3bb62476f32b")
+	)
 	(wire
 		(pts
 			(xy 143.51 73.66) (xy 166.37 73.66)
@@ -2079,6 +2089,26 @@
 	)
 	(wire
 		(pts
+			(xy 82.55 30.48) (xy 181.61 30.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4c710ddb-8487-4f46-a0de-92ac5e2a53cf")
+	)
+	(wire
+		(pts
+			(xy 82.55 60.96) (xy 82.55 30.48)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6329293b-fd10-4856-9b57-3965d10c6c68")
+	)
+	(wire
+		(pts
 			(xy 113.03 99.06) (xy 133.35 99.06)
 		)
 		(stroke
@@ -2086,6 +2116,16 @@
 			(type default)
 		)
 		(uuid "7f3ff008-b05d-425e-a836-180013e7b73b")
+	)
+	(wire
+		(pts
+			(xy 181.61 30.48) (xy 181.61 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9f62880a-2777-4ed9-88a2-c8248f7580eb")
 	)
 	(wire
 		(pts
@@ -2146,6 +2186,16 @@
 			(type default)
 		)
 		(uuid "be602bb2-db82-4483-9735-765ab452112f")
+	)
+	(polyline
+		(pts
+			(xy 182.88 33.02) (xy 191.77 33.02)
+		)
+		(stroke
+			(width 0)
+			(type dash)
+		)
+		(uuid "c1592790-f902-4fe0-93e6-ad9b5fe6635e")
 	)
 	(wire
 		(pts
@@ -2218,8 +2268,8 @@
 		(uuid "fd1989a3-781a-4bb4-abaa-0fd7f15c513f")
 	)
 	(rectangle
-		(start 53.34 48.26)
-		(end 100.33 58.42)
+		(start 83.82 48.26)
+		(end 130.81 58.42)
 		(stroke
 			(width 0)
 			(type dash)
@@ -2229,9 +2279,47 @@
 		)
 		(uuid 8607a380-3b1e-42c9-868f-6be74fd7bf4f)
 	)
+	(text_box "Used to power \nthe amplifier\nalone\n"
+		(exclude_from_sim no)
+		(at 151.13 46.99 0)
+		(size 16.51 7.62)
+		(stroke
+			(width 0)
+			(type dash)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "68ed4f7d-408a-4f59-9b37-33471d06e41b")
+	)
+	(text_box "This assumes that the ESP32-C3-Devkit-M3 \nsupplies enough current for the VS1053"
+		(exclude_from_sim no)
+		(at 191.77 25.4 0)
+		(size 33.02 12.7)
+		(stroke
+			(width 0)
+			(type dash)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "e267e410-7961-47c5-b614-a639d2d92bde")
+	)
 	(text "Open when USB connected!"
 		(exclude_from_sim no)
-		(at 70.104 53.848 0)
+		(at 114.554 53.848 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2826,7 +2914,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "eb991b2e-b386-41fa-ba64-1d331b056b66")
+			(uuid "eb991b2e-b386-41fa-ba64-1d331b056b67")
 		)
 		(instances
 			(project ""
@@ -2960,7 +3048,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "8415f252-4823-4710-a7ba-7e0a899048e4")
+			(uuid "8415f252-4823-4710-a7ba-7e0a899048e5")
 		)
 		(instances
 			(project ""
