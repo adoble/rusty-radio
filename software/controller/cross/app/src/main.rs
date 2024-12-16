@@ -225,6 +225,12 @@ async fn dump_registers(
 
     let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
 
+    // Set the volume so we can see the value when we dump the registers
+    let left_vol = 0x11;
+    let right_vol = 0x22;
+    driver.set_volume(left_vol, right_vol).await.unwrap();
+    // Should see 1122 as the vol reg
+
     // Put this in a loop so that we can see it on the 'scope
     loop {
         let regs = driver.dump_registers().await.unwrap();

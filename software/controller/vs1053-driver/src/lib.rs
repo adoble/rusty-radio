@@ -134,7 +134,7 @@ where
     }
 
     pub async fn set_volume(&mut self, left: u8, right: u8) -> Result<(), DriverError> {
-        let volume = ((right as u16) << 8) | left as u16;
+        let volume = ((left as u16) << 8) | right as u16;
 
         self.sci_write(Register::Volume.into(), volume).await
     }
