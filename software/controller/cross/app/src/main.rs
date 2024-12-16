@@ -5,6 +5,12 @@
 
 //! An internet radio
 //!
+
+// See this about having functions to setup the peripherals and avoid the borrow problem:
+// https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/2
+
+mod async_delay;
+
 use core::str::from_utf8;
 
 use embassy_executor::Spawner;
@@ -14,13 +20,18 @@ use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::blocking_mutex::CriticalSectionMutex;
 //use embassy_sync::blocking_mutex;
+use embassy_embedded_hal::adapter::BlockingAsync;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
+
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::channel::Channel;
-use embassy_sync::mutex;
+use embassy_sync::mutex::Mutex;
 use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
-use esp_hal::gpio::{AnyPin, Input, Pull};
+use esp_hal::gpio::{AnyPin, Input, Level, Output, Pull};
+use esp_hal::peripherals::Peripherals;
 use esp_hal::spi::master::{Config, Spi};
 use esp_hal::spi::SpiMode;
 use esp_hal::timer::timg::TimerGroup;
@@ -41,7 +52,11 @@ use static_cell::StaticCell;
 
 use static_assertions::{self, const_assert};
 
+use async_delay::AsyncDelay;
+
 static_assertions::const_assert!(true);
+
+use vs1053_driver::Vs1053Driver;
 
 //use vs1053_driver::Vs1053Driver;
 
@@ -63,12 +78,14 @@ static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RE
     StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
+type SharedSpiBus = Mutex<NoopRawMutex, BlockingAsync<Spi<'static, esp_hal::Async>>>;
+
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
 static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
-static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
+//static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -195,6 +212,34 @@ async fn notification_task() {
 }
 
 #[embassy_executor::task]
+async fn dump_registers(
+    spi_bus: &'static SharedSpiBus,
+    xcs: Output<'static>,
+    xdcs: Output<'static>,
+    dreq: Input<'static>,
+    reset: Output<'static>,
+    delay: AsyncDelay,
+) {
+    let spi_sci_device = SpiDevice::new(spi_bus, xcs);
+    let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
+
+    let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+
+    // Put this in a loop so that we can see it on the 'scope
+    loop {
+        let regs = driver.dump_registers().await.unwrap();
+
+        esp_println::println!("Dump registers:");
+        esp_println::println!("mode: {:X}", regs.mode);
+        esp_println::println!("status: {:X}", regs.status);
+        esp_println::println!("clockf: {:X}", regs.clock_f);
+        esp_println::println!("volume: {:X}", regs.volume);
+
+        Timer::after(Duration::from_millis(3000)).await;
+    }
+}
+
+#[embassy_executor::task]
 async fn wifi_connect(mut controller: WifiController<'static>) {
     esp_println::println!("Wait to get wifi connected");
 
@@ -251,11 +296,43 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
     let button_pin = Input::new(peripherals.GPIO1, Pull::Up);
-    // let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
-    // let button_pin = Input::new(io.pins.gpio1, Pull::Up);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let timg1 = TimerGroup::new(peripherals.TIMG1);
+
+    let sclk = Output::new(peripherals.GPIO5, Level::Low);
+    let mosi = Output::new(peripherals.GPIO6, Level::Low);
+    let miso = Output::new(peripherals.GPIO7, Level::Low);
+    let xcs = Output::new(peripherals.GPIO9, Level::Low);
+    let xdcs = Output::new(peripherals.GPIO10, Level::Low);
+
+    let dreq = Input::new(peripherals.GPIO8, Pull::None);
+    let reset = Output::new(peripherals.GPIO20, Level::High);
+
+    let delay = AsyncDelay::new();
+
+    // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
+    // Seems to only work with SPI2
+    // let spi_sci = esp_hal::spi::master::Spi::new(peripherals.SPI2, 250.kHz(), SpiMode::Mode0);
+
+    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new_with_config(
+        peripherals.SPI2,
+        Config {
+            frequency: 250.kHz(),
+            mode: SpiMode::Mode0,
+            ..Config::default()
+        },
+    )
+    .with_sck(sclk)
+    .with_mosi(mosi)
+    .with_miso(miso)
+    .into_async();
+
+    static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
+    // Need to convert the spi driver into an blocking async version so that if can be accepted
+    // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
+    let blocking_spi_bus = BlockingAsync::new(spi_bus);
+    let spi_bus = SPI_BUS.init(Mutex::new(blocking_spi_bus));
 
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
@@ -308,4 +385,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
     spawner.spawn(process_channel()).ok();
+    spawner
+        .spawn(dump_registers(spi_bus, xcs, xdcs, dreq, reset, delay))
+        .ok();
 }
