@@ -162,9 +162,38 @@ where
         Ok(dr)
     }
 
+    // This is the old sine test. TODO update to new one
     /// Duration in milliseconds
-    pub async fn sine_test(&mut self, n: u8, duration: u16) -> Result<(), DriverError> {
-        todo!()
+    /// n is the test. See the spec section 10.12.1
+    /// But n = 126 gives a sine frequency of 5168Hz.
+    pub async fn sine_test(&mut self, n: u8, duration: u32) -> Result<(), DriverError> {
+        self.reset().await?;
+
+        let mut mode = self.sci_read(Register::Mode.into()).await?;
+        mode |= 0x0020;
+        self.sci_write(Register::Mode.into(), mode).await?;
+
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
+        let sine_start: [u8; 8] = [0x53, 0xEF, 0x6E, n, 0x00, 0x00, 0x00, 0x00];
+        let sine_stop: [u8; 8] = [0x45, 0x78, 0x69, 0x74, 0x00, 0x00, 0x00, 0x00];
+
+        self.spi_control_device
+            .transaction(&mut [Operation::Write(&sine_start)])
+            .await
+            .map_err(|_| DriverError::SpiWrite)?;
+
+        self.delay.delay_ms(duration).await;
+
+        self.spi_control_device
+            .transaction(&mut [Operation::Write(&sine_stop)])
+            .await
+            .map_err(|_| DriverError::SpiWrite)?;
+
+        Ok(())
     }
 
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {

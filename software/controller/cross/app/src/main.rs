@@ -402,6 +402,17 @@ async fn main(spawner: Spawner) {
         esp_println::println!("status: {:X}", registers.status);
         esp_println::println!("clockf: {:X}", registers.clock_f);
         esp_println::println!("volume: {:X}", registers.volume);
+
+        // Now the sine test
+        let sine_test_duration_ms = 3000;
+        vs1053_driver.set_volume(50, 50).await.unwrap();
+        esp_println::println!("Starting sine test for {} ms.", sine_test_duration_ms);
+
+        vs1053_driver
+            .sine_test(126, sine_test_duration_ms)
+            .await
+            .unwrap();
+        esp_println::println!("Finishing sine test.");
     }
     .await;
 
