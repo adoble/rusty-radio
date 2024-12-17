@@ -226,9 +226,9 @@ async fn dump_registers(
     let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
 
     // Set the volume so we can see the value when we dump the registers
-    let left_vol = 0x11;
-    let right_vol = 0x22;
-    driver.set_volume(left_vol, right_vol).await.unwrap();
+    // let left_vol = 0x11;
+    // let right_vol = 0x22;
+    // driver.set_volume(left_vol, right_vol).await.unwrap();
     // Should see 1122 as the vol reg
 
     // Put this in a loop so that we can see it on the 'scope
@@ -385,13 +385,33 @@ async fn main(spawner: Spawner) {
 
     esp_hal_embassy::init(timg0.timer0);
 
+    // Init the vs1053
+    async {
+        let spi_sci_device = SpiDevice::new(spi_bus, xcs);
+        let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
+
+        let mut vs1053_driver =
+            Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+
+        vs1053_driver.begin().await.unwrap();
+
+        let registers = vs1053_driver.dump_registers().await.unwrap();
+
+        esp_println::println!("Dump registers after begin():");
+        esp_println::println!("mode: {:X}", registers.mode);
+        esp_println::println!("status: {:X}", registers.status);
+        esp_println::println!("clockf: {:X}", registers.clock_f);
+        esp_println::println!("volume: {:X}", registers.volume);
+    }
+    .await;
+
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(stack)).ok();
     spawner.spawn(process_channel()).ok();
-    spawner
-        .spawn(dump_registers(spi_bus, xcs, xdcs, dreq, reset, delay))
-        .ok();
+    // spawner
+    //     .spawn(dump_registers(spi_bus, xcs, xdcs, dreq, reset, delay))
+    //     .ok();
 }

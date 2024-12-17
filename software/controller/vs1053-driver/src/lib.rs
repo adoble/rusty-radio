@@ -1,5 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 
+//! Based on the Adafruit driver  https://github.com/adafruit/Adafruit_VS1053_Library/tree/master
+
 //! This driver uses no chip select (xdcs or xcs) pins as this is managed by `SpiDevice`s.
 //! If the hal only provides an `SpiBus` then see [this](https://github.com/rust-embedded/embedded-hal/blob/master/docs/migrating-from-0.2-to-1.0.md#for-end-users) on how to convert a `SpiBus`
 //! into a `SpiDevice`
@@ -74,6 +76,7 @@ where
         Ok(())
     }
 
+    // TODO shoudl this go into new()?
     /// The should be called during the initialisation of the program, i.e. after the power
     /// has come up.
 
@@ -111,8 +114,10 @@ where
         // TODO change "soft reset" to "software reset" as this is the name in the data sheet
         self.sci_write(Register::Clockf.into(), 0x6000).await?;
 
-        // Set volume to a confortable level
-        self.set_volume(40, 40).await?;
+        // Set volume to a comfortable level
+        let left = 0x28; // Dec 40
+        let right = 0x28; // Dec 40
+        self.set_volume(left, right).await?;
 
         // TODO bass leveb
 
@@ -155,6 +160,11 @@ where
         };
 
         Ok(dr)
+    }
+
+    /// Duration in milliseconds
+    pub async fn sine_test(&mut self, n: u8, duration: u16) -> Result<(), DriverError> {
+        todo!()
     }
 
     pub async fn sci_read(&mut self, addr: u8) -> Result<u16, DriverError> {
