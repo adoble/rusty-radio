@@ -143,11 +143,11 @@ where
         self.sci_write(Register::Volume.into(), volume).await
     }
 
-    pub async fn sample_rate(&mut self) -> Result<u32, DriverError> {
+    pub async fn sample_rate(&mut self) -> Result<u16, DriverError> {
         let reg_value = self.sci_read(Register::AudioData.into()).await?;
 
-        // Sample rate/2  held in bits 15:1 .
-        let sample_rate: u32 = ((reg_value >> 1) as u32) * 2;
+        // Sample rate/2 held in bits 15:1
+        let sample_rate = reg_value & 0xFFFE;
 
         Ok(sample_rate)
     }
@@ -470,6 +470,53 @@ mod tests {
             },
             result_dr
         );
+
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
+            driver.release();
+
+        spi_control_device.done();
+        spi_data_device.done();
+        dreq.done();
+        reset.done();
+    }
+
+    #[async_std::test]
+    async fn sample_rate_test() {
+        let spi_control_expectations = [
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::AudioData.into()]),
+            SpiTransaction::read_vec(vec![0xAC, 0x45]),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::AudioData.into()]),
+            SpiTransaction::read_vec(vec![0x2B, 0x10]),
+            SpiTransaction::transaction_end(),
+        ];
+        let spi_control_device = SpiMock::new(&spi_control_expectations);
+
+        let spi_data_expectations: [SpiTransaction<u8>; 0] = [];
+        let spi_data_device = SpiMock::new(&spi_data_expectations);
+
+        let dreq_expectations = [
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+        ];
+        let dreq = PinMock::new(&dreq_expectations);
+
+        let reset_expectations: [PinTransaction; 0] = [];
+        let reset = PinMock::new(&reset_expectations);
+
+        let delay = NoopDelay::new();
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
+
+        let sample_rate = driver.sample_rate().await.unwrap();
+
+        assert_eq!(44100, sample_rate);
+
+        let sample_rate = driver.sample_rate().await.unwrap();
+        assert_eq!(11024, sample_rate);
 
         let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();

@@ -405,7 +405,7 @@ async fn main(spawner: Spawner) {
     esp_println::println!("audio_data : {:X}", registers.audio_data);
 
     let sample_rate = vs1053_driver.sample_rate().await.unwrap();
-    esp_println::println!("\n sample_rate : {}", sample_rate);
+    esp_println::println!("\n sample_rate : {} ", sample_rate);
 
     // // Now the sine test
     // let sine_test_duration_ms = 3000;
