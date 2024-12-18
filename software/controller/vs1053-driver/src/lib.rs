@@ -38,6 +38,10 @@ use registers::{Mode, Register};
 const SCI_READ: u8 = 0b0000_0011;
 const SCI_WRITE: u8 = 0b0000_0010;
 
+/// The amount of coded data sent before checking if
+/// the VS1053 can accept more data
+const DATA_CHUNK_SIZE: usize = 32;
+
 pub struct Vs1053Driver<SPI, DREQ, RST, DLY> {
     spi_control_device: SPI,
     spi_data_device: SPI,
@@ -137,6 +141,22 @@ where
         Ok(())
     }
 
+    pub async fn play_data(&mut self, buffer: &[u8]) -> Result<(), DriverError> {
+        for chunk in buffer.chunks(DATA_CHUNK_SIZE) {
+            self.dreq
+                .wait_for_high()
+                .await
+                .map_err(|_| DriverError::DReq)?;
+
+            self.spi_data_device
+                .transaction(&mut [Operation::Write(chunk)])
+                .await
+                .map_err(|_| DriverError::SpiDataWrite)?;
+        }
+
+        Ok(())
+    }
+
     pub async fn set_volume(&mut self, left: u8, right: u8) -> Result<(), DriverError> {
         let volume = ((left as u16) << 8) | right as u16;
 
@@ -194,14 +214,14 @@ where
         self.spi_control_device
             .transaction(&mut [Operation::Write(&sine_start)])
             .await
-            .map_err(|_| DriverError::SpiWrite)?;
+            .map_err(|_| DriverError::SpiControlWrite)?;
 
         self.delay.delay_ms(duration).await;
 
         self.spi_control_device
             .transaction(&mut [Operation::Write(&sine_stop)])
             .await
-            .map_err(|_| DriverError::SpiWrite)?;
+            .map_err(|_| DriverError::SpiControlWrite)?;
 
         Ok(())
     }
@@ -248,7 +268,7 @@ where
                 Operation::Read(&mut buf),
             ])
             .await
-            .map_err(|_| DriverError::SpiRead)?;
+            .map_err(|_| DriverError::SpiControlRead)?;
 
         Ok(u16::from_be_bytes(buf))
     }
@@ -269,7 +289,7 @@ where
         self.spi_control_device
             .transaction(&mut [Operation::Write(&buf)])
             .await
-            .map_err(|_| DriverError::SpiWrite)?;
+            .map_err(|_| DriverError::SpiControlWrite)?;
 
         Ok(())
     }
@@ -288,8 +308,12 @@ where
 
 #[derive(Clone, Copy, Debug)]
 pub enum DriverError {
-    SpiRead,
-    SpiWrite,
+    /// An error reading control (SCI) data
+    SpiControlRead,
+    /// An error wrinting control (SCI) data
+    SpiControlWrite,
+    /// An error writing coded data (SDA) to the codec
+    SpiDataWrite,
     // An error in waiting for the DREQ signal
     DReq,
     // An error in setting the reset pin
@@ -517,6 +541,71 @@ mod tests {
 
         let sample_rate = driver.sample_rate().await.unwrap();
         assert_eq!(11024, sample_rate);
+
+        let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
+            driver.release();
+
+        spi_control_device.done();
+        spi_data_device.done();
+        dreq.done();
+        reset.done();
+    }
+
+    #[async_std::test]
+    async fn play_data_test() {
+        let test_data_chunk_1 = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+
+        let test_data_chunk_2 = vec![
+            101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117,
+            118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132,
+        ];
+
+        let test_data_chunk_3 = vec![201, 202, 203, 204, 205];
+
+        let mut all_test_data: Vec<u8> = Vec::new();
+        all_test_data.extend(test_data_chunk_1.iter());
+        all_test_data.extend(test_data_chunk_2.iter());
+        all_test_data.extend(test_data_chunk_3.iter());
+
+        let test_buffer = all_test_data.as_slice();
+        assert_eq!(test_data_chunk_1.len(), 32);
+
+        let spi_data_expectations = [
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(test_data_chunk_1),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(test_data_chunk_2),
+            SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(test_data_chunk_3),
+            SpiTransaction::transaction_end(),
+        ];
+
+        let spi_control_expectations: [SpiTransaction<u8>; 0] = [];
+
+        let spi_data_device = SpiMock::new(&spi_data_expectations);
+        let spi_control_device = SpiMock::new(&spi_control_expectations);
+
+        let dreq_expectations = [
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+            PinTransaction::wait_for_state(State::High),
+        ];
+        let dreq = PinMock::new(&dreq_expectations);
+
+        let reset_expectations: [PinTransaction; 0] = [];
+        let reset = PinMock::new(&reset_expectations);
+
+        let delay = NoopDelay::new();
+
+        let mut driver =
+            Vs1053Driver::new(spi_control_device, spi_data_device, dreq, reset, delay).unwrap();
+
+        driver.play_data(test_buffer).await.unwrap();
 
         let (mut spi_control_device, mut spi_data_device, mut dreq, mut reset, mut _delay) =
             driver.release();
