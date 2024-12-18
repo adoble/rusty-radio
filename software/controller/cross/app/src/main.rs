@@ -386,35 +386,42 @@ async fn main(spawner: Spawner) {
     esp_hal_embassy::init(timg0.timer0);
 
     // Init the vs1053
-    async {
-        let spi_sci_device = SpiDevice::new(spi_bus, xcs);
-        let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
+    //async {
+    let spi_sci_device = SpiDevice::new(spi_bus, xcs);
+    let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
 
-        let mut vs1053_driver =
-            Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+    let mut vs1053_driver =
+        Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
 
-        vs1053_driver.begin().await.unwrap();
+    vs1053_driver.begin().await.unwrap();
 
-        let registers = vs1053_driver.dump_registers().await.unwrap();
+    let registers = vs1053_driver.dump_registers().await.unwrap();
 
-        esp_println::println!("Dump registers after begin():");
-        esp_println::println!("mode: {:X}", registers.mode);
-        esp_println::println!("status: {:X}", registers.status);
-        esp_println::println!("clockf: {:X}", registers.clock_f);
-        esp_println::println!("volume: {:X}", registers.volume);
+    esp_println::println!("Dump registers after begin():");
+    esp_println::println!("mode: {:X}", registers.mode);
+    esp_println::println!("status: {:X}", registers.status);
+    esp_println::println!("clockf: {:X}", registers.clock_f);
+    esp_println::println!("volume: {:X}", registers.volume);
+    esp_println::println!("audio_data : {:X}", registers.audio_data);
 
-        // Now the sine test
-        let sine_test_duration_ms = 3000;
-        vs1053_driver.set_volume(50, 50).await.unwrap();
-        esp_println::println!("Starting sine test for {} ms.", sine_test_duration_ms);
+    let sample_rate = vs1053_driver.sample_rate().await.unwrap();
+    esp_println::println!("\n sample_rate : {}", sample_rate);
 
-        vs1053_driver
-            .sine_test(126, sine_test_duration_ms)
-            .await
-            .unwrap();
-        esp_println::println!("Finishing sine test.");
-    }
-    .await;
+    // // Now the sine test
+    // let sine_test_duration_ms = 3000;
+    // vs1053_driver.set_volume(50, 50).await.unwrap();
+    // esp_println::println!("Starting sine test for {} ms.", sine_test_duration_ms);
+
+    // // Sweep test
+    // vs1053_driver
+    //     .sine_test(126, sine_test_duration_ms)
+    //     .await
+    //     .unwrap();
+    // esp_println::println!("Finishing sine test.");
+    // vs1053_driver.set_volume(50, 50).await.unwrap();
+    // vs1053_driver.sweep_test().await.unwrap();
+    //}
+    //.await;
 
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();

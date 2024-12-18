@@ -76,7 +76,7 @@ where
         Ok(())
     }
 
-    // TODO shoudl this go into new()?
+    // TODO should this go into new()?
     /// The should be called during the initialisation of the program, i.e. after the power
     /// has come up.
 
@@ -107,7 +107,6 @@ where
             .await
             .map_err(|_| DriverError::DReq)?;
 
-        // TODO do we need to do this. Experiment with taking it away!
         self.soft_reset().await?;
 
         // Set the clock divider. This has to be done as soon as pssible after a soft reset
@@ -119,7 +118,7 @@ where
         let right = 0x28; // Dec 40
         self.set_volume(left, right).await?;
 
-        // TODO bass leveb
+        // TODO bass level
 
         Ok(())
     }
@@ -144,6 +143,15 @@ where
         self.sci_write(Register::Volume.into(), volume).await
     }
 
+    pub async fn sample_rate(&mut self) -> Result<u32, DriverError> {
+        let reg_value = self.sci_read(Register::AudioData.into()).await?;
+
+        // Sample rate/2  held in bits 15:1 .
+        let sample_rate: u32 = ((reg_value >> 1) as u32) * 2;
+
+        Ok(sample_rate)
+    }
+
     /// Dumps the values of selected registers into a `DumpRegisters` structure.
     /// This function is only used for debugging!
     pub async fn dump_registers(&mut self) -> Result<DumpRegisters, DriverError> {
@@ -151,12 +159,14 @@ where
         let status = self.sci_read(Register::Status.into()).await?;
         let clock_f = self.sci_read(Register::Clockf.into()).await?;
         let volume = self.sci_read(Register::Volume.into()).await?;
+        let audio_data = self.sci_read(Register::AudioData.into()).await?;
 
         let dr = DumpRegisters {
             mode,
             status,
             clock_f,
             volume,
+            audio_data,
         };
 
         Ok(dr)
@@ -192,6 +202,32 @@ where
             .transaction(&mut [Operation::Write(&sine_stop)])
             .await
             .map_err(|_| DriverError::SpiWrite)?;
+
+        Ok(())
+    }
+
+    /// Sweep test.
+    /// Note that this is a very slow sweep through all frequencies
+    /// and therefore it can take sometine before the human ear can
+    /// hear something.
+    ///
+    /// See VS1053 data sheet Section 10.12.2
+    pub async fn sweep_test(&mut self) -> Result<(), DriverError> {
+        self.reset().await?;
+
+        // Set test mode
+        let mut mode = self.sci_read(Register::Mode.into()).await?;
+        mode |= 0x0020;
+        self.sci_write(Register::Mode.into(), mode).await?;
+
+        self.dreq
+            .wait_for_high()
+            .await
+            .map_err(|_| DriverError::DReq)?;
+
+        self.sci_write(Register::AaiAddr.into(), 0x4022).await?;
+
+        // TODO reset test mode!
 
         Ok(())
     }
@@ -395,6 +431,10 @@ mod tests {
             SpiTransaction::write_vec(vec![SCI_READ, Register::Volume.into()]),
             SpiTransaction::read_vec(vec![0xAB, 0xCD]),
             SpiTransaction::transaction_end(),
+            SpiTransaction::transaction_start(),
+            SpiTransaction::write_vec(vec![SCI_READ, Register::AudioData.into()]),
+            SpiTransaction::read_vec(vec![0x60, 0x00]),
+            SpiTransaction::transaction_end(),
         ];
         let spi_control_device = SpiMock::new(&spi_control_expectations);
 
@@ -402,6 +442,7 @@ mod tests {
         let spi_data_device = SpiMock::new(&spi_data_expectations);
 
         let dreq_expectations = [
+            PinTransaction::wait_for_state(State::High),
             PinTransaction::wait_for_state(State::High),
             PinTransaction::wait_for_state(State::High),
             PinTransaction::wait_for_state(State::High),
@@ -424,7 +465,8 @@ mod tests {
                 mode: 0xABCD,
                 status: 0xABCD,
                 clock_f: 0x9876,
-                volume: 0xABCD
+                volume: 0xABCD,
+                audio_data: 0x6000
             },
             result_dr
         );
