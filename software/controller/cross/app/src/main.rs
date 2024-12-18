@@ -31,7 +31,7 @@ use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
 use esp_hal::gpio::{AnyPin, Input, Level, Output, Pull};
-use esp_hal::peripherals::Peripherals;
+//use esp_hal::peripherals::Peripherals;
 use esp_hal::spi::master::{Config, Spi};
 use esp_hal::spi::SpiMode;
 use esp_hal::timer::timg::TimerGroup;
@@ -85,7 +85,7 @@ static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal
 
 static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
-//static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
+static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
 
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
@@ -386,7 +386,7 @@ async fn main(spawner: Spawner) {
     esp_hal_embassy::init(timg0.timer0);
 
     // Init the vs1053
-    //async {
+
     let spi_sci_device = SpiDevice::new(spi_bus, xcs);
     let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
 
@@ -403,25 +403,6 @@ async fn main(spawner: Spawner) {
     esp_println::println!("clockf: {:X}", registers.clock_f);
     esp_println::println!("volume: {:X}", registers.volume);
     esp_println::println!("audio_data : {:X}", registers.audio_data);
-
-    let sample_rate = vs1053_driver.sample_rate().await.unwrap();
-    esp_println::println!("\n sample_rate : {} ", sample_rate);
-
-    // // Now the sine test
-    // let sine_test_duration_ms = 3000;
-    // vs1053_driver.set_volume(50, 50).await.unwrap();
-    // esp_println::println!("Starting sine test for {} ms.", sine_test_duration_ms);
-
-    // // Sweep test
-    // vs1053_driver
-    //     .sine_test(126, sine_test_duration_ms)
-    //     .await
-    //     .unwrap();
-    // esp_println::println!("Finishing sine test.");
-    // vs1053_driver.set_volume(50, 50).await.unwrap();
-    // vs1053_driver.sweep_test().await.unwrap();
-    //}
-    //.await;
 
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(stack)).ok();
