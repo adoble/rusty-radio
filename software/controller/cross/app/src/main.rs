@@ -13,6 +13,7 @@ mod async_delay;
 
 use core::str::from_utf8;
 
+//use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
 use embassy_executor::Spawner;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
@@ -20,14 +21,16 @@ use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::blocking_mutex::CriticalSectionMutex;
 //use embassy_sync::blocking_mutex;
-use embassy_embedded_hal::adapter::BlockingAsync;
-use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
+//use embassy_embedded_hal::adapter::YieldingAsync;
+//use embassy_embedded_hal::shared_bus::asynch::spi::{SpiDevice, SpiDeviceWithConfig};
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
+//use embedded_hal_async::spi::SpiDevice;
 use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
 use esp_hal::gpio::{AnyPin, Input, Level, Output, Pull};
@@ -78,7 +81,8 @@ static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RE
     StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
 
-type SharedSpiBus = Mutex<NoopRawMutex, BlockingAsync<Spi<'static, esp_hal::Async>>>;
+//type SharedSpiBus = Mutex<NoopRawMutex, BlockingAsync<Spi<'static, esp_hal::Async>>>;
+type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
 
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
@@ -211,39 +215,39 @@ async fn notification_task() {
     }
 }
 
-#[embassy_executor::task]
-async fn dump_registers(
-    spi_bus: &'static SharedSpiBus,
-    xcs: Output<'static>,
-    xdcs: Output<'static>,
-    dreq: Input<'static>,
-    reset: Output<'static>,
-    delay: AsyncDelay,
-) {
-    let spi_sci_device = SpiDevice::new(spi_bus, xcs);
-    let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
+// #[embassy_executor::task]
+// async fn dump_registers(
+//     spi_bus: &'static SharedSpiBus,
+//     xcs: Output<'static>,
+//     xdcs: Output<'static>,
+//     dreq: Input<'static>,
+//     reset: Output<'static>,
+//     delay: AsyncDelay,
+// ) {
+//     let spi_sci_device = SpiDevice::new(spi_bus, xcs);
+//     let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
 
-    let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+//     let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
 
-    // Set the volume so we can see the value when we dump the registers
-    // let left_vol = 0x11;
-    // let right_vol = 0x22;
-    // driver.set_volume(left_vol, right_vol).await.unwrap();
-    // Should see 1122 as the vol reg
+//     // Set the volume so we can see the value when we dump the registers
+//     // let left_vol = 0x11;
+//     // let right_vol = 0x22;
+//     // driver.set_volume(left_vol, right_vol).await.unwrap();
+//     // Should see 1122 as the vol reg
 
-    // Put this in a loop so that we can see it on the 'scope
-    loop {
-        let regs = driver.dump_registers().await.unwrap();
+//     // Put this in a loop so that we can see it on the 'scope
+//     loop {
+//         let regs = driver.dump_registers().await.unwrap();
 
-        esp_println::println!("Dump registers:");
-        esp_println::println!("mode: {:X}", regs.mode);
-        esp_println::println!("status: {:X}", regs.status);
-        esp_println::println!("clockf: {:X}", regs.clock_f);
-        esp_println::println!("volume: {:X}", regs.volume);
+//         esp_println::println!("Dump registers:");
+//         esp_println::println!("mode: {:X}", regs.mode);
+//         esp_println::println!("status: {:X}", regs.status);
+//         esp_println::println!("clockf: {:X}", regs.clock_f);
+//         esp_println::println!("volume: {:X}", regs.volume);
 
-        Timer::after(Duration::from_millis(3000)).await;
-    }
-}
+//         Timer::after(Duration::from_millis(3000)).await;
+//     }
+// }
 
 #[embassy_executor::task]
 async fn wifi_connect(mut controller: WifiController<'static>) {
@@ -321,24 +325,31 @@ async fn main(spawner: Spawner) {
     // Seems to only work with SPI2
     // let spi_sci = esp_hal::spi::master::Spi::new(peripherals.SPI2, 250.kHz(), SpiMode::Mode0);
 
-    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new_with_config(
-        peripherals.SPI2,
-        Config {
-            frequency: 250.kHz(),
-            mode: SpiMode::Mode0,
-            ..Config::default()
-        },
-    )
-    .with_sck(sclk)
-    .with_mosi(mosi)
-    .with_miso(miso)
-    .into_async();
+    // let spi_bus: Spi<'_, esp_hal::Async> = Spi::new_with_config(
+    //     peripherals.SPI2,
+    //     Config {
+    //         frequency: 250.kHz(),
+    //         mode: SpiMode::Mode0,
+    //         ..Config::default()
+    //     },
+    // )
+    // .with_sck(sclk)
+    // .with_mosi(mosi)
+    // .with_miso(miso)
+    // .into_async();
+
+    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2)
+        .with_sck(sclk)
+        .with_mosi(mosi)
+        .with_miso(miso)
+        .into_async();
 
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     // Need to convert the spi driver into an blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
-    let blocking_spi_bus = BlockingAsync::new(spi_bus);
-    let spi_bus = SPI_BUS.init(Mutex::new(blocking_spi_bus));
+    //let yielding_spi_bus = YieldingAsync::new(spi_bus);
+    //let spi_bus = SPI_BUS.init(Mutex::new(yielding_spi_bus));
+    let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
 
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
@@ -385,10 +396,29 @@ async fn main(spawner: Spawner) {
 
     esp_hal_embassy::init(timg0.timer0);
 
-    // Init the vs1053
+    // Init the vs1053 spi speeds
+    let spi_sci_config = Config {
+        frequency: 250.kHz(),
+        ..Default::default()
+    };
+    let spi_sdi_config = Config {
+        frequency: 8000.kHz(),
+        ..Default::default()
+    };
 
-    let spi_sci_device = SpiDevice::new(spi_bus, xcs);
-    let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
+    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, xcs, spi_sci_config);
+    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, xdcs, spi_sdi_config);
+
+    // How to convert between  between embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig and embeddded_hal_async::spi::SpiDevice
+
+    // let spi_sci_device_blocking = YieldingAsync::new(spi_sci_device);
+    // let spi_sdi_device_blocking = YieldingAsync::new(spi_sdi_device);
+    use embedded_hal_async::spi::Operation;
+
+    spi_sci_device
+        .transaction(&mut [Operation::Write(&[0x00, 0x00])])
+        .await
+        .unwrap();
 
     let mut vs1053_driver =
         Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
