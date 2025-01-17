@@ -9,7 +9,16 @@
 // See this about having functions to setup the peripherals and avoid the borrow problem:
 // https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/2
 
+// [ ]  Tidy up the use statements
+
 mod async_delay;
+
+//mod spi_device_adapter;   // REJECTING THIS AS CODE SHOULD WORK WITHOUT!
+//use embedded_hal::spi::SpiDevice;
+//use spi_device_adapter::SpiDeviceAdapter;
+
+use embedded_hal_async::spi::SpiDevice;
+use esp_hal::time::RateExtU32;
 
 use core::str::from_utf8;
 
@@ -17,11 +26,13 @@ use core::str::from_utf8;
 use embassy_executor::Spawner;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
+use embassy_net::Runner;
 use embassy_net::Stack;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::blocking_mutex::CriticalSectionMutex;
 //use embassy_sync::blocking_mutex;
 //use embassy_embedded_hal::adapter::YieldingAsync;
+//use embassy_embedded_hal::adapter::BlockingAsync;
 //use embassy_embedded_hal::shared_bus::asynch::spi::{SpiDevice, SpiDeviceWithConfig};
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
@@ -35,11 +46,12 @@ use esp_backtrace as _;
 //use esp_hal::gpio::{AnyPin, Input, Io, Level, Output, Pull};
 use esp_hal::gpio::{AnyPin, Input, Level, Output, Pull};
 //use esp_hal::peripherals::Peripherals;
-use esp_hal::spi::master::{Config, Spi};
-use esp_hal::spi::SpiMode;
-use esp_hal::timer::timg::TimerGroup;
+use esp_hal::spi::master::{Config as SpiConfig, Spi};
+//use esp_hal::timer::timg::TimerGroup;
 
-use esp_hal::{prelude::*, rng::Rng};
+//use esp_hal::rng::Rng;
+use esp_hal::timer::systimer::SystemTimer;
+use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 
 use embedded_io_async::Read;
 use esp_wifi::wifi::{WifiController, WifiDevice};
@@ -79,7 +91,7 @@ static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell:
 
 static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
     StaticCell::new();
-static STACK: StaticCell<embassy_net::Stack<WifiDevice<WifiStaDevice>>> = StaticCell::new();
+static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 //type SharedSpiBus = Mutex<NoopRawMutex, BlockingAsync<Spi<'static, esp_hal::Async>>>;
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
@@ -97,7 +109,7 @@ const PASSWORD: &str = env!("WLAN-PASSWORD");
 const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
 #[embassy_executor::task]
-async fn button_monitor(mut pin: Input<'static, AnyPin>) {
+async fn button_monitor(mut pin: Input<'static>) {
     loop {
         pin.wait_for_falling_edge().await;
 
@@ -120,7 +132,8 @@ const BUFFER_SIZE: usize = 2560;
 
 /// This task only accesses the web when  ACCESS_WEB_SIGNAL is signalled.
 #[embassy_executor::task]
-async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
+// async fn access_web(stack: &'static Stack<'static>) {
+async fn access_web(stack: Stack<'static>) {
     let mut rx_buffer = [0; BUFFER_SIZE];
 
     loop {
@@ -138,7 +151,7 @@ async fn access_web(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
         let client_state =
             TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
         let tcp_client = TcpClient::new(stack, &client_state);
-        let dns = DnsSocket::new(&stack);
+        let dns = DnsSocket::new(stack);
         let mut http_client = HttpClient::new(&tcp_client, &dns);
 
         esp_println::println!("Setting up request");
@@ -287,8 +300,10 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
 // Run the network stack.
 // This must be called in a background task, to process network events.
 #[embassy_executor::task]
-async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
-    stack.run().await
+//async fn run_network_stack(stack: &'static Stack<WifiDevice<'static, WifiStaDevice>>) {
+async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>) {
+    //stack.run().await
+    runner.run().await
 }
 
 #[esp_hal_embassy::main]
@@ -296,12 +311,14 @@ async fn main(spawner: Spawner) {
     //esp_println::logger::init_logger_from_env();
     esp_println::println!("Init!");
 
-    // let peripherals = esp_hal::init(esp_hal::Config::default());
-    let mut peripherals = esp_hal::init({
-        let mut config = esp_hal::Config::default();
-        config.cpu_clock = CpuClock::max();
-        config
-    });
+    // let mut peripherals = esp_hal::init({
+    //     let mut config = esp_hal::Config::default();
+    //     config.cpu_clock = CpuClock::max();
+    //     config
+    // });
+
+    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+    let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
@@ -322,23 +339,9 @@ async fn main(spawner: Spawner) {
     let delay = AsyncDelay::new();
 
     // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
-    // Seems to only work with SPI2
-    // let spi_sci = esp_hal::spi::master::Spi::new(peripherals.SPI2, 250.kHz(), SpiMode::Mode0);
-
-    // let spi_bus: Spi<'_, esp_hal::Async> = Spi::new_with_config(
-    //     peripherals.SPI2,
-    //     Config {
-    //         frequency: 250.kHz(),
-    //         mode: SpiMode::Mode0,
-    //         ..Config::default()
-    //     },
-    // )
-    // .with_sck(sclk)
-    // .with_mosi(mosi)
-    // .with_miso(miso)
-    // .into_async();
-
-    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2)
+    // Seems to only work with SPI2 - TODO is this true?
+    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
+        .expect("Panic: Could not initialize SPI")
         .with_sck(sclk)
         .with_mosi(mosi)
         .with_miso(miso)
@@ -347,20 +350,22 @@ async fn main(spawner: Spawner) {
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     // Need to convert the spi driver into an blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
-    //let yielding_spi_bus = YieldingAsync::new(spi_bus);
-    //let spi_bus = SPI_BUS.init(Mutex::new(yielding_spi_bus));
+    // let spi_bus_blocking = BlockingAsync::new(spi_bus);
+    // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus_blocking));
     let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
 
     // Initialize the timers used for Wifi
     // TODO: can the embassy timers be used?
     //let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
 
+    let mut esp32_rng = Rng::new(peripherals.RNG);
+
     //static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
     let init = ESP_WIFI_CONTROLLER.uninit().write(
         init(
-            //EspWifiInitFor::Wifi,
             timg1.timer0,
-            Rng::new(&mut peripherals.RNG),
+            //Rng::new(peripherals.RNG.clone()),
+            esp32_rng.clone(),
             peripherals.RADIO_CLK,
         )
         .unwrap(),
@@ -378,45 +383,68 @@ async fn main(spawner: Spawner) {
     let (wifi_device, controller) =
         esp_wifi::wifi::new_with_mode(init, wifi, WifiStaDevice).unwrap();
 
-    // Init network stack
+    // esp_hal_embassy::init(timg0.timer0);
+    // This is the way to initialize esp hal embassy for the the esp32c3.
+    let systimer = SystemTimer::new(peripherals.SYSTIMER);
+    esp_hal_embassy::init(systimer.alarm0);
 
-    let config = embassy_net::Config::dhcpv4(Default::default());
+    //let config = embassy_net::Config::dhcpv4(Default::default());
+    let sta_config = embassy_net::Config::dhcpv4(Default::default());
 
-    let mut esp32_rng = Rng::new(&mut peripherals.RNG);
+    // Random seed.
+    // Taken from example line 104 https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
+    let seed = (esp32_rng.random() as u64) << 32 | esp32_rng.random() as u64;
 
-    //let seed = 1234; // very random, very secure seed  TODO use  esp_hal::rng::Rng
-    let seed: u64 = esp32_rng.random().into();
-
-    let stack = &*STACK.init(embassy_net::Stack::new(
+    // Init network stacks
+    let (sta_stack, sta_runner) = embassy_net::new(
         wifi_device,
-        config,
-        RESOURCES.init(embassy_net::StackResources::new()),
+        sta_config,
+        RESOURCES.init(embassy_net::StackResources::new()), // mk_static!(StackResources<3>, StackResources::<3>::new()),
         seed,
-    ));
+    );
+    STACK.init(sta_stack);
 
-    esp_hal_embassy::init(timg0.timer0);
+    // let stack = &*STACK.init(embassy_net::Stack::new(
+    //     wifi_device,
+    //     config,
+    //     RESOURCES.init(embassy_net::StackResources::new()),
+    //     seed,
+    // ));
 
     // Init the vs1053 spi speeds
-    let spi_sci_config = Config {
-        frequency: 250.kHz(),
-        ..Default::default()
-    };
-    let spi_sdi_config = Config {
-        frequency: 8000.kHz(),
-        ..Default::default()
-    };
+    let mut spi_sci_config = SpiConfig::default();
+    spi_sci_config.frequency = 250_u32.kHz();
 
-    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, xcs, spi_sci_config);
+    let mut spi_sdi_config = SpiConfig::default();
+    spi_sdi_config.frequency = 8000_u32.kHz();
+    // let spi_sci_config = Config {
+    //     frequency: 250.kHz(),
+    //     ..Default::default()
+    // };
+    // let spi_sdi_config = Config {
+    //     frequency: 8000.kHz(),
+    //     ..Default::default()
+    // };
+
+    let mut spi_sci_device = SpiDeviceWithConfig::new(spi_bus, xcs, spi_sci_config);
     let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, xdcs, spi_sdi_config);
 
     // How to convert between  between embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig and embeddded_hal_async::spi::SpiDevice
+    // Problem:  embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig ALREADY IMPLEMENTS  embeddded_hal_async::spi::SpiDevice  --> AAA
+    // Note: embassy_embedded_hal version 0.2.0, embedded_hal_async version 1.0.0
+
+    // let spi_sci_device_adapted: SpiDeviceAdapter<
+    //     SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+    // > = SpiDeviceAdapter::new(spi_sci_device);
+    // let spi_sdi_device_adapted = SpiDeviceAdapter::new(spi_sdi_device);
 
     // let spi_sci_device_blocking = YieldingAsync::new(spi_sci_device);
     // let spi_sdi_device_blocking = YieldingAsync::new(spi_sdi_device);
     use embedded_hal_async::spi::Operation;
 
+    //    spi_sci_device_adapted
     spi_sci_device
-        .transaction(&mut [Operation::Write(&[0x00, 0x00])])
+        .transaction(&mut [Operation::Write(&[0x00, 0x00])]) // --> AAA. But transaction is not defined altough SpiDeviceWithConfig shoudl implement  embeddded_hal_async::spi::SpiDevice
         .await
         .unwrap();
 
@@ -435,11 +463,15 @@ async fn main(spawner: Spawner) {
     esp_println::println!("audio_data : {:X}", registers.audio_data);
 
     spawner.spawn(wifi_connect(controller)).ok();
-    spawner.spawn(run_network_stack(stack)).ok();
+    spawner.spawn(run_network_stack(sta_runner)).ok();
     spawner.spawn(button_monitor(button_pin)).ok();
     spawner.spawn(notification_task()).ok();
-    spawner.spawn(access_web(stack)).ok();
+    spawner.spawn(access_web(sta_stack)).ok();
     spawner.spawn(process_channel()).ok();
+    // spawner
+    //     .spawn(dump_registers(spi_bus, xcs, xdcs, dreq, reset, delay))
+    //     .ok();
+
     // spawner
     //     .spawn(dump_registers(spi_bus, xcs, xdcs, dreq, reset, delay))
     //     .ok();

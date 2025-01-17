@@ -1,5 +1,5 @@
 [workspace]
-members = ["stations", "target-test", "vs1053-driver",   "xtask"]
+members = [ "stations", "target-test", "vs1053-driver", "xtask"]
 resolver = "2"
 
 
