@@ -2298,10 +2298,10 @@
 		)
 		(uuid "68ed4f7d-408a-4f59-9b37-33471d06e41b")
 	)
-	(text_box "This assumes that the ESP32-C3-Devkit-M3 \nsupplies enough current for the VS1053"
+	(text_box "Empirically the ESP32-C3-Devkit-M3 \nsupplies enough current for the VS1053"
 		(exclude_from_sim no)
-		(at 191.77 25.4 0)
-		(size 33.02 12.7)
+		(at 191.77 27.94 0)
+		(size 40.64 7.62)
 		(stroke
 			(width 0)
 			(type dash)
