@@ -76,6 +76,13 @@ static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
 
+type Vs1053DriverType<'a> = Vs1053Driver<
+    SpiDeviceWithConfig<'a, NoopRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>,
+    Input<'a>,
+    Output<'a>,
+    AsyncDelay,
+>;
+
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
@@ -208,40 +215,6 @@ async fn notification_task() {
         Timer::after(Duration::from_millis(3_000)).await;
     }
 }
-
-// #[embassy_executor::task]
-// async fn dump_registers(
-//     spi_bus: &'static SharedSpiBus,
-//     xcs: Output<'static>,
-//     xdcs: Output<'static>,
-//     dreq: Input<'static>,
-//     reset: Output<'static>,
-//     delay: AsyncDelay,
-// ) {
-//     let spi_sci_device = SpiDevice::new(spi_bus, xcs);
-//     let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
-
-//     let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
-
-//     // Set the volume so we can see the value when we dump the registers
-//     // let left_vol = 0x11;
-//     // let right_vol = 0x22;
-//     // driver.set_volume(left_vol, right_vol).await.unwrap();
-//     // Should see 1122 as the vol reg
-
-//     // Put this in a loop so that we can see it on the 'scope
-//     loop {
-//         let regs = driver.dump_registers().await.unwrap();
-
-//         esp_println::println!("Dump registers:");
-//         esp_println::println!("mode: {:X}", regs.mode);
-//         esp_println::println!("status: {:X}", regs.status);
-//         esp_println::println!("clockf: {:X}", regs.clock_f);
-//         esp_println::println!("volume: {:X}", regs.volume);
-
-//         Timer::after(Duration::from_millis(3000)).await;
-//     }
-// }
 
 #[embassy_executor::task]
 async fn wifi_connect(mut controller: WifiController<'static>) {
@@ -381,19 +354,16 @@ async fn main(spawner: Spawner) {
     //     .await
     //     .unwrap();
 
-    let mut vs1053_driver =
-        Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+    let mut vs1053_driver: Vs1053Driver<
+        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+        Input<'_>,
+        Output<'_>,
+        AsyncDelay,
+    > = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
 
     vs1053_driver.begin().await.unwrap();
 
-    let registers = vs1053_driver.dump_registers().await.unwrap();
-
-    esp_println::println!("Dump registers after begin():");
-    esp_println::println!("mode: {:X}", registers.mode);
-    esp_println::println!("status: {:X}", registers.status);
-    esp_println::println!("clockf: {:X}", registers.clock_f);
-    esp_println::println!("volume: {:X}", registers.volume);
-    esp_println::println!("audio_data : {:X}", registers.audio_data);
+    print_registers(&mut vs1053_driver).await;
 
     spawner.spawn(wifi_connect(controller)).ok();
     spawner.spawn(run_network_stack(sta_runner)).ok();
@@ -401,4 +371,20 @@ async fn main(spawner: Spawner) {
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(sta_stack)).ok();
     spawner.spawn(process_channel()).ok();
+}
+
+async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
+    // Set the volume so we can see the value when we dump the registers
+    let left_vol = 0x11;
+    let right_vol = 0x22;
+    driver.set_volume(left_vol, right_vol).await.unwrap();
+    // Should see 1122 as the vol reg
+    let registers = driver.dump_registers().await.unwrap();
+
+    esp_println::println!("Dumped registers:");
+    esp_println::println!("mode: {:X}", registers.mode);
+    esp_println::println!("status: {:X}", registers.status);
+    esp_println::println!("clockf: {:X}", registers.clock_f);
+    esp_println::println!("volume: {:X}", registers.volume);
+    esp_println::println!("audio_data : {:X}", registers.audio_data);
 }
