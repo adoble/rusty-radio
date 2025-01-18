@@ -216,40 +216,6 @@ async fn notification_task() {
     }
 }
 
-// #[embassy_executor::task]
-// async fn dump_registers(
-//     spi_bus: &'static SharedSpiBus,
-//     xcs: Output<'static>,
-//     xdcs: Output<'static>,
-//     dreq: Input<'static>,
-//     reset: Output<'static>,
-//     delay: AsyncDelay,
-// ) {
-//     let spi_sci_device = SpiDevice::new(spi_bus, xcs);
-//     let spi_sdi_device = SpiDevice::new(spi_bus, xdcs);
-
-//     let mut driver = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
-
-//     // Set the volume so we can see the value when we dump the registers
-//     // let left_vol = 0x11;
-//     // let right_vol = 0x22;
-//     // driver.set_volume(left_vol, right_vol).await.unwrap();
-//     // Should see 1122 as the vol reg
-
-//     // Put this in a loop so that we can see it on the 'scope
-//     loop {
-//         let regs = driver.dump_registers().await.unwrap();
-
-//         esp_println::println!("Dump registers:");
-//         esp_println::println!("mode: {:X}", regs.mode);
-//         esp_println::println!("status: {:X}", regs.status);
-//         esp_println::println!("clockf: {:X}", regs.clock_f);
-//         esp_println::println!("volume: {:X}", regs.volume);
-
-//         Timer::after(Duration::from_millis(3000)).await;
-//     }
-// }
-
 #[embassy_executor::task]
 async fn wifi_connect(mut controller: WifiController<'static>) {
     esp_println::println!("Wait to get wifi connected");
@@ -408,8 +374,6 @@ async fn main(spawner: Spawner) {
 }
 
 async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
-    //driver.begin().await.unwrap();
-
     // Set the volume so we can see the value when we dump the registers
     let left_vol = 0x11;
     let right_vol = 0x22;
@@ -417,7 +381,7 @@ async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
     // Should see 1122 as the vol reg
     let registers = driver.dump_registers().await.unwrap();
 
-    esp_println::println!("Dump registers after begin():");
+    esp_println::println!("Dumped registers:");
     esp_println::println!("mode: {:X}", registers.mode);
     esp_println::println!("status: {:X}", registers.status);
     esp_println::println!("clockf: {:X}", registers.clock_f);
