@@ -12,8 +12,12 @@
 // [ ]  Tidy up the use statements
 
 mod async_delay;
+mod constants;
+use constants::{NUMBER_SOCKETS_STACK_RESOURCES, NUMBER_SOCKETS_TCP_CLIENT_STATE};
+mod initialized_peripherals;
 
 use esp_hal::time::RateExtU32;
+use initialized_peripherals::InitilizedPeripherals;
 
 use core::str::from_utf8;
 
@@ -32,25 +36,17 @@ use embassy_sync::mutex::Mutex;
 use embassy_sync::signal;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
-use esp_hal::gpio::{Input, Level, Output, Pull};
+use esp_hal::gpio::{Input, Output};
 use esp_hal::spi::master::{Config as SpiConfig, Spi};
 
-use esp_hal::timer::systimer::SystemTimer;
-use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::clock::CpuClock;
 
 use embedded_io_async::Read;
+use esp_wifi::wifi::{AuthMethod, ClientConfiguration, Configuration, WifiStaDevice};
 use esp_wifi::wifi::{WifiController, WifiDevice};
-use esp_wifi::{
-    init,
-    wifi::{AuthMethod, ClientConfiguration, Configuration, WifiStaDevice},
-    //EspWifiInitFor,
-    EspWifiController,
-};
 use reqwless::client::HttpClient;
 use reqwless::request;
 use static_cell::StaticCell;
-
-use static_assertions::{self, const_assert};
 
 use async_delay::AsyncDelay;
 
@@ -58,20 +54,10 @@ static_assertions::const_assert!(true);
 
 use vs1053_driver::Vs1053Driver;
 
-const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
-const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
+// static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
 
-// The number of sockets specified for StackResources needs to be the same or higher then the number of sockets specified
-// in setting up the TcpClientState. Getting this wrong resukts in the program crashing - and took me a long time
-// to figure out the cause.
-// This is checked at compilation time by this macro.
-// An alternative would be to use the same constant for setting up both StackResources and TcpClientState
-const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
-
-static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
-
-static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
-    StaticCell::new();
+// static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
+//     StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
@@ -267,75 +253,35 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
-    let button_pin = Input::new(peripherals.GPIO1, Pull::Up);
-
-    let timg1 = TimerGroup::new(peripherals.TIMG1);
-
-    let sclk = Output::new(peripherals.GPIO5, Level::Low);
-    let mosi = Output::new(peripherals.GPIO6, Level::Low);
-    let miso = Output::new(peripherals.GPIO7, Level::Low);
-    let xcs = Output::new(peripherals.GPIO9, Level::Low);
-    let xdcs = Output::new(peripherals.GPIO10, Level::Low);
-
-    let dreq = Input::new(peripherals.GPIO8, Pull::None);
-    let reset = Output::new(peripherals.GPIO20, Level::High);
+    // Initialise gpio ,spi and  wifi peripherals
+    let init_peripherals =
+        InitilizedPeripherals::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 
+    // This is the way to initialize esp hal embassy for the the esp32c3
+    // according to the example
+    // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
+    esp_hal_embassy::init(init_peripherals.system_timer.alarm0);
+
     // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
     // Seems to only work with SPI2 - TODO is this true?
-    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
+    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(init_peripherals.spi2, SpiConfig::default())
         .expect("Panic: Could not initialize SPI")
-        .with_sck(sclk)
-        .with_mosi(mosi)
-        .with_miso(miso)
+        .with_sck(init_peripherals.sclk)
+        .with_mosi(init_peripherals.mosi)
+        .with_miso(init_peripherals.miso)
         .into_async();
 
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
-    // Need to convert the spi driver into an blocking async version so that if can be accepted
+    // Need to convert the spi driver into an static blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
     // let spi_bus_blocking = BlockingAsync::new(spi_bus);
     // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus_blocking));
     let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
 
-    let mut esp32_rng = Rng::new(peripherals.RNG);
-
-    let init = ESP_WIFI_CONTROLLER.uninit().write(
-        init(
-            timg1.timer0,
-            //Rng::new(peripherals.RNG.clone()),
-            esp32_rng.clone(),
-            peripherals.RADIO_CLK,
-        )
-        .unwrap(),
-    );
-
-    let wifi = peripherals.WIFI;
-    let (wifi_device, controller) =
-        esp_wifi::wifi::new_with_mode(init, wifi, WifiStaDevice).unwrap();
-
-    // This is the way to initialize esp hal embassy for the the esp32c3
-    // according to the example
-    // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    let systimer = SystemTimer::new(peripherals.SYSTIMER);
-    esp_hal_embassy::init(systimer.alarm0);
-
-    let sta_config = embassy_net::Config::dhcpv4(Default::default());
-
-    // Random seed.
-    // Taken from example line 104 https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    let seed = (esp32_rng.random() as u64) << 32 | esp32_rng.random() as u64;
-
-    // Init network stacks
-    let (sta_stack, sta_runner) = embassy_net::new(
-        wifi_device,
-        sta_config,
-        RESOURCES.init(embassy_net::StackResources::new()), // mk_static!(StackResources<3>, StackResources::<3>::new()),
-        seed,
-    );
-
     // The stack needs to be static so that it can be used in tasks.
-    STACK.init(sta_stack);
+    STACK.init(init_peripherals.sta_stack);
 
     // Init the vs1053 spi speeds
     let mut spi_sci_config = SpiConfig::default();
@@ -344,32 +290,38 @@ async fn main(spawner: Spawner) {
     let mut spi_sdi_config = SpiConfig::default();
     spi_sdi_config.frequency = 8000.kHz();
 
-    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, xcs, spi_sci_config);
-    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, xdcs, spi_sdi_config);
-
-    // This was a test to see if issue esp-hal #2885 has been corrected. It has!
-    // use embedded_hal_async::spi::Operation;
-    // spi_sci_device
-    //     .transaction(&mut [Operation::Write(&[0x00, 0x00])]) // --> AAA. But transaction is not defined altough SpiDeviceWithConfig shoudl implement  embeddded_hal_async::spi::SpiDevice
-    //     .await
-    //     .unwrap();
+    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
+    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xdcs, spi_sdi_config);
 
     let mut vs1053_driver: Vs1053Driver<
         SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
         Input<'_>,
         Output<'_>,
         AsyncDelay,
-    > = Vs1053Driver::new(spi_sci_device, spi_sdi_device, dreq, reset, delay).unwrap();
+    > = Vs1053Driver::new(
+        spi_sci_device,
+        spi_sdi_device,
+        init_peripherals.dreq,
+        init_peripherals.reset,
+        delay,
+    )
+    .unwrap();
 
     vs1053_driver.begin().await.unwrap();
 
     print_registers(&mut vs1053_driver).await;
 
-    spawner.spawn(wifi_connect(controller)).ok();
-    spawner.spawn(run_network_stack(sta_runner)).ok();
-    spawner.spawn(button_monitor(button_pin)).ok();
+    spawner
+        .spawn(wifi_connect(init_peripherals.wifi_controller))
+        .ok();
+    spawner
+        .spawn(run_network_stack(init_peripherals.runner))
+        .ok();
+    spawner
+        .spawn(button_monitor(init_peripherals.button_pin))
+        .ok();
     spawner.spawn(notification_task()).ok();
-    spawner.spawn(access_web(sta_stack)).ok();
+    spawner.spawn(access_web(init_peripherals.sta_stack)).ok();
     spawner.spawn(process_channel()).ok();
 }
 
