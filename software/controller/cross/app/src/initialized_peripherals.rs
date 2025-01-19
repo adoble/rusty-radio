@@ -1,10 +1,11 @@
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 
-use esp_hal::gpio::{Input, Level, Output, Pull};
-use esp_hal::peripherals::{Peripherals, RADIO_CLK, SPI2, TIMG1, WIFI};
-use esp_hal::rng::Rng;
-use esp_hal::timer::systimer::SystemTimer;
-use esp_hal::timer::timg::TimerGroup;
+use esp_hal::{
+    gpio::{Input, Level, Output, Pull},
+    peripherals::{Peripherals, RADIO_CLK, SPI2, TIMG1, WIFI},
+    rng::Rng,
+    timer::{systimer::SystemTimer, timg::TimerGroup},
+};
 
 use esp_wifi::wifi::{WifiController, WifiDevice, WifiStaDevice};
 use esp_wifi::{init, EspWifiController};
@@ -85,6 +86,7 @@ struct WifiInitializedPeripherals {
 }
 
 impl WifiInitializedPeripherals {
+    // Based on the example here: https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs#L301
     pub fn init_wifi<const NUMBER_SOCKETS_STACK_RESOURCES: usize>(
         wifi: WIFI,
         radio_clk: RADIO_CLK,

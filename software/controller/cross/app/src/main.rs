@@ -16,48 +16,52 @@ mod constants;
 use constants::{NUMBER_SOCKETS_STACK_RESOURCES, NUMBER_SOCKETS_TCP_CLIENT_STATE};
 mod initialized_peripherals;
 
-use esp_hal::time::RateExtU32;
 use initialized_peripherals::InitilizedPeripherals;
 
-use core::str::from_utf8;
+use esp_backtrace as _;
+use esp_hal::{
+    clock::CpuClock,
+    gpio::{Input, Output},
+    spi::master::{Config as SpiConfig, Spi},
+    time::RateExtU32,
+};
 
 use embassy_executor::Spawner;
-use embassy_net::dns::DnsSocket;
-use embassy_net::tcp::client::{TcpClient, TcpClientState};
-use embassy_net::Runner;
-use embassy_net::Stack;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+
+use embassy_net::{
+    dns::DnsSocket,
+    tcp::client::{TcpClient, TcpClientState},
+    Runner, Stack,
+};
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use embassy_sync::channel::Channel;
-use embassy_sync::mutex::Mutex;
-use embassy_sync::signal;
-use embassy_time::{Duration, Timer};
-use esp_backtrace as _;
-use esp_hal::gpio::{Input, Output};
-use esp_hal::spi::master::{Config as SpiConfig, Spi};
+use embassy_sync::{
+    blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex},
+    channel::Channel,
+    mutex::Mutex,
+    signal,
+};
 
-use esp_hal::clock::CpuClock;
+use embassy_time::{Duration, Timer};
 
 use embedded_io_async::Read;
-use esp_wifi::wifi::{AuthMethod, ClientConfiguration, Configuration, WifiStaDevice};
-use esp_wifi::wifi::{WifiController, WifiDevice};
-use reqwless::client::HttpClient;
-use reqwless::request;
+
+use esp_wifi::wifi::{
+    AuthMethod, ClientConfiguration, Configuration, WifiController, WifiDevice, WifiStaDevice,
+};
+
+use reqwless::{client::HttpClient, request};
+
 use static_cell::StaticCell;
 
 use async_delay::AsyncDelay;
+use core::str::from_utf8;
 
 static_assertions::const_assert!(true);
 
 use vs1053_driver::Vs1053Driver;
 
-// static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
-
-// static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
-//     StaticCell::new();
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
