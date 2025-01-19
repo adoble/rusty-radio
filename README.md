@@ -1,4 +1,9 @@
-An interim internet radio module. 
+# Rusty Radio
+
+An internet radio written in Rust. 
+
+ [!WARNING]
+ Under construction
 
 
 # System Diagram

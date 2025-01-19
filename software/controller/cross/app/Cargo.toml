@@ -1,17 +1,28 @@
 [package]
-name    = "controller"
-version = "1.0.0"
+name    = "rusty-radio-controller"
+version = "0.0.1"
 authors = ["Andrew Doble"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-embassy-executor = {version = "0.7.0", features = ["task-arena-size-24576", "arch-riscv32"]}
+embassy-executor = { version = "0.7.0", features = [
+    "task-arena-size-24576",
+    "arch-riscv32",
+] }
 embassy-time = "0.4.0"
 embassy-time-driver = "0.2.0"
 embedded-hal-async = "1.0.0"
 #embassy-net = {version = "0.4.0", features = ["proto-ipv4"]}
-embassy-net = { version = "0.6.0", features = [ "tcp", "udp", "dhcpv4",  "medium-ethernet", "dns", "medium-ip", "proto-ipv4"] }
+embassy-net = { version = "0.6.0", features = [
+    "tcp",
+    "udp",
+    "dhcpv4",
+    "medium-ethernet",
+    "dns",
+    "medium-ip",
+    "proto-ipv4",
+] }
 embedded-io = "0.6.1"
 esp-alloc = "0.6.0"
 esp-backtrace = { version = "0.15.0", features = [
@@ -30,14 +41,13 @@ esp-hal-embassy = { version = "0.6.0", features = [
 ] }
 #esp-println = { version = "0.13.0", features = ["esp32c3", "log"] }
 esp-println = { version = "0.13.0", features = ["esp32c3"] }
-esp-wifi = { version = "0.12.0", features = ["esp32c3", "wifi",] }
+esp-wifi    = { version = "0.12.0", features = ["esp32c3", "wifi"] }
 
-static_cell = "2.1.0"
+static_cell        = "2.1.0"
 embassy-net-driver = "0.2.0"
-embassy-sync = "0.6.1"
+embassy-sync       = "0.6.1"
 #embedded-hal-bus = { version = "0.2.0", features = ["async"] }
 embassy-embedded-hal = "0.3.0"
-
 
 
 # Using older version.See https://github.com/drogue-iot/reqwless/issues/93
@@ -45,14 +55,17 @@ embassy-embedded-hal = "0.3.0"
 reqwless = "0.13.0"
 
 embedded-nal-async = "0.8.0"
-static_assertions = "1.1.0"
-embedded-io-async = "0.6.1"
+static_assertions  = "1.1.0"
+embedded-io-async  = "0.6.1"
 
-vs1053-driver = {path = "../../vs1053-driver"}
-embedded-hal = "1.0.0"
+vs1053-driver = { path = "../../vs1053-driver" }
+embedded-hal  = "1.0.0"
 
 [dev-dependencies]
-embedded-hal-mock = {version = "0.11.1", features = ["eh1", "embedded-hal-async"]}
+embedded-hal-mock = { version = "0.11.1", features = [
+    "eh1",
+    "embedded-hal-async",
+] }
 async-std = "1.13.0"
 
 
@@ -69,5 +82,3 @@ incremental      = false
 lto              = 'fat'
 opt-level        = 's'
 overflow-checks  = false
-
-
