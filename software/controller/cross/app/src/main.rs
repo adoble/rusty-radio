@@ -169,7 +169,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(process_channel()).ok();
 
     // Test
-    spawner.spawn(pulse_spi(vs1053_driver)).ok();
+    //spawner.spawn(pulse_spi(vs1053_driver)).ok();
 }
 
 #[embassy_executor::task]
@@ -350,12 +350,17 @@ async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
     esp_println::println!("audio_data : {:X}", registers.audio_data);
 }
 
+
+/// Used for testing.
+#[deprecated(note = "Remove before release")]
 #[embassy_executor::task]
 async fn pulse_spi(mut driver: Vs1053DriverType<'static>) {
     let left_vol = 0x11;
     let right_vol = 0x22;
 
-    driver.set_volume(left_vol, right_vol).await.unwrap();
+    loop {
+        driver.set_volume(left_vol, right_vol).await.unwrap();
 
-    Timer::after(Duration::from_micros(300)).await;
+        Timer::after(Duration::from_micros(300)).await;
+    }
 }
