@@ -97,7 +97,7 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
-    // Initialise gpio ,spi and  wifi peripherals
+    // Initialise gpio ,spi and wifi peripherals
     let init_peripherals =
         InitilizedPeripherals::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
@@ -108,21 +108,10 @@ async fn main(spawner: Spawner) {
     // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
     esp_hal_embassy::init(init_peripherals.system_timer.alarm0);
 
-    // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
-    // Seems to only work with SPI2 - TODO is this true?
-    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(init_peripherals.spi2, SpiConfig::default())
-        .expect("Panic: Could not initialize SPI")
-        .with_sck(init_peripherals.sclk)
-        .with_mosi(init_peripherals.mosi)
-        .with_miso(init_peripherals.miso)
-        .into_async();
-
-    static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     // Need to convert the spi driver into an static blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
-    // let spi_bus_blocking = BlockingAsync::new(spi_bus);
-    // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus_blocking));
-    let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
+    static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
+    let spi_bus = SPI_BUS.init(Mutex::new(init_peripherals.spi_bus));
 
     // The stack needs to be static so that it can be used in tasks.
     STACK.init(init_peripherals.sta_stack);
@@ -153,7 +142,7 @@ async fn main(spawner: Spawner) {
 
     vs1053_driver.begin().await.unwrap();
 
-    print_registers(&mut vs1053_driver).await;
+    spawner.spawn(print_registers(vs1053_driver)).ok();
 
     spawner
         .spawn(wifi_connect(init_peripherals.wifi_controller))
@@ -333,7 +322,8 @@ async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiS
     runner.run().await
 }
 
-async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
+#[embassy_executor::task]
+async fn print_registers(mut driver: Vs1053DriverType<'static>) {
     // Set the volume so we can see the value when we dump the registers
     let left_vol = 0x11;
     let right_vol = 0x22;
@@ -349,7 +339,6 @@ async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
     esp_println::println!("volume: {:X}", registers.volume);
     esp_println::println!("audio_data : {:X}", registers.audio_data);
 }
-
 
 /// Used for testing.
 #[deprecated(note = "Remove before release")]

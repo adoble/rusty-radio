@@ -6,7 +6,7 @@
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
         "cross/Cargo.toml",
-        "cross/app/Cargo.toml",
+        //"cross/app/Cargo.toml",
         "target-test/Cargo.toml"
     ]
 }

@@ -2,8 +2,9 @@
 
 use esp_hal::{
     gpio::{Input, Level, Output, Pull},
-    peripherals::{Peripherals, RADIO_CLK, SPI2, TIMG1, WIFI},
+    peripherals::{Peripherals, RADIO_CLK, TIMG1, WIFI},
     rng::Rng,
+    spi::master::{Config as SpiConfig, Spi},
     timer::{systimer::SystemTimer, timg::TimerGroup},
 };
 
@@ -23,9 +24,9 @@ static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RE
 
 pub struct InitilizedPeripherals {
     pub button_pin: Input<'static>,
-    pub sclk: Output<'static>,
-    pub mosi: Output<'static>,
-    pub miso: Output<'static>,
+    // pub sclk: Output<'static>,
+    // pub mosi: Output<'static>,
+    // pub miso: Output<'static>,
     pub xcs: Output<'static>,
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
@@ -33,8 +34,8 @@ pub struct InitilizedPeripherals {
     // pub rng: Rng,
     pub system_timer: SystemTimer,
 
-    pub spi2: SPI2,
-
+    //pub spi2: SPI2,
+    pub spi_bus: Spi<'static, esp_hal::Async>,
     pub sta_stack: Stack<'static>,
     pub runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>,
     pub wifi_controller: WifiController<'static>,
@@ -52,24 +53,35 @@ impl InitilizedPeripherals {
 
         let timg1 = TimerGroup::new(peripherals.TIMG1);
 
-        let spi2 = peripherals.SPI2;
+        //let spi2 = peripherals.SPI2;
+
+        // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
+        // Only SPI2 is availble for the ESP32-C3
+        let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
+            .expect("Panic: Could not initialize SPI")
+            .with_sck(peripherals.GPIO5)
+            .with_mosi(peripherals.GPIO6)
+            .with_miso(peripherals.GPIO7)
+            .into_async();
+
+        //let x: esp_hal::gpio::GpioPin<5> = peripherals.GPIO5;
 
         let wifi_peripherals = WifiInitializedPeripherals::init_wifi::<
             NUMBER_SOCKETS_STACK_RESOURCES,
         >(wifi, radio_clk, timg1, rng);
         InitilizedPeripherals {
             button_pin: Input::new(peripherals.GPIO1, Pull::Up),
-            sclk: Output::new(peripherals.GPIO5, Level::Low),
-            mosi: Output::new(peripherals.GPIO6, Level::Low),
-            miso: Output::new(peripherals.GPIO7, Level::Low),
-            xcs: Output::new(peripherals.GPIO9, Level::Low),
-            xdcs: Output::new(peripherals.GPIO10, Level::Low),
+            // sclk: Output::new(peripherals.GPIO5, Level::Low),
+            // mosi: Output::new(peripherals.GPIO6, Level::Low),
+            // miso: Output::new(peripherals.GPIO7, Level::Low),
+            xcs: Output::new(peripherals.GPIO9, Level::High),
+            xdcs: Output::new(peripherals.GPIO10, Level::High),
             dreq: Input::new(peripherals.GPIO8, Pull::None),
             reset: Output::new(peripherals.GPIO20, Level::High),
 
             system_timer: SystemTimer::new(systimer),
             // SPI
-            spi2,
+            spi_bus,
 
             // Peripherals required for wifi
             sta_stack: wifi_peripherals.sta_stack,
