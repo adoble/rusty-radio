@@ -56,7 +56,7 @@ impl InitilizedPeripherals {
 
         let wifi_peripherals = WifiInitializedPeripherals::init_wifi::<
             NUMBER_SOCKETS_STACK_RESOURCES,
-        >(wifi, radio_clk, timg1, rng.clone());
+        >(wifi, radio_clk, timg1, rng);
         InitilizedPeripherals {
             button_pin: Input::new(peripherals.GPIO1, Pull::Up),
             sclk: Output::new(peripherals.GPIO5, Level::Low),
@@ -91,15 +91,13 @@ impl WifiInitializedPeripherals {
         wifi: WIFI,
         radio_clk: RADIO_CLK,
         timg: TimerGroup<TIMG1>,
-        rng: Rng,
+        mut rng: Rng,
     ) -> Self {
-        let mut esp32_rng = rng;
-
         let init = ESP_WIFI_CONTROLLER.uninit().write(
             init(
                 timg.timer0,
                 //Rng::new(peripherals.RNG.clone()),
-                esp32_rng.clone(),
+                rng,
                 radio_clk,
             )
             .unwrap(),
@@ -112,7 +110,7 @@ impl WifiInitializedPeripherals {
 
         // Random seed.
         // Taken from example line 104 https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-        let seed = (esp32_rng.random() as u64) << 32 | esp32_rng.random() as u64;
+        let seed = (rng.random() as u64) << 32 | rng.random() as u64;
 
         // Init network stacks
         let (sta_stack, sta_runner) = embassy_net::new(

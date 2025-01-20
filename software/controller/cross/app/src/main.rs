@@ -88,6 +88,90 @@ const PASSWORD: &str = env!("WLAN-PASSWORD");
 
 const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
+#[esp_hal_embassy::main]
+async fn main(spawner: Spawner) {
+    esp_println::println!("Init!");
+
+    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+    let peripherals = esp_hal::init(config);
+
+    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
+
+    // Initialise gpio ,spi and  wifi peripherals
+    let init_peripherals =
+        InitilizedPeripherals::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+
+    let delay = AsyncDelay::new();
+
+    // This is the way to initialize esp hal embassy for the the esp32c3
+    // according to the example
+    // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
+    esp_hal_embassy::init(init_peripherals.system_timer.alarm0);
+
+    // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
+    // Seems to only work with SPI2 - TODO is this true?
+    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(init_peripherals.spi2, SpiConfig::default())
+        .expect("Panic: Could not initialize SPI")
+        .with_sck(init_peripherals.sclk)
+        .with_mosi(init_peripherals.mosi)
+        .with_miso(init_peripherals.miso)
+        .into_async();
+
+    static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
+    // Need to convert the spi driver into an static blocking async version so that if can be accepted
+    // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
+    // let spi_bus_blocking = BlockingAsync::new(spi_bus);
+    // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus_blocking));
+    let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
+
+    // The stack needs to be static so that it can be used in tasks.
+    STACK.init(init_peripherals.sta_stack);
+
+    // Init the vs1053 spi speeds
+    let mut spi_sci_config = SpiConfig::default();
+    spi_sci_config.frequency = 250.kHz();
+
+    let mut spi_sdi_config = SpiConfig::default();
+    spi_sdi_config.frequency = 8000.kHz();
+
+    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
+    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xdcs, spi_sdi_config);
+
+    let mut vs1053_driver: Vs1053Driver<
+        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+        Input<'_>,
+        Output<'_>,
+        AsyncDelay,
+    > = Vs1053Driver::new(
+        spi_sci_device,
+        spi_sdi_device,
+        init_peripherals.dreq,
+        init_peripherals.reset,
+        delay,
+    )
+    .unwrap();
+
+    vs1053_driver.begin().await.unwrap();
+
+    print_registers(&mut vs1053_driver).await;
+
+    spawner
+        .spawn(wifi_connect(init_peripherals.wifi_controller))
+        .ok();
+    spawner
+        .spawn(run_network_stack(init_peripherals.runner))
+        .ok();
+    spawner
+        .spawn(button_monitor(init_peripherals.button_pin))
+        .ok();
+    spawner.spawn(notification_task()).ok();
+    spawner.spawn(access_web(init_peripherals.sta_stack)).ok();
+    spawner.spawn(process_channel()).ok();
+
+    // Test
+    spawner.spawn(pulse_spi(vs1053_driver)).ok();
+}
+
 #[embassy_executor::task]
 async fn button_monitor(mut pin: Input<'static>) {
     loop {
@@ -156,7 +240,7 @@ async fn access_web(stack: Stack<'static>) {
         loop {
             let res = reader.read(&mut small_buffer).await;
             match res {
-                Ok(size) if size == 0 => {
+                Ok(0) => {
                     esp_println::println!("EOF");
                     break;
                 }
@@ -213,6 +297,7 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
     loop {
         if !matches!(controller.is_started(), Ok(true)) {
             let mut auth_method = AuthMethod::WPA2Personal;
+            #[allow(clippy::const_is_empty)]
             if PASSWORD.is_empty() {
                 auth_method = AuthMethod::None;
             }
@@ -246,93 +331,6 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
 #[embassy_executor::task]
 async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>) {
     runner.run().await
-}
-
-#[esp_hal_embassy::main]
-async fn main(spawner: Spawner) {
-    esp_println::println!("Init!");
-
-    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
-    let peripherals = esp_hal::init(config);
-
-    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
-
-    // Initialise gpio ,spi and  wifi peripherals
-    let init_peripherals =
-        InitilizedPeripherals::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
-
-    let delay = AsyncDelay::new();
-
-    // This is the way to initialize esp hal embassy for the the esp32c3
-    // according to the example
-    // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    esp_hal_embassy::init(init_peripherals.system_timer.alarm0);
-
-    // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
-    // Seems to only work with SPI2 - TODO is this true?
-    let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(init_peripherals.spi2, SpiConfig::default())
-        .expect("Panic: Could not initialize SPI")
-        .with_sck(init_peripherals.sclk)
-        .with_mosi(init_peripherals.mosi)
-        .with_miso(init_peripherals.miso)
-        .into_async();
-
-    static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
-    // Need to convert the spi driver into an static blocking async version so that if can be accepted
-    // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
-    // let spi_bus_blocking = BlockingAsync::new(spi_bus);
-    // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus_blocking));
-    let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
-
-    // The stack needs to be static so that it can be used in tasks.
-    STACK.init(init_peripherals.sta_stack);
-
-    // Init the vs1053 spi speeds
-    let mut spi_sci_config = SpiConfig::default();
-    spi_sci_config.frequency = 250.kHz();
-
-    let mut spi_sdi_config = SpiConfig::default();
-    spi_sdi_config.frequency = 8000.kHz();
-
-    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
-    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xdcs, spi_sdi_config);
-
-    let mut vs1053_driver: Vs1053Driver<
-        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
-        Input<'_>,
-        Output<'_>,
-        AsyncDelay,
-    > = Vs1053Driver::new(
-        spi_sci_device,
-        spi_sdi_device,
-        init_peripherals.dreq,
-        init_peripherals.reset,
-        delay,
-    )
-    .unwrap();
-
-    vs1053_driver.begin().await.unwrap();
-
-    
-       print_registers(&mut vs1053_driver).await;
-        
-    
-
-    spawner
-        .spawn(wifi_connect(init_peripherals.wifi_controller))
-        .ok();
-    spawner
-        .spawn(run_network_stack(init_peripherals.runner))
-        .ok();
-    spawner
-        .spawn(button_monitor(init_peripherals.button_pin))
-        .ok();
-    spawner.spawn(notification_task()).ok();
-    spawner.spawn(access_web(init_peripherals.sta_stack)).ok();
-    spawner.spawn(process_channel()).ok();
-
-    // Test 
-    spawner.spawn(pulse_spi( vs1053_driver)).ok();
 }
 
 async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
