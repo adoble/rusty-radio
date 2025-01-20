@@ -313,7 +313,10 @@ async fn main(spawner: Spawner) {
 
     vs1053_driver.begin().await.unwrap();
 
-    print_registers(&mut vs1053_driver).await;
+    
+       print_registers(&mut vs1053_driver).await;
+        
+    
 
     spawner
         .spawn(wifi_connect(init_peripherals.wifi_controller))
@@ -327,12 +330,16 @@ async fn main(spawner: Spawner) {
     spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(init_peripherals.sta_stack)).ok();
     spawner.spawn(process_channel()).ok();
+
+    // Test 
+    spawner.spawn(pulse_spi( vs1053_driver)).ok();
 }
 
 async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
     // Set the volume so we can see the value when we dump the registers
     let left_vol = 0x11;
     let right_vol = 0x22;
+
     driver.set_volume(left_vol, right_vol).await.unwrap();
     // Should see 1122 as the vol reg
     let registers = driver.dump_registers().await.unwrap();
@@ -343,4 +350,14 @@ async fn print_registers(driver: &mut Vs1053DriverType<'_>) {
     esp_println::println!("clockf: {:X}", registers.clock_f);
     esp_println::println!("volume: {:X}", registers.volume);
     esp_println::println!("audio_data : {:X}", registers.audio_data);
+}
+
+#[embassy_executor::task]
+async fn pulse_spi(mut driver: Vs1053DriverType<'static>) {
+    let left_vol = 0x11;
+    let right_vol = 0x22;
+
+    driver.set_volume(left_vol, right_vol).await.unwrap();
+
+    Timer::after(Duration::from_micros(300)).await;
 }
