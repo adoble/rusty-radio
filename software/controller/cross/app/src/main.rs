@@ -142,7 +142,7 @@ async fn main(spawner: Spawner) {
 
     vs1053_driver.begin().await.unwrap();
 
-    spawner.spawn(print_registers(vs1053_driver)).ok();
+    print_registers(vs1053_driver).await;
 
     spawner
         .spawn(wifi_connect(init_peripherals.wifi_controller))
@@ -153,9 +153,10 @@ async fn main(spawner: Spawner) {
     spawner
         .spawn(button_monitor(init_peripherals.button_pin))
         .ok();
-    spawner.spawn(notification_task()).ok();
     spawner.spawn(access_web(init_peripherals.sta_stack)).ok();
     spawner.spawn(process_channel()).ok();
+    #[allow(deprecated)]
+    spawner.spawn(notification_task()).ok();
 
     // Test
     //spawner.spawn(pulse_spi(vs1053_driver)).ok();
@@ -271,6 +272,7 @@ async fn process_channel() {
     }
 }
 
+#[deprecated(note = "Only used for development - Remove before release")]
 #[embassy_executor::task]
 async fn notification_task() {
     loop {
@@ -322,7 +324,6 @@ async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiS
     runner.run().await
 }
 
-#[embassy_executor::task]
 async fn print_registers(mut driver: Vs1053DriverType<'static>) {
     // Set the volume so we can see the value when we dump the registers
     let left_vol = 0x11;
