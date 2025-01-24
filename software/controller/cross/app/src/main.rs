@@ -9,8 +9,6 @@
 // See this about having functions to setup the peripherals and avoid the borrow problem:
 // https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/2
 
-// [ ]  Tidy up the use statements
-
 mod async_delay;
 mod constants;
 use constants::{NUMBER_SOCKETS_STACK_RESOURCES, NUMBER_SOCKETS_TCP_CLIENT_STATE};
@@ -60,7 +58,7 @@ use core::str::from_utf8;
 
 static_assertions::const_assert!(true);
 
-use vs1053_driver::Vs1053Driver;
+use vs1053_driver::{DriverError, Vs1053Driver};
 
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -77,10 +75,14 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
 // Channel to stream internet radio content to the mp3 codec
-static CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
+const MUSIC_CHANNEL_LENGTH: usize = 130_000;
+static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
+
+// Test channel
+static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
 // Some mp3 music for testing
-static _TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
+//static TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
 
 // Wifi secrets stored as environment varaibles
 const SSID: &str = env!("WLAN-SSID");
@@ -237,7 +239,7 @@ async fn access_web(stack: Stack<'static>) {
                 Ok(size) if size > 0 => {
                     //let content = from_utf8(&small_buffer).unwrap();
                     //esp_println::print!("{content}");
-                    CHANNEL.send(small_buffer).await;
+                    TEST_CHANNEL.send(small_buffer).await;
                     continue;
                 }
                 Err(err) => {
@@ -264,9 +266,42 @@ async fn access_web(stack: Stack<'static>) {
 }
 
 #[embassy_executor::task]
+async fn read_music() {
+    // Some mp3 music for testing
+    let test_music: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
+    let mut music_iter = test_music.iter().cycle();
+
+    loop {
+        if let Some(music_byte) = music_iter.next() {
+            MUSIC_CHANNEL.send(*music_byte).await;
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn play_music(mut driver: Vs1053DriverType<'static>) {
+    let mut buffer: [u8; 32] = [0; 32];
+    loop {
+        for i in 0..32 {
+            let b = MUSIC_CHANNEL.receive().await;
+            buffer[i] = b;
+        }
+        let r = driver.play_data(&buffer).await;
+        match r {
+            Ok(_) => continue,
+            Err(err) => {
+                esp_println::println!("Error {:?} in play music", err);
+                break;
+            }
+        };
+    }
+}
+
+#[embassy_executor::task]
 async fn process_channel() {
     loop {
-        let data = CHANNEL.receive().await;
+        let data = TEST_CHANNEL.receive().await;
+
         let content = from_utf8(&data).unwrap();
         esp_println::print!("{content}");
     }
