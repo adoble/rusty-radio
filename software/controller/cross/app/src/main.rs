@@ -6,16 +6,20 @@
 //! An internet radio
 //!
 
+// [ ] Check out this about assigning resouces and rewriting initialized_peripherals.rs:
+//      https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/assign_resources.rs
+
 // See this about having functions to setup the peripherals and avoid the borrow problem:
 // https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/2
 
 mod async_delay;
 mod constants;
 use constants::{NUMBER_SOCKETS_STACK_RESOURCES, NUMBER_SOCKETS_TCP_CLIENT_STATE};
-mod initialized_peripherals;
 
+mod initialized_peripherals;
 use initialized_peripherals::InitilizedPeripherals;
 
+// External crates
 use esp_backtrace as _;
 use esp_hal::{
     clock::CpuClock,
@@ -58,7 +62,7 @@ use core::str::from_utf8;
 
 static_assertions::const_assert!(true);
 
-use vs1053_driver::{DriverError, Vs1053Driver};
+use vs1053_driver::Vs1053Driver;
 
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -74,12 +78,12 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
-// Channel to stream internet radio content to the mp3 codec
-const MUSIC_CHANNEL_LENGTH: usize = 130_000;
-static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
-
 // Test channel
 static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
+
+// Channel to stream internet radio content to the mp3 codec
+//const MUSIC_CHANNEL_LENGTH: usize = 130_000;
+static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
 
 // Some mp3 music for testing
 //static TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
@@ -159,6 +163,9 @@ async fn main(spawner: Spawner) {
     spawner.spawn(process_channel()).ok();
     #[allow(deprecated)]
     spawner.spawn(notification_task()).ok();
+
+    spawner.spawn(read_music()).ok();
+    spawner.spawn(play_music(vs1053_driver)).ok();
 
     // Test
     //spawner.spawn(pulse_spi(vs1053_driver)).ok();
