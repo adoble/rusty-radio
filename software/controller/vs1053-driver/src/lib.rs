@@ -306,6 +306,18 @@ where
     }
 }
 
+// The driver may need to be shared (as a mutex) between different async tasks.
+// Therefore the Send trait needs to be implemented (as a marker).
+// See https://stackoverflow.com/questions/60292897/why-cant-i-send-mutexmut-c-void-between-threads
+unsafe impl<SPI, DREQ, RST, DLY> Send for Vs1053Driver<SPI, DREQ, RST, DLY>
+where
+    SPI: SpiDevice,
+    DREQ: Wait, // See https://docs.rs/embedded-hal-async/1.0.0/embedded_hal_async/digital/index.html
+    RST: OutputPin,
+    DLY: DelayNs,
+{
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum DriverError {
     /// An error reading control (SCI) data
