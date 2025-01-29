@@ -75,6 +75,10 @@ type Vs1053DriverType<'a> = Vs1053Driver<
     AsyncDelay,
 >;
 
+// We need to share the VS1053 driver between tasks so put it in a static mutex
+type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
+static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
+
 // Signal that the web should be accessed
 static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
@@ -129,15 +133,11 @@ async fn main(spawner: Spawner) {
     let mut spi_sdi_config = SpiConfig::default();
     spi_sdi_config.frequency = 8000.kHz();
 
-    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
+    let spi_sci_device: SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>> =
+        SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
     let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xdcs, spi_sdi_config);
 
-    let mut vs1053_driver: Vs1053Driver<
-        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
-        Input<'_>,
-        Output<'_>,
-        AsyncDelay,
-    > = Vs1053Driver::new(
+    let vs1053_driver: Vs1053DriverType = Vs1053Driver::new(
         spi_sci_device,
         spi_sdi_device,
         init_peripherals.dreq,
@@ -146,9 +146,27 @@ async fn main(spawner: Spawner) {
     )
     .unwrap();
 
-    vs1053_driver.begin().await.unwrap();
+    // Setup the mutex for the vs1053 driver and then initialise the chip.
+    {
+        *(CODEC_DRIVER.lock().await) = Some(vs1053_driver);
+        let mut driver_unlocked = CODEC_DRIVER.lock().await;
+        if let Some(driver) = driver_unlocked.as_mut() {
+            driver.begin().await.unwrap();
+        }
+    }
 
-    print_registers(vs1053_driver).await;
+    //vs1053_driver.begin().await.unwrap();
+
+    // Print the registers using the shared driver for the vs1053
+    print_registers().await;
+    // print_registers(
+    //     spi_sci_device,
+    //     spi_sdi_device,
+    //     init_peripherals.dreq,
+    //     init_peripherals.reset,
+    //     delay,
+    // )
+    // .await;
 
     spawner
         .spawn(wifi_connect(init_peripherals.wifi_controller))
@@ -165,7 +183,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(notification_task()).ok();
 
     spawner.spawn(read_music()).ok();
-    spawner.spawn(play_music(vs1053_driver)).ok();
+    spawner.spawn(play_music()).ok();
 
     // Test
     //spawner.spawn(pulse_spi(vs1053_driver)).ok();
@@ -286,21 +304,27 @@ async fn read_music() {
 }
 
 #[embassy_executor::task]
-async fn play_music(mut driver: Vs1053DriverType<'static>) {
+async fn play_music() {
     let mut buffer: [u8; 32] = [0; 32];
     loop {
         for i in 0..32 {
             let b = MUSIC_CHANNEL.receive().await;
             buffer[i] = b;
         }
-        let r = driver.play_data(&buffer).await;
-        match r {
-            Ok(_) => continue,
-            Err(err) => {
-                esp_println::println!("Error {:?} in play music", err);
-                break;
+
+        {
+            let mut driver_unlocked = CODEC_DRIVER.lock().await;
+            if let Some(driver) = driver_unlocked.as_mut() {
+                let r = driver.play_data(&buffer).await;
+                match r {
+                    Ok(_) => continue,
+                    Err(err) => {
+                        esp_println::println!("Error {:?} in play music", err);
+                        break;
+                    }
+                };
             }
-        };
+        }
     }
 }
 
@@ -366,21 +390,26 @@ async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiS
     runner.run().await
 }
 
-async fn print_registers(mut driver: Vs1053DriverType<'static>) {
-    // Set the volume so we can see the value when we dump the registers
-    let left_vol = 0x11;
-    let right_vol = 0x22;
+async fn print_registers() {
+    let mut driver_unlocked = CODEC_DRIVER.lock().await;
+    if let Some(driver) = driver_unlocked.as_mut() {
+        // Set the volume so we can see the value when we dump the registers
+        let left_vol = 0x11;
+        let right_vol = 0x22;
 
-    driver.set_volume(left_vol, right_vol).await.unwrap();
-    // Should see 1122 as the vol reg
-    let registers = driver.dump_registers().await.unwrap();
+        driver.set_volume(left_vol, right_vol).await.unwrap();
+        // Should see 1122 as the vol reg
+        let registers = driver.dump_registers().await.unwrap();
 
-    esp_println::println!("Dumped registers:");
-    esp_println::println!("mode: {:X}", registers.mode);
-    esp_println::println!("status: {:X}", registers.status);
-    esp_println::println!("clockf: {:X}", registers.clock_f);
-    esp_println::println!("volume: {:X}", registers.volume);
-    esp_println::println!("audio_data : {:X}", registers.audio_data);
+        esp_println::println!("Dumped registers:");
+        esp_println::println!("mode: {:X}", registers.mode);
+        esp_println::println!("status: {:X}", registers.status);
+        esp_println::println!("clockf: {:X}", registers.clock_f);
+        esp_println::println!("volume: {:X}", registers.volume);
+        esp_println::println!("audio_data : {:X}", registers.audio_data);
+    } else {
+        esp_println::println!("ERROR: Could not print registers");
+    }
 }
 
 /// Used for testing.
