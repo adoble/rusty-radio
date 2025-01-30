@@ -1,8 +1,5 @@
 use embassy_sync::{
-    blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex},
-    channel::Channel,
-    mutex::Mutex,
-    signal,
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, mutex::Mutex, signal,
 };
 
 use crate::Vs1053DriverType;

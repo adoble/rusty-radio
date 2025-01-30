@@ -1,7 +1,7 @@
 use embassy_net::{
     dns::DnsSocket,
     tcp::client::{TcpClient, TcpClientState},
-    Runner, Stack,
+    Stack,
 };
 use embassy_time::{Duration, Timer};
 
@@ -9,7 +9,7 @@ use embedded_io_async::Read;
 
 use reqwless::{client::HttpClient, request};
 
-use crate::constants::{NUMBER_SOCKETS_STACK_RESOURCES, NUMBER_SOCKETS_TCP_CLIENT_STATE};
+use crate::constants::NUMBER_SOCKETS_TCP_CLIENT_STATE;
 
 use crate::task::sync::{ACCESS_WEB_SIGNAL, TEST_CHANNEL};
 
