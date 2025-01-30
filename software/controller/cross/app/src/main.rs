@@ -23,6 +23,7 @@ mod task;
 use task::{
     access_radio_stations::access_radio_stations,
     button_monitor::button_monitor,
+    display_web_content::display_web_content,
     play_music::play_music,
     read_test_music::read_test_music,
     sync::{CODEC_DRIVER, TEST_CHANNEL},
@@ -187,7 +188,7 @@ async fn main(spawner: Spawner) {
     spawner
         .spawn(access_radio_stations(init_peripherals.sta_stack))
         .ok();
-    spawner.spawn(process_channel()).ok();
+    spawner.spawn(display_web_content()).ok();
     #[allow(deprecated)]
     spawner.spawn(notification_task()).ok();
 
@@ -337,15 +338,15 @@ const BUFFER_SIZE: usize = 2560;
 //     }
 // }
 
-#[embassy_executor::task]
-async fn process_channel() {
-    loop {
-        let data = TEST_CHANNEL.receive().await;
+// #[embassy_executor::task]
+// async fn display_web_content() {
+//     loop {
+//         let data = TEST_CHANNEL.receive().await;
 
-        let content = from_utf8(&data).unwrap();
-        esp_println::print!("{content}");
-    }
-}
+//         let content = from_utf8(&data).unwrap();
+//         esp_println::print!("{content}");
+//     }
+// }
 
 #[deprecated(note = "Only used for development - Remove before release")]
 #[embassy_executor::task]
