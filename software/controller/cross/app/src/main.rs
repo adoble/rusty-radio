@@ -22,7 +22,10 @@ use initialized_peripherals::InitilizedPeripherals;
 mod task;
 use task::{
     access_radio_stations::access_radio_stations,
-    sync::{ACCESS_WEB_SIGNAL, TEST_CHANNEL},
+    button_monitor::button_monitor,
+    play_music::play_music,
+    read_test_music::read_test_music,
+    sync::{CODEC_DRIVER, TEST_CHANNEL},
 };
 
 // External crates
@@ -82,8 +85,8 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 >;
 
 // We need to share the VS1053 driver between tasks so put it in a static mutex
-type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
-static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
+// type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
+// static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // Signal that the web should be accessed
 //static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
@@ -93,7 +96,7 @@ static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // Channel to stream internet radio content to the mp3 codec
 //const MUSIC_CHANNEL_LENGTH: usize = 130_000;
-static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
+//static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
 
 // Some mp3 music for testing
 //static TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
@@ -101,8 +104,6 @@ static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::ne
 // Wifi secrets stored as environment varaibles
 const SSID: &str = env!("WLAN-SSID");
 const PASSWORD: &str = env!("WLAN-PASSWORD");
-
-const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -190,31 +191,31 @@ async fn main(spawner: Spawner) {
     #[allow(deprecated)]
     spawner.spawn(notification_task()).ok();
 
-    spawner.spawn(read_music()).ok();
+    spawner.spawn(read_test_music()).ok();
     spawner.spawn(play_music()).ok();
 
     // Test
     //spawner.spawn(pulse_spi(vs1053_driver)).ok();
 }
 
-#[embassy_executor::task]
-async fn button_monitor(mut pin: Input<'static>) {
-    loop {
-        pin.wait_for_falling_edge().await;
+// #[embassy_executor::task]
+// async fn button_monitor(mut pin: Input<'static>) {
+//     loop {
+//         pin.wait_for_falling_edge().await;
 
-        // Debounce
-        // TODO see also https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/debounce.rs
-        Timer::after(Duration::from_millis(DEBOUNCE_DURATION)).await;
+//         // Debounce
+//         // TODO see also https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/debounce.rs
+//         Timer::after(Duration::from_millis(DEBOUNCE_DURATION)).await;
 
-        if pin.is_low() {
-            // Pin is still low so acknowledge
-            esp_println::println!("Button pressed after debounce!");
+//         if pin.is_low() {
+//             // Pin is still low so acknowledge
+//             esp_println::println!("Button pressed after debounce!");
 
-            // Now access the web by sending a signal
-            ACCESS_WEB_SIGNAL.signal(true)
-        }
-    }
-}
+//             // Now access the web by sending a signal
+//             ACCESS_WEB_SIGNAL.signal(true)
+//         }
+//     }
+// }
 
 const BUFFER_SIZE: usize = 2560;
 
@@ -298,43 +299,43 @@ const BUFFER_SIZE: usize = 2560;
 //     }
 // }
 
-#[embassy_executor::task]
-async fn read_music() {
-    // Some mp3 music for testing
-    let test_music: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
-    let mut music_iter = test_music.iter().cycle();
+// #[embassy_executor::task]
+// async fn read_test_music() {
+//     // Some mp3 music for testing
+//     let test_music: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
+//     let mut music_iter = test_music.iter().cycle();
 
-    loop {
-        if let Some(music_byte) = music_iter.next() {
-            MUSIC_CHANNEL.send(*music_byte).await;
-        }
-    }
-}
+//     loop {
+//         if let Some(music_byte) = music_iter.next() {
+//             MUSIC_CHANNEL.send(*music_byte).await;
+//         }
+//     }
+// }
 
-#[embassy_executor::task]
-async fn play_music() {
-    let mut buffer: [u8; 32] = [0; 32];
-    loop {
-        for i in 0..32 {
-            let b = MUSIC_CHANNEL.receive().await;
-            buffer[i] = b;
-        }
+// #[embassy_executor::task]
+// async fn play_music() {
+//     let mut buffer: [u8; 32] = [0; 32];
+//     loop {
+//         for i in 0..32 {
+//             let b = MUSIC_CHANNEL.receive().await;
+//             buffer[i] = b;
+//         }
 
-        {
-            let mut driver_unlocked = CODEC_DRIVER.lock().await;
-            if let Some(driver) = driver_unlocked.as_mut() {
-                let r = driver.play_data(&buffer).await;
-                match r {
-                    Ok(_) => continue,
-                    Err(err) => {
-                        esp_println::println!("Error {:?} in play music", err);
-                        break;
-                    }
-                };
-            }
-        }
-    }
-}
+//         {
+//             let mut driver_unlocked = CODEC_DRIVER.lock().await;
+//             if let Some(driver) = driver_unlocked.as_mut() {
+//                 let r = driver.play_data(&buffer).await;
+//                 match r {
+//                     Ok(_) => continue,
+//                     Err(err) => {
+//                         esp_println::println!("Error {:?} in play music", err);
+//                         break;
+//                     }
+//                 };
+//             }
+//         }
+//     }
+// }
 
 #[embassy_executor::task]
 async fn process_channel() {
