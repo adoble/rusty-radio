@@ -26,7 +26,8 @@ use task::{
     display_web_content::display_web_content,
     play_music::play_music,
     read_test_music::read_test_music,
-    sync::{CODEC_DRIVER, TEST_CHANNEL},
+    sync::CODEC_DRIVER,
+    wifi_tasks::{run_network_stack, wifi_connect},
 };
 
 // External crates
@@ -102,9 +103,9 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 // Some mp3 music for testing
 //static TEST_MUSIC: &[u8; 55302] = include_bytes!("../../../resources/music-16b-2c-8000hz.mp3");
 
-// Wifi secrets stored as environment varaibles
-const SSID: &str = env!("WLAN-SSID");
-const PASSWORD: &str = env!("WLAN-PASSWORD");
+// // Wifi secrets stored as environment varaibles
+// const SSID: &str = env!("WLAN-SSID");
+// const PASSWORD: &str = env!("WLAN-PASSWORD");
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -357,48 +358,48 @@ async fn notification_task() {
     }
 }
 
-#[embassy_executor::task]
-async fn wifi_connect(mut controller: WifiController<'static>) {
-    esp_println::println!("Wait to get wifi connected");
+// #[embassy_executor::task]
+// async fn wifi_connect(mut controller: WifiController<'static>) {
+//     esp_println::println!("Wait to get wifi connected");
 
-    loop {
-        if !matches!(controller.is_started(), Ok(true)) {
-            let mut auth_method = AuthMethod::WPA2Personal;
-            #[allow(clippy::const_is_empty)]
-            if PASSWORD.is_empty() {
-                auth_method = AuthMethod::None;
-            }
+//     loop {
+//         if !matches!(controller.is_started(), Ok(true)) {
+//             let mut auth_method = AuthMethod::WPA2Personal;
+//             #[allow(clippy::const_is_empty)]
+//             if PASSWORD.is_empty() {
+//                 auth_method = AuthMethod::None;
+//             }
 
-            let wifi_config = Configuration::Client(ClientConfiguration {
-                ssid: SSID.try_into().unwrap(),
-                password: PASSWORD.try_into().unwrap(),
-                auth_method, // TODO: Is AuthMethod::WPA2Personal the default?
-                ..Default::default()
-            });
-            let res = controller.set_configuration(&wifi_config);
-            esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
+//             let wifi_config = Configuration::Client(ClientConfiguration {
+//                 ssid: SSID.try_into().unwrap(),
+//                 password: PASSWORD.try_into().unwrap(),
+//                 auth_method, // TODO: Is AuthMethod::WPA2Personal the default?
+//                 ..Default::default()
+//             });
+//             let res = controller.set_configuration(&wifi_config);
+//             esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
-            esp_println::println!("Starting wifi");
-            controller.start_async().await.unwrap();
-            esp_println::println!("Wifi started!");
-        }
+//             esp_println::println!("Starting wifi");
+//             controller.start_async().await.unwrap();
+//             esp_println::println!("Wifi started!");
+//         }
 
-        match controller.connect_async().await {
-            Ok(_) => esp_println::println!("Wifi connected!"),
-            Err(e) => {
-                esp_println::println!("Failed to connect to wifi: {e:?}");
-                Timer::after(Duration::from_millis(5000)).await
-            }
-        }
-    }
-}
+//         match controller.connect_async().await {
+//             Ok(_) => esp_println::println!("Wifi connected!"),
+//             Err(e) => {
+//                 esp_println::println!("Failed to connect to wifi: {e:?}");
+//                 Timer::after(Duration::from_millis(5000)).await
+//             }
+//         }
+//     }
+// }
 
-// Run the network stack.
-// This must be called in a background task, to process network events.
-#[embassy_executor::task]
-async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>) {
-    runner.run().await
-}
+// // Run the network stack.
+// // This must be called in a background task, to process network events.
+// #[embassy_executor::task]
+// async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>) {
+//     runner.run().await
+// }
 
 async fn print_registers() {
     let mut driver_unlocked = CODEC_DRIVER.lock().await;
