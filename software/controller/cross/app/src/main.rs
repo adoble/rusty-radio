@@ -12,20 +12,23 @@
 // See this about having functions to setup the peripherals and avoid the borrow problem:
 // https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/2
 
+// See rust-projects/edge-http-embassy-esp for how to access a web page using DNS.
+
 mod async_delay;
 mod constants;
 use constants::NUMBER_SOCKETS_STACK_RESOURCES;
 
-mod initialized_peripherals;
-use initialized_peripherals::InitilizedPeripherals;
+mod hardware;
+use hardware::Hardware;
 
 mod task;
 use task::{
-    access_radio_stations::access_radio_stations,
+    //access_radio_stations::access_radio_stations,
     button_monitor::button_monitor,
-    display_web_content::display_web_content,
+    //display_web_content::display_web_content,
     play_music::play_music,
     read_test_music::read_test_music,
+    stream::stream,
     sync::CODEC_DRIVER,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
@@ -75,9 +78,12 @@ async fn main(spawner: Spawner) {
 
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
+    // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
+    //esp_alloc::heap_allocator!(92 * 1024);
+    // esp_alloc::heap_allocator!(74 * 1024);
+
     // Initialise gpio ,spi and wifi peripherals
-    let init_peripherals =
-        InitilizedPeripherals::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+    let init_peripherals = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 
@@ -129,18 +135,22 @@ async fn main(spawner: Spawner) {
     spawner
         .spawn(wifi_connect(init_peripherals.wifi_controller))
         .ok();
+
+    esp_println::println!("wifi_connect should have been spawned");
+
     spawner
         .spawn(run_network_stack(init_peripherals.runner))
         .ok();
     spawner
         .spawn(button_monitor(init_peripherals.button_pin))
         .ok();
-    spawner
-        .spawn(access_radio_stations(init_peripherals.sta_stack))
-        .ok();
-    spawner.spawn(display_web_content()).ok();
+    // spawner
+    //     .spawn(access_radio_stations(init_peripherals.sta_stack))
+    // .ok();
+    //spawner.spawn(display_web_content()).ok();
 
-    spawner.spawn(read_test_music()).ok();
+    //spawner.spawn(read_test_music()).ok();
+    spawner.spawn(stream(init_peripherals.sta_stack)).ok();
     spawner.spawn(play_music()).ok();
 
     #[allow(deprecated)]
@@ -151,8 +161,8 @@ async fn main(spawner: Spawner) {
 #[embassy_executor::task]
 async fn notification_task() {
     loop {
-        esp_println::println!("Press button to access web page!");
         Timer::after(Duration::from_millis(3_000)).await;
+        esp_println::println!("Press button to access web!");
     }
 }
 

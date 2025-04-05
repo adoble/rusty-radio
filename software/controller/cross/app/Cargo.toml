@@ -7,7 +7,10 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 embassy-executor = { version = "0.7.0", features = [
-    "task-arena-size-24576",
+    #"task-arena-size-24576",
+     "task-arena-size-49152",
+    #"task-arena-size-65536",
+    #"task-arena-size-81920",
     "arch-riscv32",
 ] }
 embassy-time = "0.4.0"
@@ -51,7 +54,8 @@ embassy-embedded-hal = "0.3.0"
 
 
 # Using older version.See https://github.com/drogue-iot/reqwless/issues/93
-#reqwless = "0.12.1"
+# After the update of embassy-hal to 0.23.1 can compile with the latest version 
+# reqwless = "0.12.1"
 reqwless = "0.13.0"
 
 embedded-nal-async = "0.8.0"
@@ -60,6 +64,9 @@ embedded-io-async  = "0.6.1"
 
 vs1053-driver = { path = "../../vs1053-driver" }
 embedded-hal  = "1.0.0"
+arrayvec = {version="0.7.6", default-features = false}
+
+ 
 
 [dev-dependencies]
 embedded-hal-mock = { version = "0.11.1", features = [

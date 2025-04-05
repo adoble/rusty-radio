@@ -1,6 +1,6 @@
 // Wifi secrets stored as environment varaibles
-const SSID: &str = env!("WLAN-SSID");
-const PASSWORD: &str = env!("WLAN-PASSWORD");
+const SSID: &str = env!("WLAN_SSID");
+const PASSWORD: &str = env!("WLAN_PASSWORD");
 
 use esp_wifi::wifi::{
     AuthMethod, ClientConfiguration, Configuration, WifiController, WifiDevice, WifiStaDevice,
