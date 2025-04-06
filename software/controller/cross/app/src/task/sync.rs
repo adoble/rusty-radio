@@ -14,6 +14,7 @@ pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = si
 pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
 // Channel to stream internet radio content to the mp3 codec
+// TODO adjust to type [u8;32] and adjust N accordinaly
 pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
 
 // We need to share the VS1053 driver between tasks so put it in a static mutex

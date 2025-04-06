@@ -28,7 +28,8 @@ use task::{
     //display_web_content::display_web_content,
     play_music::play_music,
     read_test_music::read_test_music,
-    stream::stream,
+    //stream::stream,
+    stream2::stream2,
     sync::CODEC_DRIVER,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
@@ -149,8 +150,9 @@ async fn main(spawner: Spawner) {
     // .ok();
     //spawner.spawn(display_web_content()).ok();
 
+    //spawner.spawn(stream(init_peripherals.sta_stack)).ok();
+    spawner.spawn(stream2(init_peripherals.sta_stack)).ok();
     //spawner.spawn(read_test_music()).ok();
-    spawner.spawn(stream(init_peripherals.sta_stack)).ok();
     spawner.spawn(play_music()).ok();
 
     #[allow(deprecated)]
