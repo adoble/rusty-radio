@@ -10,7 +10,7 @@ use embassy_net::{
 };
 use embassy_time::{Duration, Timer};
 
-use embedded_io_async::Write;
+use embedded_io_async::{Read, Write};
 
 use core::net::Ipv4Addr;
 
@@ -118,6 +118,7 @@ pub async fn stream(stack: Stack<'static>) {
     socket.connect(remote_endpoint).await.unwrap();
 
     // Now read the page
+    // TODO replace this with http-buider crate
     let mut request: String<128> = String::new();
     request.push_str("GET ").expect("ERROR: HTTP request build");
     request.push_str(path).expect("ERROR: Path too long");
@@ -147,36 +148,75 @@ pub async fn stream(stack: Stack<'static>) {
     let mut read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
                                      //let mut string_buffer: String<32> = String::new();
 
-    // let mut header_buffer = [0u8; 1];
+    // Skip HTTP headers
+    let mut header_buffer = [0u8; 2048];
+    let mut header_pos = 0;
+    let mut found_end = false;
 
-    // TODO look into using the crate http-parser to parse the headers
-    // // Read the headers
+    // Read until we find the end of headers (\r\n\r\n)
+    while header_pos < header_buffer.len() && !found_end {
+        match socket
+            .read(&mut header_buffer[header_pos..header_pos + 1])
+            .await
+        {
+            Ok(0) => {
+                esp_println::println!("Connection closed while reading headers");
+                break;
+            }
+            Ok(n) => {
+                esp_println::println!("DEBUG:: Read {} bytes", n);
+                header_pos += n;
+
+                // Check for end of headers
+                if header_pos >= 4
+                    && header_buffer[header_pos - 4] == b'\r'
+                    && header_buffer[header_pos - 3] == b'\n'
+                    && header_buffer[header_pos - 2] == b'\r'
+                    && header_buffer[header_pos - 1] == b'\n'
+                {
+                    found_end = true;
+                }
+            }
+            Err(e) => {
+                esp_println::println!("Error reading headers: {:?}", e);
+                break;
+            }
+        }
+    }
+
+    if !found_end {
+        esp_println::println!("Failed to find end of headers");
+        Timer::after_secs(5).await;
+        return;
+    }
+
     // loop {
-    //     match socket.read(&mut header_buffer).await {
-    //         Ok(0) => esp_println::println!("ERROR: No data"),
-    //         Ok(n) => {}
-    //         Err(_) => todo!(),
+    //     match socket.read_exact(&mut read_buffer).await {
+    //         Ok(n) if n > 0 => {
+    //             for i in 0..n {
+    //                 MUSIC_CHANNEL.send(read_buffer[i]).await;
+    //             }
+    //             continue;
+    //         }
+    //         Ok(_) => {
+    //             esp_println::println!("ERROR: Connection closed");
+
+    //             break;
+    //         }
+
+    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
     //     }
     // }
 
     loop {
-        match socket.read(&mut read_buffer).await {
-            Ok(0) => {
-                esp_println::println!("ERROR: EOF of stream");
-
-                break;
-            }
-            Ok(n) => {
-                esp_println::println!("DEBUG: Bytes read = {n}");
-                // let s = core::str::from_utf8(&(read_buffer[0..n])).expect("Cannot convert string");
-                // string_buffer.clear();
-                // string_buffer.push_str(s).expect("ERROR: String too long");
-                // esp_println::print!("{}", string_buffer);
-                for i in 0..n {
+        match socket.read_exact(&mut read_buffer).await {
+            Ok(_) => {
+                for i in 0..read_buffer.len() {
                     MUSIC_CHANNEL.send(read_buffer[i]).await;
                 }
                 continue;
             }
+
             Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
         }
     }
