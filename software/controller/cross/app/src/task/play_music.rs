@@ -4,6 +4,7 @@ use crate::task::sync::{CODEC_DRIVER, MUSIC_CHANNEL};
 pub async fn play_music() {
     esp_println::println!("DEBUG: Task play_music started");
     let mut buffer: [u8; 32] = [0; 32];
+
     loop {
         for i in 0..32 {
             let b = MUSIC_CHANNEL.receive().await;

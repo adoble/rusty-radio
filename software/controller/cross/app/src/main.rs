@@ -25,12 +25,12 @@ mod task;
 use task::{
     //access_radio_stations::access_radio_stations,
     button_monitor::button_monitor,
-    //display_web_content::display_web_content,
     play_music::play_music,
     read_test_music::read_test_music,
-    //stream::stream,
-    stream2::stream2,
+    stream::stream,
+    //stream2::stream2,
     sync::CODEC_DRIVER,
+    system_monitor::system_monitor,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
@@ -150,10 +150,12 @@ async fn main(spawner: Spawner) {
     // .ok();
     //spawner.spawn(display_web_content()).ok();
 
-    //spawner.spawn(stream(init_peripherals.sta_stack)).ok();
-    spawner.spawn(stream2(init_peripherals.sta_stack)).ok();
+    spawner.spawn(stream(init_peripherals.sta_stack)).ok();
+    //spawner.spawn(stream2(init_peripherals.sta_stack)).ok();
     //spawner.spawn(read_test_music()).ok();
     spawner.spawn(play_music()).ok();
+
+    // spawner.spawn(system_monitor()).ok();
 
     #[allow(deprecated)]
     spawner.spawn(notification_task()).ok();
