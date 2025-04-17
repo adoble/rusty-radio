@@ -28,7 +28,11 @@ use crate::task::sync::ACCESS_WEB_SIGNAL;
 
 use http_builder::{Method, Request};
 
-const BUFFER_SIZE: usize = 32;
+//const BUFFER_SIZE: usize = 32;
+// Suggestion from CoPilot to make this bigger
+// This has significantly improved the performance of the radio stream
+//const BUFFER_SIZE: usize = 1024;
+const BUFFER_SIZE: usize = 2048;
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
@@ -131,8 +135,8 @@ pub async fn stream(stack: Stack<'static>) {
 
     esp_println::println!("DEBUG: Starting to read");
 
-    let mut read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-                                     //let mut string_buffer: String<32> = String::new();
+    // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
+    let mut body_read_buffer = [0u8; 2048]; // Small buffer that matches to other buffers
 
     // Skip HTTP headers
     let mut header_buffer = [0u8; 2048];
@@ -179,10 +183,10 @@ pub async fn stream(stack: Stack<'static>) {
     }
 
     loop {
-        match socket.read_exact(&mut read_buffer).await {
+        match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
-                for i in 0..read_buffer.len() {
-                    MUSIC_CHANNEL.send(read_buffer[i]).await;
+                for i in 0..body_read_buffer.len() {
+                    MUSIC_CHANNEL.send(body_read_buffer[i]).await;
                 }
                 continue;
             }
