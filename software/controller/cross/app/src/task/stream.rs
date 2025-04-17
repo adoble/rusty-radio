@@ -26,6 +26,8 @@ use crate::task::sync::MUSIC_CHANNEL;
 //use super::sync::ACCESS_WEB_SIGNAL;
 use crate::task::sync::ACCESS_WEB_SIGNAL;
 
+use http_builder::{Method, Request};
+
 const BUFFER_SIZE: usize = 32;
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
@@ -103,39 +105,23 @@ pub async fn stream(stack: Stack<'static>) {
             (Ipv4Addr::from(octets), port)
         }
     };
-    //let remote_ip_addr = dns.get_host_by_name(host, AddrType::Either).await.unwrap();
 
     esp_println::println!("DEBUG: IPS = {:?} , Port = {} ", remote_ip_addr, port);
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
     socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
 
-    // let ip_address = IpAddress::from(remote_ip_addr);
-
-    // let endpoint = IpEndpoint::from(remote_ip_addr);
-    // let endpoint = IpEndpoint::from(remote_ip_addr);
-    //let remote_endpoint = (Ipv4Addr::new(142, 250, 185, 115), 80);
     socket.connect(remote_endpoint).await.unwrap();
 
     // Now read the page
-    // TODO replace this with http-buider crate
-    let mut request: String<128> = String::new();
-    request.push_str("GET ").expect("ERROR: HTTP request build");
-    request.push_str(path).expect("ERROR: Path too long");
-    request
-        .push_str(" / HTTP/1.1\r\nHost: ")
-        .expect("ERROR:HTTP preamble build error");
-    request
-        .push_str(host)
-        .expect("ERROR:Cannot add host name to http request");
-    request
-        .push_str("\r\n\r\n")
-        .expect("ERROR: Cannot add HTTP request postamble");
+    let mut request = Request::new(Method::GET, path).unwrap();
+    request.host(host).unwrap();
+    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
 
-    esp_println::println!("DEBUG: HTTP Request:\n{}", request);
+    esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
 
     socket
-        .write_all(request.as_bytes())
+        .write_all(request.to_string().as_bytes())
         .await
         .expect("ERROR: Could not write request");
     socket
@@ -164,7 +150,7 @@ pub async fn stream(stack: Stack<'static>) {
                 break;
             }
             Ok(n) => {
-                esp_println::println!("DEBUG:: Read {} bytes", n);
+                //esp_println::println!("DEBUG:: Read {} bytes", n);
                 header_pos += n;
 
                 // Check for end of headers
@@ -185,28 +171,12 @@ pub async fn stream(stack: Stack<'static>) {
     }
 
     if !found_end {
-        esp_println::println!("Failed to find end of headers");
+        esp_println::println!("ERROR: Failed to find end of headers");
         Timer::after_secs(5).await;
         return;
+    } else {
+        esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
-
-    // loop {
-    //     match socket.read_exact(&mut read_buffer).await {
-    //         Ok(n) if n > 0 => {
-    //             for i in 0..n {
-    //                 MUSIC_CHANNEL.send(read_buffer[i]).await;
-    //             }
-    //             continue;
-    //         }
-    //         Ok(_) => {
-    //             esp_println::println!("ERROR: Connection closed");
-
-    //             break;
-    //         }
-
-    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
-    //     }
-    // }
 
     loop {
         match socket.read_exact(&mut read_buffer).await {
