@@ -19,7 +19,7 @@ use nourl::Url;
 
 use esp_alloc::HeapStats;
 
-use crate::constants::NUMBER_SOCKETS_TCP_CLIENT_STATE;
+use crate::{constants::NUMBER_SOCKETS_TCP_CLIENT_STATE, task::sync::START_PLAYING};
 
 use crate::task::sync::MUSIC_CHANNEL;
 
@@ -187,6 +187,12 @@ pub async fn stream(stack: Stack<'static>) {
             Ok(_) => {
                 for i in 0..body_read_buffer.len() {
                     MUSIC_CHANNEL.send(body_read_buffer[i]).await;
+
+                    // Fill up the channel before playing the music
+                    if MUSIC_CHANNEL.free_capacity() < 32_500 {
+                        // 25% of 130000 => channel is filled to 75%
+                        START_PLAYING.signal(true);
+                    }
                 }
                 continue;
             }

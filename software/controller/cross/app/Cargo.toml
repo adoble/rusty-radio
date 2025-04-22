@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 embassy-executor = { version = "0.7.0", features = [
     #"task-arena-size-24576",
-     "task-arena-size-49152",
+    "task-arena-size-49152",
     #"task-arena-size-65536",
     #"task-arena-size-81920",
     "arch-riscv32",

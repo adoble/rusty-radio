@@ -18,7 +18,7 @@ pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channe
 pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
 
 // Signals that the music can start playing
-//pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
+pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
 // We need to share the VS1053 driver between tasks so put it in a static mutex
 type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
