@@ -16,7 +16,13 @@ pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channe
 // Channel to stream internet radio content to the mp3 codec
 // TODO adjust to type [u8;32] and adjust N accordingly
 //pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
-pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 4096> = Channel::new();
+pub const MUSIC_CHANNEL_MESSAGE_LEN: usize = 64; // Previously 32;
+pub const MUSIC_CHANNEL_CAPACITY: usize = 2048;
+pub static MUSIC_CHANNEL: Channel<
+    CriticalSectionRawMutex,
+    [u8; MUSIC_CHANNEL_MESSAGE_LEN],
+    MUSIC_CHANNEL_CAPACITY,
+> = Channel::new();
 
 // Signals that the music can start playing
 pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();

@@ -19,7 +19,10 @@ use nourl::Url;
 
 use esp_alloc::HeapStats;
 
-use crate::{constants::NUMBER_SOCKETS_TCP_CLIENT_STATE, task::sync::START_PLAYING};
+use crate::{
+    constants::NUMBER_SOCKETS_TCP_CLIENT_STATE,
+    task::sync::{MUSIC_CHANNEL_CAPACITY, MUSIC_CHANNEL_MESSAGE_LEN, START_PLAYING},
+};
 
 use crate::task::sync::MUSIC_CHANNEL;
 
@@ -136,7 +139,7 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG: Starting to read");
 
     // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-    let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to music channel message size
+    let mut body_read_buffer = [0u8; MUSIC_CHANNEL_MESSAGE_LEN]; // Small buffer that matches to music channel message size
 
     // Skip HTTP headers
     let mut header_buffer = [0u8; 2048];
@@ -182,17 +185,32 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
+    // Fill up the channel to 75% of its capacity before starting to play
+    let initial_fill_size = 3 * MUSIC_CHANNEL_CAPACITY / 4;
+    let mut filled: usize = 0;
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
                 MUSIC_CHANNEL.send(body_read_buffer).await;
+                filled += 1;
 
-                // Fill up the channel before playing the music
-                if MUSIC_CHANNEL.free_capacity() < 1024 {
-                    // 25% of 4096 => channel is filled to 75%
+                // Fill up the channel to 75% of its capacity before starting to play
+                if filled > initial_fill_size {
                     START_PLAYING.signal(true);
+                    break;
                 }
                 continue;
+            }
+
+            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+        }
+    }
+
+    // Now just keep reading the stream and sending it to the channel
+    loop {
+        match socket.read_exact(&mut body_read_buffer).await {
+            Ok(_) => {
+                MUSIC_CHANNEL.send(body_read_buffer).await;
             }
 
             Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
