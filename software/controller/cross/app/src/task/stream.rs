@@ -136,7 +136,7 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG: Starting to read");
 
     // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-    let mut body_read_buffer = [0u8; 2048]; // Small buffer that matches to other buffers
+    let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to music channel message size
 
     // Skip HTTP headers
     let mut header_buffer = [0u8; 2048];
@@ -185,14 +185,12 @@ pub async fn stream(stack: Stack<'static>) {
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
-                for i in 0..body_read_buffer.len() {
-                    MUSIC_CHANNEL.send(body_read_buffer[i]).await;
+                MUSIC_CHANNEL.send(body_read_buffer).await;
 
-                    // Fill up the channel before playing the music
-                    if MUSIC_CHANNEL.free_capacity() < 32_500 {
-                        // 25% of 130000 => channel is filled to 75%
-                        START_PLAYING.signal(true);
-                    }
+                // Fill up the channel before playing the music
+                if MUSIC_CHANNEL.free_capacity() < 1024 {
+                    // 25% of 4096 => channel is filled to 75%
+                    START_PLAYING.signal(true);
                 }
                 continue;
             }

@@ -14,8 +14,9 @@ pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = si
 pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
 // Channel to stream internet radio content to the mp3 codec
-// TODO adjust to type [u8;32] and adjust N accordinaly
-pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
+// TODO adjust to type [u8;32] and adjust N accordingly
+//pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, u8, 130000> = Channel::new();
+pub static MUSIC_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 4096> = Channel::new();
 
 // Signals that the music can start playing
 pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();

@@ -26,7 +26,7 @@ use task::{
     //access_radio_stations::access_radio_stations,
     button_monitor::button_monitor,
     play_music::play_music,
-    read_test_music::read_test_music,
+    //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
