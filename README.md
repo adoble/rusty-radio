@@ -1,6 +1,6 @@
 # Rusty Radio
 
-An internet radio written in Rust. 
+An embedded internet radio written in Rust. 
 
  [!WARNING]
  Under construction
