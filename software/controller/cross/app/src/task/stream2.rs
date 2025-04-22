@@ -13,16 +13,17 @@ use embassy_time::{Duration, Timer};
 
 use embedded_io_async::Read;
 
-use reqwless::request::Method;
+use reqwless::request::{Method, RequestBody};
 use reqwless::{client::HttpClient, request::RequestBuilder};
 
 use crate::constants::NUMBER_SOCKETS_TCP_CLIENT_STATE;
 
 use crate::task::sync::MUSIC_CHANNEL;
 
-use super::sync::{ACCESS_WEB_SIGNAL, START_PLAYING};
+use super::sync::ACCESS_WEB_SIGNAL;
 
-const BUFFER_SIZE: usize = 32;
+// It is important to use a buffer size that is big enough.
+const BUFFER_SIZE: usize = 2048;
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
@@ -72,66 +73,72 @@ pub async fn stream2(stack: Stack<'static>) {
     esp_println::println!("DEBUG: Stack link is up!");
 
     let dns = DnsSocket::new(stack);
-    let client_state =
-        TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
+    let client_state = TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, 512, BUFFER_SIZE>::new();
+    //TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
     let tcp_client = TcpClient::new(stack, &client_state);
 
     let mut http_client = HttpClient::new(&tcp_client, &dns);
 
-    let mut request = http_client
-        .request(Method::GET, STATION_URL)
+    let request = http_client.request(Method::GET, STATION_URL);
+
+    let mut client = HttpClient::new(&tcp_client, &dns); // Types implementing embedded-nal-async
+    let mut rx_buf = [0; 4096];
+    let headers: [(&str, &str); 1] = [("User-Agent", "Rusty-Radio/0.5")];
+    let response = client
+        .request(Method::POST, &STATION_URL)
         .await
-        .expect("ERROR: Unable to build HTTP request")
-        .headers(&[
-            //("Connection", "keep-alive"),
-            ("User-Agent", "Rusty-Radio/0.5"),
-        ]);
+        .unwrap()
+        .content_type(reqwless::headers::ContentType::TextPlain)
+        .headers(&[("User-Agent", "Rusty-Radio/0.5")])
+        .send(&mut rx_buf)
+        .await;
 
-    let response = request
-        .send(&mut headers_buf)
-        .await
-        .expect("ERROR: Unable to send HTTP request");
-
-    // Find headers
-    for header in response.headers() {
-        if header.0.len() > 0 {
-            esp_println::println!(
-                "Header: {} = {:?}",
-                header.0,
-                core::str::from_utf8(header.1).unwrap()
-            );
-        }
-    }
-
-    // REDIRECTS go here
-
-    let mut reader = response.body().reader();
-
-    // let mut read_buffer = [0u8; 32];
-    let mut read_buffer = [0u8; 10000];
-
-    START_PLAYING.signal(true);
-
-    loop {
-        match reader.read(&mut read_buffer).await {
-            Ok(0) => {
-                esp_println::println!("ERROR: EOF of stream");
-
-                break;
-            }
-            Ok(n) => {
-                for i in 0..n {
-                    MUSIC_CHANNEL.send(read_buffer[i]).await;
+    match response {
+        Ok(response) => {
+            // Find headers
+            for header in response.headers() {
+                if header.0.len() > 0 {
+                    esp_println::println!(
+                        "Header: {} = {:?}",
+                        header.0,
+                        core::str::from_utf8(header.1).unwrap()
+                    );
                 }
-
-                // Wait until the channel is nearly full before playing
-                // if MUSIC_CHANNEL.free_capacity() < 100_000 {
-                //     START_PLAYING.signal(true);
-                // }
-                continue;
             }
-            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+
+            // REDIRECTS go here
+
+            let mut reader = response.body().reader();
+
+            // let mut read_buffer = [0u8; 32];
+            let mut read_buffer = [0u8; 10000];
+
+            loop {
+                match reader.read(&mut read_buffer).await {
+                    Ok(0) => {
+                        esp_println::println!("ERROR: EOF of stream");
+
+                        break;
+                    }
+                    Ok(n) => {
+                        for i in 0..n {
+                            MUSIC_CHANNEL.send(read_buffer[i]).await;
+                        }
+
+                        // Wait until the channel is nearly full before playing
+                        // if MUSIC_CHANNEL.free_capacity() < 100_000 {
+                        //     START_PLAYING.signal(true);
+                        // }
+                        //continue;
+                    }
+                    Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+                }
+                // }
+            }
         }
-        // }
+        Err(err) => {
+            esp_println::println!("ERROR: Cannot send request [{:?}]", err);
+            return;
+        }
     }
 }
