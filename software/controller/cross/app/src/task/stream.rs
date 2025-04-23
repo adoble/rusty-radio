@@ -1,26 +1,23 @@
 // Code taken from the project rust-projects/edge-hhtp-embassy-esp
 
 use embassy_net::{
-    dns::DnsSocket,
     tcp::{
-        client::{TcpClient, TcpClientState},
+        //client::TcpClient,
+        //client::TcpClientState,
         TcpSocket,
     },
     IpAddress, Stack,
 };
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::{Read, Write};
 
 use core::net::Ipv4Addr;
 
-use heapless::String;
 use nourl::Url;
 
-use esp_alloc::HeapStats;
-
 use crate::{
-    constants::NUMBER_SOCKETS_TCP_CLIENT_STATE,
+    //constants::NUMBER_SOCKETS_TCP_CLIENT_STATE,
     task::sync::{MUSIC_CHANNEL_CAPACITY, MUSIC_CHANNEL_MESSAGE_LEN, START_PLAYING},
 };
 
@@ -56,10 +53,6 @@ pub async fn stream(stack: Stack<'static>) {
 
     esp_println::println!("DEBUG: read web page task");
 
-    // Only used for debugging
-    // let stats: HeapStats = esp_alloc::HEAP.stats();
-    // esp_println::println!("{}", stats);
-
     loop {
         let start_access = ACCESS_WEB_SIGNAL.wait().await;
         if start_access {
@@ -90,9 +83,9 @@ pub async fn stream(stack: Stack<'static>) {
     }
     esp_println::println!("DEBUG: Stack link is up!");
 
-    let client_state =
-        TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
-    let tcp_client = TcpClient::new(stack, &client_state);
+    // let client_state =
+    //     TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
+    //let tcp_client = TcpClient::new(stack, &client_state);
     //let dns = DnsSocket::new(stack);
 
     let host = url.host();
@@ -185,8 +178,13 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
+    let start_time = Instant::now();
+
+    esp_println::println!("DEBUG: Start filling channel ...");
+
     // Fill up the channel to 75% of its capacity before starting to play
-    let initial_fill_size = 3 * MUSIC_CHANNEL_CAPACITY / 4;
+    //let initial_fill_size = 3 * MUSIC_CHANNEL_CAPACITY / 4;
+    let initial_fill_size = MUSIC_CHANNEL_CAPACITY; // 100%
     let mut filled: usize = 0;
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
@@ -195,7 +193,7 @@ pub async fn stream(stack: Stack<'static>) {
                 filled += 1;
 
                 // Fill up the channel to 75% of its capacity before starting to play
-                if filled > initial_fill_size {
+                if filled >= initial_fill_size {
                     START_PLAYING.signal(true);
                     break;
                 }
@@ -206,11 +204,29 @@ pub async fn stream(stack: Stack<'static>) {
         }
     }
 
+    let elapsed_time = start_time.elapsed().as_millis();
+    esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
+
+    // Now just keep reading the stream and sending it to the channel
+    // loop {
+    //     match socket.read_exact(&mut body_read_buffer).await {
+    //         Ok(_) => {
+    //             MUSIC_CHANNEL.send(body_read_buffer).await;
+    //         }
+
+    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+    //     }
+    // }
+
     // Now just keep reading the stream and sending it to the channel
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
-                MUSIC_CHANNEL.send(body_read_buffer).await;
+                MUSIC_CHANNEL
+                    .try_send(body_read_buffer)
+                    .unwrap_or_else(|_| {
+                        esp_println::println!("ERROR: MUSIC_CHANNEL is full, dropping data");
+                    });
             }
 
             Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),

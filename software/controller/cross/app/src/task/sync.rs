@@ -11,7 +11,7 @@ use crate::Vs1053DriverType;
 pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
 // Test channel
-pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
+//pub static TEST_CHANNEL: Channel<CriticalSectionRawMutex, [u8; 32], 64> = Channel::new();
 
 // Channel to stream internet radio content to the mp3 codec
 // TODO adjust to type [u8;32] and adjust N accordingly

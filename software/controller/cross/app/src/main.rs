@@ -30,7 +30,6 @@ use task::{
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
-    system_monitor::system_monitor,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
@@ -189,19 +188,5 @@ async fn print_registers() {
         esp_println::println!("audio_data : {:X}", registers.audio_data);
     } else {
         esp_println::println!("ERROR: Could not print registers");
-    }
-}
-
-/// Used for testing.
-#[deprecated(note = "Remove before release")]
-#[embassy_executor::task]
-async fn pulse_spi(mut driver: Vs1053DriverType<'static>) {
-    let left_vol = 0x11;
-    let right_vol = 0x22;
-
-    loop {
-        driver.set_volume(left_vol, right_vol).await.unwrap();
-
-        Timer::after(Duration::from_micros(300)).await;
     }
 }
