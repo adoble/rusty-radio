@@ -16,12 +16,9 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
-use crate::{
-    //constants::NUMBER_SOCKETS_TCP_CLIENT_STATE,
-    task::sync::{MUSIC_CHANNEL_CAPACITY, MUSIC_CHANNEL_MESSAGE_LEN, START_PLAYING},
-};
+use crate::task::sync::{MUSIC_PIPE, MUSIC_PIPE_LEN, START_PLAYING};
 
-use crate::task::sync::MUSIC_CHANNEL;
+// use crate::task::sync::MUSIC_CHANNEL;
 
 //use super::sync::ACCESS_WEB_SIGNAL;
 use crate::task::sync::ACCESS_WEB_SIGNAL;
@@ -33,6 +30,9 @@ use http_builder::{Method, Request};
 // This has significantly improved the performance of the radio stream
 //const BUFFER_SIZE: usize = 1024;
 const BUFFER_SIZE: usize = 2048;
+
+// const MUSIC_CHUNK_SIZE: usize = 32;
+const MUSIC_CHUNK_SIZE: usize = 2048;
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
@@ -132,7 +132,7 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG: Starting to read");
 
     // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-    let mut body_read_buffer = [0u8; MUSIC_CHANNEL_MESSAGE_LEN]; // Small buffer that matches to music channel message size
+    let mut body_read_buffer = [0u8; MUSIC_CHUNK_SIZE]; // Small buffer that matches to music channel message size
 
     // Skip HTTP headers
     let mut header_buffer = [0u8; 2048];
@@ -178,34 +178,35 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
-    let start_time = Instant::now();
+    // let start_time = Instant::now();
 
-    esp_println::println!("DEBUG: Start filling channel ...");
+    // esp_println::println!("DEBUG: Start filling channel ...");
 
-    // Fill up the channel to 75% of its capacity before starting to play
-    //let initial_fill_size = 3 * MUSIC_CHANNEL_CAPACITY / 4;
-    let initial_fill_size = MUSIC_CHANNEL_CAPACITY; // 100%
-    let mut filled: usize = 0;
-    loop {
-        match socket.read_exact(&mut body_read_buffer).await {
-            Ok(_) => {
-                MUSIC_CHANNEL.send(body_read_buffer).await;
-                filled += 1;
+    // // Fill up the channel to 75% of its capacity before starting to play
+    // let initial_fill_size = 3 * MUSIC_PIPE_LEN / 4;
+    // let mut filled: usize = 0;
+    // loop {
+    //     match socket.read_exact(&mut body_read_buffer).await {
+    //         Ok(_) => {
+    //             MUSIC_PIPE.write(&body_read_buffer).await;
+    //             filled += 1;
 
-                // Fill up the channel to 75% of its capacity before starting to play
-                if filled >= initial_fill_size {
-                    START_PLAYING.signal(true);
-                    break;
-                }
-                continue;
-            }
+    //             // Fill up the channel to 75% of its capacity before starting to play
+    //             if filled >= initial_fill_size {
+    //                 START_PLAYING.signal(true);
+    //                 break;
+    //             }
+    //             continue;
+    //         }
 
-            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
-        }
-    }
+    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+    //     }
+    // }
 
-    let elapsed_time = start_time.elapsed().as_millis();
-    esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
+    // let elapsed_time = start_time.elapsed().as_millis();
+    // esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
+
+    START_PLAYING.signal(true);
 
     // Now just keep reading the stream and sending it to the channel
     // loop {
@@ -222,11 +223,7 @@ pub async fn stream(stack: Stack<'static>) {
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
-                MUSIC_CHANNEL
-                    .try_send(body_read_buffer)
-                    .unwrap_or_else(|_| {
-                        esp_println::println!("ERROR: MUSIC_CHANNEL is full, dropping data");
-                    });
+                MUSIC_PIPE.write(&body_read_buffer).await;
             }
 
             Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
