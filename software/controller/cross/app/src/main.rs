@@ -29,7 +29,7 @@ use task::{
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
-    sync::CODEC_DRIVER,
+    sync::{ACCESS_WEB_SIGNAL, CODEC_DRIVER},
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
@@ -156,18 +156,18 @@ async fn main(spawner: Spawner) {
 
     // spawner.spawn(system_monitor()).ok();
 
-    #[allow(deprecated)]
-    spawner.spawn(notification_task()).ok();
+    // #[allow(deprecated)]
+    // spawner.spawn(notification_task()).ok();
 }
 
-#[deprecated(note = "Only used for development - Remove before release")]
-#[embassy_executor::task]
-async fn notification_task() {
-    loop {
-        Timer::after(Duration::from_millis(3_000)).await;
-        esp_println::println!("Press button to access web!");
-    }
-}
+// #[deprecated(note = "Only used for development - Remove before release")]
+// #[embassy_executor::task]
+// async fn notification_task() {
+//     loop {
+//         Timer::after(Duration::from_millis(3_000)).await;
+//         esp_println::println!("Press button to access web!");
+//     }
+// }
 
 async fn print_registers() {
     let mut driver_unlocked = CODEC_DRIVER.lock().await;
