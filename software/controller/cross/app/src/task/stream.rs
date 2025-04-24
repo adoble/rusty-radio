@@ -178,35 +178,30 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
-    // let start_time = Instant::now();
+    let start_time = Instant::now();
 
-    // esp_println::println!("DEBUG: Start filling channel ...");
+    esp_println::println!("DEBUG: Start filling channel ...");
 
-    // // Fill up the channel to 75% of its capacity before starting to play
-    // let initial_fill_size = 3 * MUSIC_PIPE_LEN / 4;
-    // let mut filled: usize = 0;
-    // loop {
-    //     match socket.read_exact(&mut body_read_buffer).await {
-    //         Ok(_) => {
-    //             MUSIC_PIPE.write(&body_read_buffer).await;
-    //             filled += 1;
+    // Fill up the pipe to 75% of its capacity before starting to play
+    let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+    loop {
+        match socket.read_exact(&mut body_read_buffer).await {
+            Ok(_) => {
+                MUSIC_PIPE.write(&body_read_buffer).await;
 
-    //             // Fill up the channel to 75% of its capacity before starting to play
-    //             if filled >= initial_fill_size {
-    //                 START_PLAYING.signal(true);
-    //                 break;
-    //             }
-    //             continue;
-    //         }
+                if MUSIC_PIPE.len() >= initial_fill_len {
+                    START_PLAYING.signal(true);
+                    break;
+                }
+                continue;
+            }
 
-    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
-    //     }
-    // }
+            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+        }
+    }
 
-    // let elapsed_time = start_time.elapsed().as_millis();
-    // esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
-
-    START_PLAYING.signal(true);
+    let elapsed_time = start_time.elapsed().as_millis();
+    esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
 
     // Now just keep reading the stream and sending it to the channel
     // loop {
@@ -219,7 +214,7 @@ pub async fn stream(stack: Stack<'static>) {
     //     }
     // }
 
-    // Now just keep reading the stream and sending it to the channel
+    // Now just keep reading the stream and sending it to the pipe
     loop {
         match socket.read_exact(&mut body_read_buffer).await {
             Ok(_) => {
