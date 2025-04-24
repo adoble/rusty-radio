@@ -29,10 +29,12 @@ use http_builder::{Method, Request};
 // Suggestion from CoPilot to make this bigger
 // This has significantly improved the performance of the radio stream
 //const BUFFER_SIZE: usize = 1024;
-const BUFFER_SIZE: usize = 2048;
+//const BUFFER_SIZE: usize = 2048;
+const BUFFER_SIZE: usize = 8192;
 
 // const MUSIC_CHUNK_SIZE: usize = 32;
-const MUSIC_CHUNK_SIZE: usize = 2048;
+//const MUSIC_CHUNK_SIZE: usize = 2048;
+const MUSIC_CHUNK_SIZE: usize = 8192;
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
@@ -109,7 +111,13 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG: IPS = {:?} , Port = {} ", remote_ip_addr, port);
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
-    socket.set_timeout(Some(embassy_time::Duration::from_secs(10)));
+
+    // Timeout longer than keep alive (see https://docs.embassy.dev/embassy-net/git/default/tcp/struct.TcpSocket.html#method.set_keep_alive)
+    socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
+
+    // Optimisations
+    socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
+    //socket.set_nodelay(true); // Disable Nagle's algorithm
 
     socket.connect(remote_endpoint).await.unwrap();
 
@@ -184,44 +192,59 @@ pub async fn stream(stack: Stack<'static>) {
 
     // Fill up the pipe to 75% of its capacity before starting to play
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
-    loop {
-        match socket.read_exact(&mut body_read_buffer).await {
-            Ok(_) => {
-                MUSIC_PIPE.write(&body_read_buffer).await;
+
+    'initial_fill: loop {
+        match socket.read(&mut body_read_buffer).await {
+            Ok(0) => {
+                esp_println::println!("ERROR: Connection closed");
+                return;
+            }
+            Ok(n) => {
+                let write_start = Instant::now();
+                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
 
                 if MUSIC_PIPE.len() >= initial_fill_len {
                     START_PLAYING.signal(true);
-                    break;
+                    break 'initial_fill;
                 }
-                continue;
-            }
 
-            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+                let read_time = write_start.elapsed().as_micros();
+                if read_time > 1000 {
+                    esp_println::println!("Slow write: {}us", read_time);
+                }
+            }
+            Err(err) => {
+                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
+                Timer::after(Duration::from_millis(100)).await;
+            }
         }
     }
 
-    let elapsed_time = start_time.elapsed().as_millis();
-    esp_println::println!("DEBUG: Elapsed time to fill channel: {}", elapsed_time);
+    // Continue streaming with performance monitoring
+    let mut total_bytes = 0u32;
+    let mut last_stats = Instant::now();
 
-    // Now just keep reading the stream and sending it to the channel
-    // loop {
-    //     match socket.read_exact(&mut body_read_buffer).await {
-    //         Ok(_) => {
-    //             MUSIC_CHANNEL.send(body_read_buffer).await;
-    //         }
-
-    //         Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
-    //     }
-    // }
-
-    // Now just keep reading the stream and sending it to the pipe
     loop {
-        match socket.read_exact(&mut body_read_buffer).await {
-            Ok(_) => {
-                MUSIC_PIPE.write(&body_read_buffer).await;
+        match socket.read(&mut body_read_buffer).await {
+            Ok(0) => {
+                esp_println::println!("Connection closed");
+                break;
             }
+            Ok(n) => {
+                total_bytes += n as u32;
+                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
 
-            Err(err) => esp_println::println!("ERROR: Cannot read from socket [{:?}]", err),
+                // Print statistics every second
+                if last_stats.elapsed().as_millis() >= 1000 {
+                    esp_println::println!("Streaming at {:.2} KB/s", (total_bytes as f32) / 1024.0);
+                    total_bytes = 0;
+                    last_stats = Instant::now();
+                }
+            }
+            Err(err) => {
+                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
+                Timer::after(Duration::from_millis(100)).await;
+            }
         }
     }
 }
