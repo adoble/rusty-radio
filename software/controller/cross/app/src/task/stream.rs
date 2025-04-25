@@ -32,9 +32,10 @@ use http_builder::{Method, Request};
 //const BUFFER_SIZE: usize = 2048;
 const BUFFER_SIZE: usize = 8192;
 
-// const MUSIC_CHUNK_SIZE: usize = 32;
+//const MUSIC_CHUNK_SIZE: usize = 32;
 //const MUSIC_CHUNK_SIZE: usize = 2048;
 const MUSIC_CHUNK_SIZE: usize = 8192;
+//const MUSIC_CHUNK_SIZE: usize = 16384; // Did not work
 
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
@@ -73,6 +74,14 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG:: waiting for stack to be up...");
     stack.wait_config_up().await;
     esp_println::println!("DEBUG: Stack is up!");
+    let config = stack.config_v4().unwrap();
+
+    esp_println::println!(
+        "Network: IP: {}, DNS: {:?}, GATEWAY: {:?}",
+        config.address,
+        config.dns_servers,
+        config.gateway,
+    );
 
     let url = Url::parse(STATION_URL).unwrap();
 
@@ -231,19 +240,33 @@ pub async fn stream(stack: Stack<'static>) {
                 break;
             }
             Ok(n) => {
+                let read_start = Instant::now();
                 total_bytes += n as u32;
+
+                // Write immediately without trying to read more
+                let write_start = Instant::now();
                 MUSIC_PIPE.write(&body_read_buffer[..n]).await;
 
-                // Print statistics every second
+                // Add network statistics
                 if last_stats.elapsed().as_millis() >= 1000 {
-                    esp_println::println!("Streaming at {:.2} KB/s", (total_bytes as f32) / 1024.0);
+                    let pipe_usage =
+                        (MUSIC_PIPE.len() as f32 / MUSIC_PIPE.capacity() as f32) * 100.0;
+                    let read_time = read_start.elapsed().as_micros();
+                    esp_println::println!(
+                        "Stats: {:.2} KB/s, Pipe: {:.1}%, Read: {} bytes in {}us, Write: {}us",
+                        (total_bytes as f32) / 1024.0,
+                        pipe_usage,
+                        n,
+                        read_time,
+                        write_start.elapsed().as_micros()
+                    );
                     total_bytes = 0;
                     last_stats = Instant::now();
                 }
             }
             Err(err) => {
                 esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
-                Timer::after(Duration::from_millis(100)).await;
+                Timer::after(Duration::from_millis(10)).await;
             }
         }
     }
