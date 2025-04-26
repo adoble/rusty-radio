@@ -226,7 +226,7 @@ pub async fn stream(stack: Stack<'static>) {
 
                 // Write immediately without trying to read more
                 let write_start = Instant::now();
-                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
+                MUSIC_PIPE.write_all(&body_read_buffer[..n]).await;
 
                 if read_state == StreamingState::FILLING_PIPE
                     && MUSIC_PIPE.len() >= initial_fill_len
