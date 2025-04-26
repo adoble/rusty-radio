@@ -54,7 +54,7 @@ pub async fn stream(stack: Stack<'static>) {
     //let mut buf: [u8; 512] = [0; 512];
     //let mut buf: [u8; 32] = [0; 32];
 
-    esp_println::println!("DEBUG: read web page task");
+    esp_println::println!("DEBUG: stream task started");
 
     loop {
         let start_access = ACCESS_WEB_SIGNAL.wait().await;
@@ -197,50 +197,56 @@ pub async fn stream(stack: Stack<'static>) {
 
     let start_time = Instant::now();
 
-    esp_println::println!("DEBUG: Start filling channel ...");
+    // esp_println::println!("DEBUG: Start filling channel ...");
 
-    // Fill up the pipe to 75% of its capacity before starting to play
-    let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+    // // Fill up the pipe to 75% of its capacity before starting to play
+    // let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
-    'initial_fill: loop {
-        match socket.read(&mut body_read_buffer).await {
-            Ok(0) => {
-                esp_println::println!("ERROR: Connection closed");
-                return;
-            }
-            Ok(n) => {
-                let write_start = Instant::now();
-                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
+    // 'initial_fill: loop {
+    //     match socket.read(&mut body_read_buffer).await {
+    //         Ok(0) => {
+    //             esp_println::println!("ERROR: Connection closed");
+    //             return;
+    //         }
+    //         Ok(n) => {
+    //             let write_start = Instant::now();
+    //             MUSIC_PIPE.write(&body_read_buffer[..n]).await;
 
-                if MUSIC_PIPE.len() >= initial_fill_len {
-                    START_PLAYING.signal(true);
-                    break 'initial_fill;
-                }
+    //             if MUSIC_PIPE.len() >= initial_fill_len {
+    //                 START_PLAYING.signal(true);
+    //                 break 'initial_fill;
+    //             }
 
-                let read_time = write_start.elapsed().as_micros();
-                if read_time > 1000 {
-                    esp_println::println!("Slow write: {}us", read_time);
-                }
-            }
-            Err(err) => {
-                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
-                Timer::after(Duration::from_millis(100)).await;
-            }
-        }
-    }
+    //             let read_time = write_start.elapsed().as_micros();
+    //             if read_time > 1000 {
+    //                 esp_println::println!("Slow write: {}us", read_time);
+    //             }
+    //         }
+    //         Err(err) => {
+    //             esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
+    //             Timer::after(Duration::from_millis(100)).await;
+    //         }
+    //     }
+    // }
+
+    START_PLAYING.signal(true);
 
     // Continue streaming with performance monitoring
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
 
+    // This did not work
+    // let (mut reader, mut _writer) = socket.split();
+
     loop {
+        let read_start = Instant::now();
         match socket.read(&mut body_read_buffer).await {
             Ok(0) => {
                 esp_println::println!("Connection closed");
                 break;
             }
             Ok(n) => {
-                let read_start = Instant::now();
+                let read_time = read_start.elapsed().as_micros();
                 total_bytes += n as u32;
 
                 // Write immediately without trying to read more
@@ -251,7 +257,6 @@ pub async fn stream(stack: Stack<'static>) {
                 if last_stats.elapsed().as_millis() >= 1000 {
                     let pipe_usage =
                         (MUSIC_PIPE.len() as f32 / MUSIC_PIPE.capacity() as f32) * 100.0;
-                    let read_time = read_start.elapsed().as_micros();
                     esp_println::println!(
                         "Stats: {:.2} KB/s, Pipe: {:.1}%, Read: {} bytes in {}us, Write: {}us",
                         (total_bytes as f32) / 1024.0,
