@@ -10,7 +10,7 @@ use embassy_net::{
 };
 use embassy_time::{Duration, Instant, Timer};
 
-use embedded_io_async::{Read, Write};
+use embedded_io_async::Write;
 
 use core::net::Ipv4Addr;
 
@@ -44,15 +44,15 @@ const MUSIC_CHUNK_SIZE: usize = 8192;
 // const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
 // NOTE: This station doesn't seem to have redirects (as of now) so could you it to test the basic functionality
-//const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
+// const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
 
 // Local server for testing
 const STATION_URL: &str = "http://192.168.2.115:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
-    FILLING_PIPE,
-    PLAYING,
+    FillingPipe,
+    Playing,
 }
 
 /// This task  accesses an internet radio station and send the data to MUSIC_CHANNEL.
@@ -139,10 +139,19 @@ pub async fn stream(stack: Stack<'static>) {
 
     socket.connect(remote_endpoint).await.unwrap();
 
-    // Now read the page
+    // Now request the data
     let mut request = Request::new(Method::GET, path).unwrap();
     request.host(host).unwrap();
-    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+    //request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+    // Cheat with the user agent to make it look like a browser
+    request
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0",
+        )
+        .unwrap();
+
+    request.header("Connection", "keep-alive").unwrap();
 
     esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
 
@@ -211,7 +220,7 @@ pub async fn stream(stack: Stack<'static>) {
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
 
-    let mut read_state = StreamingState::FILLING_PIPE;
+    let mut read_state = StreamingState::FillingPipe;
 
     loop {
         let read_start = Instant::now();
@@ -228,12 +237,11 @@ pub async fn stream(stack: Stack<'static>) {
                 let write_start = Instant::now();
                 MUSIC_PIPE.write_all(&body_read_buffer[..n]).await;
 
-                if read_state == StreamingState::FILLING_PIPE
-                    && MUSIC_PIPE.len() >= initial_fill_len
+                if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
                 {
                     // If the pipe is more than 75% full, start playing (and emptying the pipe)
                     START_PLAYING.signal(true);
-                    read_state = StreamingState::PLAYING;
+                    read_state = StreamingState::Playing;
                 };
 
                 // Add network statistics

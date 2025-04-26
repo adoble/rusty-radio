@@ -29,7 +29,7 @@ use task::{
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
-    sync::{ACCESS_WEB_SIGNAL, CODEC_DRIVER},
+    sync::CODEC_DRIVER,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
@@ -48,7 +48,7 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 
-use embassy_time::{Duration, Timer};
+//use embassy_time::{Duration, Timer};
 
 use static_cell::StaticCell;
 
@@ -82,23 +82,23 @@ async fn main(spawner: Spawner) {
     //esp_alloc::heap_allocator!(92 * 1024);
     // esp_alloc::heap_allocator!(74 * 1024);
 
-    // Initialise gpio ,spi and wifi peripherals
-    let init_peripherals = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+    // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
+    let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 
     // This is the way to initialize esp hal embassy for the the esp32c3
     // according to the example
     // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    esp_hal_embassy::init(init_peripherals.system_timer.alarm0);
+    esp_hal_embassy::init(hardware.system_timer.alarm0);
 
     // Need to convert the spi driver into an static blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
-    let spi_bus = SPI_BUS.init(Mutex::new(init_peripherals.spi_bus));
+    let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
 
     // The stack needs to be static so that it can be used in tasks.
-    STACK.init(init_peripherals.sta_stack);
+    STACK.init(hardware.sta_stack);
 
     // Init the vs1053 spi speeds
     let mut spi_sci_config = SpiConfig::default();
@@ -108,14 +108,14 @@ async fn main(spawner: Spawner) {
     spi_sdi_config.frequency = 8000.kHz();
 
     let spi_sci_device: SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>> =
-        SpiDeviceWithConfig::new(spi_bus, init_peripherals.xcs, spi_sci_config);
-    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, init_peripherals.xdcs, spi_sdi_config);
+        SpiDeviceWithConfig::new(spi_bus, hardware.xcs, spi_sci_config);
+    let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, hardware.xdcs, spi_sdi_config);
 
     let vs1053_driver: Vs1053DriverType = Vs1053Driver::new(
         spi_sci_device,
         spi_sdi_device,
-        init_peripherals.dreq,
-        init_peripherals.reset,
+        hardware.dreq,
+        hardware.reset,
         delay,
     )
     .unwrap();
@@ -132,24 +132,18 @@ async fn main(spawner: Spawner) {
     // Print the registers using the shared driver for the vs1053
     print_registers().await;
 
-    spawner
-        .spawn(wifi_connect(init_peripherals.wifi_controller))
-        .ok();
+    spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
 
     esp_println::println!("wifi_connect should have been spawned");
 
-    spawner
-        .spawn(run_network_stack(init_peripherals.runner))
-        .ok();
-    spawner
-        .spawn(button_monitor(init_peripherals.button_pin))
-        .ok();
+    spawner.spawn(run_network_stack(hardware.runner)).ok();
+    spawner.spawn(button_monitor(hardware.button_pin)).ok();
     // spawner
     //     .spawn(access_radio_stations(init_peripherals.sta_stack))
     // .ok();
     //spawner.spawn(display_web_content()).ok();
 
-    spawner.spawn(stream(init_peripherals.sta_stack)).ok();
+    spawner.spawn(stream(hardware.sta_stack)).ok();
     //spawner.spawn(stream2(init_peripherals.sta_stack)).ok();
     //spawner.spawn(read_test_music()).ok();
     spawner.spawn(play_music()).ok();

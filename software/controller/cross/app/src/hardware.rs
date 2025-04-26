@@ -119,7 +119,7 @@ impl WifiHardware {
 
         // Random seed.
         // Taken from example line 104 https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-        let seed = (rng.random() as u64) << 32 | rng.random() as u64;
+        let seed = ((rng.random() as u64) << 32) | rng.random() as u64;
 
         // Init network stacks
         let (sta_stack, sta_runner) = embassy_net::new(

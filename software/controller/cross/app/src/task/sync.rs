@@ -1,12 +1,9 @@
+/// Synchronisation between the different tasks.
 use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, mutex::Mutex, pipe::Pipe,
-    signal,
+    blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, pipe::Pipe, signal,
 };
 
 use crate::Vs1053DriverType;
-
-/// Synchronisation between the different tasks.
-///
 
 // Signal that the web should be accessed
 pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
