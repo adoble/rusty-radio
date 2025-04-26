@@ -44,7 +44,10 @@ const MUSIC_CHUNK_SIZE: usize = 8192;
 // const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
 // NOTE: This station doesn't seem to have redirects (as of now) so could you it to test the basic functionality
-const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
+//const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
+
+// Local server for testing
+const STATION_URL: &str = "http://192.168.2.115:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
 /// This task  accesses an internet radio station and send the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
@@ -195,41 +198,39 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
-    let start_time = Instant::now();
+    esp_println::println!("DEBUG: Start filling channel ...");
 
-    // esp_println::println!("DEBUG: Start filling channel ...");
+    // Fill up the pipe to 75% of its capacity before starting to play
+    let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
-    // // Fill up the pipe to 75% of its capacity before starting to play
-    // let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+    'initial_fill: loop {
+        match socket.read(&mut body_read_buffer).await {
+            Ok(0) => {
+                esp_println::println!("ERROR: Connection closed");
+                return;
+            }
+            Ok(n) => {
+                let write_start = Instant::now();
+                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
 
-    // 'initial_fill: loop {
-    //     match socket.read(&mut body_read_buffer).await {
-    //         Ok(0) => {
-    //             esp_println::println!("ERROR: Connection closed");
-    //             return;
-    //         }
-    //         Ok(n) => {
-    //             let write_start = Instant::now();
-    //             MUSIC_PIPE.write(&body_read_buffer[..n]).await;
+                if MUSIC_PIPE.len() >= initial_fill_len {
+                    START_PLAYING.signal(true);
+                    break 'initial_fill;
+                }
 
-    //             if MUSIC_PIPE.len() >= initial_fill_len {
-    //                 START_PLAYING.signal(true);
-    //                 break 'initial_fill;
-    //             }
+                let read_time = write_start.elapsed().as_micros();
+                if read_time > 1000 {
+                    esp_println::println!("Slow write: {}us", read_time);
+                }
+            }
+            Err(err) => {
+                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
+                Timer::after(Duration::from_millis(100)).await;
+            }
+        }
+    }
 
-    //             let read_time = write_start.elapsed().as_micros();
-    //             if read_time > 1000 {
-    //                 esp_println::println!("Slow write: {}us", read_time);
-    //             }
-    //         }
-    //         Err(err) => {
-    //             esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
-    //             Timer::after(Duration::from_millis(100)).await;
-    //         }
-    //     }
-    // }
-
-    START_PLAYING.signal(true);
+    esp_println::println!("DEBUG: Stopped filling channel ...");
 
     // Continue streaming with performance monitoring
     let mut total_bytes = 0u32;
