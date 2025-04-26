@@ -16,7 +16,7 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
-use crate::task::sync::{MUSIC_PIPE, MUSIC_PIPE_LEN, START_PLAYING};
+use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
 
 // use crate::task::sync::MUSIC_CHANNEL;
 
@@ -48,6 +48,12 @@ const MUSIC_CHUNK_SIZE: usize = 8192;
 
 // Local server for testing
 const STATION_URL: &str = "http://192.168.2.115:8080/music/2"; // Hijo de la Luna. 128 kb/s
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StreamingState {
+    FILLING_PIPE,
+    PLAYING,
+}
 
 /// This task  accesses an internet radio station and send the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
@@ -198,46 +204,14 @@ pub async fn stream(stack: Stack<'static>) {
         esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
     }
 
-    esp_println::println!("DEBUG: Start filling channel ...");
-
-    // Fill up the pipe to 75% of its capacity before starting to play
+    // The pipe is initally filled up  75% of its capacity before starting to play
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
-    'initial_fill: loop {
-        match socket.read(&mut body_read_buffer).await {
-            Ok(0) => {
-                esp_println::println!("ERROR: Connection closed");
-                return;
-            }
-            Ok(n) => {
-                let write_start = Instant::now();
-                MUSIC_PIPE.write(&body_read_buffer[..n]).await;
-
-                if MUSIC_PIPE.len() >= initial_fill_len {
-                    START_PLAYING.signal(true);
-                    break 'initial_fill;
-                }
-
-                let read_time = write_start.elapsed().as_micros();
-                if read_time > 1000 {
-                    esp_println::println!("Slow write: {}us", read_time);
-                }
-            }
-            Err(err) => {
-                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
-                Timer::after(Duration::from_millis(100)).await;
-            }
-        }
-    }
-
-    esp_println::println!("DEBUG: Stopped filling channel ...");
-
-    // Continue streaming with performance monitoring
+    // Streaming with performance monitoring
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
 
-    // This did not work
-    // let (mut reader, mut _writer) = socket.split();
+    let mut read_state = StreamingState::FILLING_PIPE;
 
     loop {
         let read_start = Instant::now();
@@ -253,6 +227,14 @@ pub async fn stream(stack: Stack<'static>) {
                 // Write immediately without trying to read more
                 let write_start = Instant::now();
                 MUSIC_PIPE.write(&body_read_buffer[..n]).await;
+
+                if read_state == StreamingState::FILLING_PIPE
+                    && MUSIC_PIPE.len() >= initial_fill_len
+                {
+                    // If the pipe is more than 75% full, start playing (and emptying the pipe)
+                    START_PLAYING.signal(true);
+                    read_state = StreamingState::PLAYING;
+                };
 
                 // Add network statistics
                 if last_stats.elapsed().as_millis() >= 1000 {
