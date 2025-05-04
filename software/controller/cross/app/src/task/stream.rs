@@ -44,10 +44,10 @@ const MUSIC_CHUNK_SIZE: usize = 8192;
 // const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
 // NOTE: This station doesn't seem to have redirects (as of now) so could you it to test the basic functionality
-// const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
+const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
 
 // Local server for testing
-const STATION_URL: &str = "http://192.168.2.115:8080/music/2"; // Hijo de la Luna. 128 kb/s
+//const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {

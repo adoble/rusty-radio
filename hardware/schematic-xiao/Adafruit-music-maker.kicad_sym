@@ -63,6 +63,22 @@
 			)
 		)
 		(symbol "Adafruit_Feather_Music_Maker_VS1053_1_1"
+			(text "(VS1053)"
+				(at 1.524 1.27 900)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(text "Adafruit Feather Music Maker"
+				(at -1.27 1.778 900)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
 			(pin input line
 				(at 12.7 22.86 180)
 				(length 2.54)
@@ -81,10 +97,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 -5.08 180)
 				(length 2.54)
-				(name "A5"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -153,10 +169,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 -10.16 0)
 				(length 2.54)
-				(name "RX"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -207,28 +223,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
-				(at -12.7 5.08 0)
-				(length 2.54)
-				(name "SPARE"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-				(number "16"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 -17.78 0)
 				(length 2.54)
-				(name "SDA"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -243,10 +241,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 -20.32 0)
 				(length 2.54)
-				(name "SCL"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -261,10 +259,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin input line
 				(at -12.7 22.86 0)
 				(length 2.54)
-				(name "D0"
+				(name "SDCS"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -297,10 +295,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin input line
 				(at -12.7 20.32 0)
 				(length 2.54)
-				(name "D1"
+				(name "MP3CS"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -315,10 +313,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin output line
 				(at -12.7 17.78 0)
 				(length 2.54)
-				(name "D2"
+				(name "DREQ"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -333,10 +331,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin input line
 				(at -12.7 15.24 0)
 				(length 2.54)
-				(name "D3"
+				(name "XDCS"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -351,10 +349,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 12.7 0)
 				(length 2.54)
-				(name "D4"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -369,10 +367,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 10.16 0)
 				(length 2.54)
-				(name "D5"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -387,10 +385,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at -12.7 7.62 0)
 				(length 2.54)
-				(name "D6"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -495,10 +493,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 7.62 180)
 				(length 2.54)
-				(name "A0"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -513,10 +511,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 5.08 180)
 				(length 2.54)
-				(name "A1"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -531,10 +529,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 2.54 180)
 				(length 2.54)
-				(name "A2"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -549,10 +547,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 0 180)
 				(length 2.54)
-				(name "A3"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -567,10 +565,10 @@
 					)
 				)
 			)
-			(pin bidirectional line
+			(pin no_connect line
 				(at 12.7 -2.54 180)
 				(length 2.54)
-				(name "A4"
+				(name "NC"
 					(effects
 						(font
 							(size 1.27 1.27)
