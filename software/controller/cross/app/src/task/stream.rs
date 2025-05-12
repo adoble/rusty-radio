@@ -19,19 +19,6 @@ use http_builder::{Method, Request};
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 const BUFFER_SIZE: usize = 6000;
 
-// TODO All the hard coded stations have to be made variable.
-// NOTE: This station does a number of redirects by setting the response header "location". Note that it does
-// not give a return code 3xx which is strange.
-// Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
-// For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
-// const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
-
-// NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
-const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
-
-// Local server for testing
-//const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
     FillingPipe,
@@ -97,7 +84,8 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
     // Optimisations
-    // Timeout longer than keep alive (see https://docs.embassy.dev/embassy-net/git/default/tcp/struct.TcpSocket.html#method.set_keep_alive)
+    // Timeout longer than keep alive
+    // (see https://docs.embassy.dev/embassy-net/git/default/tcp/struct.TcpSocket.html#method.set_keep_alive)
     socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
 
@@ -107,16 +95,11 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     // Request the data
     let mut request = Request::new(Method::GET, path).unwrap();
     request.host(host).unwrap();
-    // Cheat with the user agent to make it look like a browser
-    // TODO replace this with request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
-    // and see if it still works.
 
-    request
-        .header(
-            "User-Agent",
-            "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0",
-        )
-        .unwrap();
+    // Set the user agent. Note this does not have to be a spoof of
+    // a "normal" browser agent such as
+    // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
+    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
 
     request.header("Connection", "keep-alive").unwrap();
 
