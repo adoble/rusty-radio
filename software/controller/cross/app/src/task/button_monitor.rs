@@ -20,7 +20,6 @@ pub async fn button_monitor(mut pin: Input<'static>) {
             esp_println::println!("Button pressed after debounce!");
 
             // Now access the web by sending a signal
-
             ACCESS_WEB_SIGNAL.signal(true)
         }
     }

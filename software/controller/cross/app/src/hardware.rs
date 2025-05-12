@@ -69,7 +69,7 @@ impl Hardware {
             xdcs: Output::new(peripherals.GPIO10, Level::High),
             dreq: Input::new(peripherals.GPIO8, Pull::None),
             reset: Output::new(peripherals.GPIO20, Level::High),
-            led: Output::new(peripherals.GPIO3, Level::High),
+            led: Output::new(peripherals.GPIO3, Level::Low),
 
             system_timer: SystemTimer::new(systimer),
             // SPI

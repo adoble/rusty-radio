@@ -80,7 +80,7 @@ async fn main(spawner: Spawner) {
     esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
-    let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+    let mut hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 
@@ -137,6 +137,8 @@ async fn main(spawner: Spawner) {
     spawner.spawn(stream(hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
+
+    hardware.led.set_high();
 }
 
 async fn print_registers() {
