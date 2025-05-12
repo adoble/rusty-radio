@@ -1,6 +1,6 @@
 [package]
 name    = "rusty-radio-controller"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Andrew Doble"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

@@ -30,7 +30,8 @@ use http_builder::{Method, Request};
 // This has significantly improved the performance of the radio stream
 //const BUFFER_SIZE: usize = 1024;
 //const BUFFER_SIZE: usize = 2048;
-const BUFFER_SIZE: usize = 8192;
+//const BUFFER_SIZE: usize = 8192;
+const BUFFER_SIZE: usize = 6000; // For experiment
 
 //const MUSIC_CHUNK_SIZE: usize = 32;
 //const MUSIC_CHUNK_SIZE: usize = 2048;
@@ -167,7 +168,8 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("DEBUG: Starting to read");
 
     // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-    let mut body_read_buffer = [0u8; MUSIC_CHUNK_SIZE]; // Small buffer that matches to music channel message size
+    //let mut body_read_buffer = [0u8; MUSIC_CHUNK_SIZE]; // Small buffer that matches to music channel message size
+    let mut body_read_buffer = [0u8; BUFFER_SIZE]; //  buffer that matches to music channel message size
 
     // Skip HTTP headers
     let mut header_buffer = [0u8; 2048];

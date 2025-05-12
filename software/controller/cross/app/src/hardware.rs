@@ -31,6 +31,8 @@ pub struct Hardware {
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
     pub reset: Output<'static>,
+
+    pub led: Output<'static>,
     // pub rng: Rng,
     pub system_timer: SystemTimer,
 
@@ -51,30 +53,27 @@ impl Hardware {
 
         let timg1 = TimerGroup::new(peripherals.TIMG1);
 
-        //let spi2 = peripherals.SPI2;
-
         // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
         // Only SPI2 is availble for the ESP32-C3
         let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
-            .expect("Panic: Could not initialize SPI")
+            .expect("PANIC: Could not initialize SPI")
             .with_sck(peripherals.GPIO5)
             .with_mosi(peripherals.GPIO6)
             .with_miso(peripherals.GPIO7)
             .into_async();
 
-        //let x: esp_hal::gpio::GpioPin<5> = peripherals.GPIO5;
-
         let wifi_peripherals =
             WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, radio_clk, timg1, rng);
         Hardware {
-            button_pin: Input::new(peripherals.GPIO1, Pull::Up),
+            button_pin: Input::new(peripherals.GPIO9, Pull::Up),
             // sclk: Output::new(peripherals.GPIO5, Level::Low),
             // mosi: Output::new(peripherals.GPIO6, Level::Low),
             // miso: Output::new(peripherals.GPIO7, Level::Low),
-            xcs: Output::new(peripherals.GPIO9, Level::High),
+            xcs: Output::new(peripherals.GPIO4, Level::High),
             xdcs: Output::new(peripherals.GPIO10, Level::High),
             dreq: Input::new(peripherals.GPIO8, Pull::None),
             reset: Output::new(peripherals.GPIO20, Level::High),
+            led: Output::new(peripherals.GPIO3, Level::High),
 
             system_timer: SystemTimer::new(systimer),
             // SPI

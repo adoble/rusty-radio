@@ -2932,7 +2932,7 @@
 		)
 		(uuid "fd3431d5-ac56-4d8a-aef4-5d688fd3a662")
 	)
-	(label "GP109-XCS"
+	(label "I04-XCS"
 		(at 158.75 96.52 0)
 		(effects
 			(font
@@ -2992,7 +2992,7 @@
 		)
 		(uuid "882724b0-7a49-4346-a7ec-956e9a9ddf1d")
 	)
-	(label "GP109-XCS"
+	(label "I04-XCS"
 		(at 66.04 111.76 0)
 		(effects
 			(font
