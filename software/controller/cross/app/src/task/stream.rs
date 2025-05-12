@@ -1,13 +1,6 @@
 // Code taken from the project rust-projects/edge-hhtp-embassy-esp
 
-use embassy_net::{
-    tcp::{
-        //client::TcpClient,
-        //client::TcpClientState,
-        TcpSocket,
-    },
-    IpAddress, Stack,
-};
+use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
@@ -18,33 +11,22 @@ use nourl::Url;
 
 use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
 
-// use crate::task::sync::MUSIC_CHANNEL;
-
-//use super::sync::ACCESS_WEB_SIGNAL;
 use crate::task::sync::ACCESS_WEB_SIGNAL;
 
 use http_builder::{Method, Request};
 
-//const BUFFER_SIZE: usize = 32;
-// Suggestion from CoPilot to make this bigger
-// This has significantly improved the performance of the radio stream
-//const BUFFER_SIZE: usize = 1024;
-//const BUFFER_SIZE: usize = 2048;
-//const BUFFER_SIZE: usize = 8192;
-const BUFFER_SIZE: usize = 6000; // For experiment
+// Empirically determeined value. This value  has to be used in
+// conjunction with the wifi tuning parameters in .cargo/config.toml
+const BUFFER_SIZE: usize = 6000;
 
-//const MUSIC_CHUNK_SIZE: usize = 32;
-//const MUSIC_CHUNK_SIZE: usize = 2048;
-const MUSIC_CHUNK_SIZE: usize = 8192;
-//const MUSIC_CHUNK_SIZE: usize = 16384; // Did not work
-
+// TODO All the hard coded stations have to be made variable.
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
 // Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
 // For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
 // const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
-// NOTE: This station doesn't seem to have redirects (as of now) so could you it to test the basic functionality
+// NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
 const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
 
 // Local server for testing
@@ -56,15 +38,13 @@ enum StreamingState {
     Playing,
 }
 
-/// This task  accesses an internet radio station and send the data to MUSIC_CHANNEL.
+/// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
-    //let mut buf: [u8; 512] = [0; 512];
-    //let mut buf: [u8; 32] = [0; 32];
 
-    esp_println::println!("DEBUG: stream task started");
+    esp_println::println!("INFO: Starting to play radio station");
 
     loop {
         let start_access = ACCESS_WEB_SIGNAL.wait().await;
@@ -81,17 +61,9 @@ pub async fn stream(stack: Stack<'static>) {
     }
     esp_println::println!("INFO: DHCP is now up!");
 
-    esp_println::println!("DEBUG:: waiting for stack to be up...");
     stack.wait_config_up().await;
-    esp_println::println!("DEBUG: Stack is up!");
+    esp_println::println!("INFO: Stack is up!");
     let config = stack.config_v4().unwrap();
-
-    esp_println::println!(
-        "Network: IP: {}, DNS: {:?}, GATEWAY: {:?}",
-        config.address,
-        config.dns_servers,
-        config.gateway,
-    );
 
     let url = Url::parse(STATION_URL).unwrap();
 
@@ -99,15 +71,9 @@ pub async fn stream(stack: Stack<'static>) {
         if stack.is_link_up() {
             break;
         }
-        esp_println::println!("DEBUG: Waiting for stack link.");
         Timer::after(Duration::from_millis(500)).await;
     }
-    esp_println::println!("DEBUG: Stack link is up!");
-
-    // let client_state =
-    //     TcpClientState::<NUMBER_SOCKETS_TCP_CLIENT_STATE, BUFFER_SIZE, BUFFER_SIZE>::new();
-    //let tcp_client = TcpClient::new(stack, &client_state);
-    //let dns = DnsSocket::new(stack);
+    esp_println::println!("INFO: Stack link is now up!");
 
     let host = url.host();
     let port = url.port_or_default();
@@ -127,24 +93,23 @@ pub async fn stream(stack: Stack<'static>) {
         }
     };
 
-    esp_println::println!("DEBUG: IPS = {:?} , Port = {} ", remote_ip_addr, port);
-
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
+    // Optimisations
     // Timeout longer than keep alive (see https://docs.embassy.dev/embassy-net/git/default/tcp/struct.TcpSocket.html#method.set_keep_alive)
     socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
-
-    // Optimisations
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
-    //socket.set_nodelay(true); // Disable Nagle's algorithm
 
+    // Connect to the socket using the  IP address from the DNS
     socket.connect(remote_endpoint).await.unwrap();
 
-    // Now request the data
+    // Request the data
     let mut request = Request::new(Method::GET, path).unwrap();
     request.host(host).unwrap();
-    //request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
     // Cheat with the user agent to make it look like a browser
+    // TODO replace this with request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+    // and see if it still works.
+
     request
         .header(
             "User-Agent",
@@ -165,13 +130,11 @@ pub async fn stream(stack: Stack<'static>) {
         .await
         .expect("ERROR: Could not flush request");
 
-    esp_println::println!("DEBUG: Starting to read");
-
-    // let mut body_read_buffer = [0u8; 32]; // Small buffer that matches to other buffers
-    //let mut body_read_buffer = [0u8; MUSIC_CHUNK_SIZE]; // Small buffer that matches to music channel message size
+    // This buffer size has been emprically determined to provide a performance that can
+    // read a 128kb/ s ( 16 KB/s) music stream
     let mut body_read_buffer = [0u8; BUFFER_SIZE]; //  buffer that matches to music channel message size
 
-    // Skip HTTP headers
+    // Skip over the HTTP headers
     let mut header_buffer = [0u8; 2048];
     let mut header_pos = 0;
     let mut found_end = false;

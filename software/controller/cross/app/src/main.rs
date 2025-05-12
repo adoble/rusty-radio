@@ -76,11 +76,8 @@ async fn main(spawner: Spawner) {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
-
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
-    //esp_alloc::heap_allocator!(92 * 1024);
-    // esp_alloc::heap_allocator!(74 * 1024);
+    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
     let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
@@ -134,34 +131,13 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
 
-    esp_println::println!("wifi_connect should have been spawned");
-
     spawner.spawn(run_network_stack(hardware.runner)).ok();
     spawner.spawn(button_monitor(hardware.button_pin)).ok();
-    // spawner
-    //     .spawn(access_radio_stations(init_peripherals.sta_stack))
-    // .ok();
-    //spawner.spawn(display_web_content()).ok();
 
     spawner.spawn(stream(hardware.sta_stack)).ok();
-    //spawner.spawn(stream2(init_peripherals.sta_stack)).ok();
-    //spawner.spawn(read_test_music()).ok();
+
     spawner.spawn(play_music()).ok();
-
-    // spawner.spawn(system_monitor()).ok();
-
-    // #[allow(deprecated)]
-    // spawner.spawn(notification_task()).ok();
 }
-
-// #[deprecated(note = "Only used for development - Remove before release")]
-// #[embassy_executor::task]
-// async fn notification_task() {
-//     loop {
-//         Timer::after(Duration::from_millis(3_000)).await;
-//         esp_println::println!("Press button to access web!");
-//     }
-// }
 
 async fn print_registers() {
     let mut driver_unlocked = CODEC_DRIVER.lock().await;

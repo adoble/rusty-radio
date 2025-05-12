@@ -81,9 +81,8 @@ where
     }
 
     // TODO should this go into new()?
-    /// The should be called during the initialisation of the program, i.e. after the power
+    /// This should be called during the initialisation of the program, i.e. after the power
     /// has come up.
-
     pub async fn begin(&mut self) -> Result<(), DriverError> {
         self.reset.set_high().map_err(|_| DriverError::Reset)?;
 

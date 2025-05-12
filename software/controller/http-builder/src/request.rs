@@ -10,7 +10,7 @@ const HEADER_SIZE: usize = 512;
 
 const BODY_SIZE: usize = 1024;
 
-//// The total size of the request string
+/// The total size of the request string
 const REQUEST_SIZE: usize = PATH_SIZE + HEADER_SIZE + BODY_SIZE + 64; // 64 for HTTP version and CRLF
 
 /// Represents an HTTP method.
@@ -47,7 +47,6 @@ impl Method {
 //     body: Option<String<BODY_SIZE>>,
 //     error: Option<HttpBuilderError>,
 // }
-
 pub struct Request {
     method: Method,
     path: String<PATH_SIZE>,
@@ -59,7 +58,7 @@ impl Request {
     /// Creates a new `Request` with the specified HTTP method and path.
     // This ensures that at least a valid, albeit minimal, request is built.
     pub fn new(method: Method, path: &str) -> Result<Self, HttpBuilderError> {
-        let path = if path.len() > 0 {
+        let path = if !path.is_empty() {
             path
         } else {
             // Null path according to HTTP spec.
@@ -119,12 +118,15 @@ impl Request {
         let _ = request.push_str(&self.headers);
         let _ = request.push_str("\r\n");
 
-        match self.body {
-            Some(ref body) => {
-                let _ = request.push_str(body);
-            }
-            None => {}
+        if let Some(ref body) = self.body {
+            let _ = request.push_str(body);
         }
+        // match self.body {git
+        //     Some(ref body) => {
+        //         let _ = request.push_str(body);
+        //     }
+        //     None => {}
+        // }
 
         request
     }

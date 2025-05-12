@@ -1,5 +1,5 @@
+/// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
-
 use esp_hal::{
     gpio::{Input, Level, Output, Pull},
     peripherals::{Peripherals, RADIO_CLK, TIMG1, WIFI},
@@ -24,9 +24,7 @@ static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RE
 
 pub struct Hardware {
     pub button_pin: Input<'static>,
-    // pub sclk: Output<'static>,
-    // pub mosi: Output<'static>,
-    // pub miso: Output<'static>,
+
     pub xcs: Output<'static>,
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
@@ -66,9 +64,7 @@ impl Hardware {
             WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, radio_clk, timg1, rng);
         Hardware {
             button_pin: Input::new(peripherals.GPIO9, Pull::Up),
-            // sclk: Output::new(peripherals.GPIO5, Level::Low),
-            // mosi: Output::new(peripherals.GPIO6, Level::Low),
-            // miso: Output::new(peripherals.GPIO7, Level::Low),
+
             xcs: Output::new(peripherals.GPIO4, Level::High),
             xdcs: Output::new(peripherals.GPIO10, Level::High),
             dreq: Input::new(peripherals.GPIO8, Pull::None),
@@ -124,8 +120,7 @@ impl WifiHardware {
         let (sta_stack, sta_runner) = embassy_net::new(
             wifi_device,
             sta_config,
-            RESOURCES.init(embassy_net::StackResources::new()), // mk_static!(StackResources<3>, StackResources::<3>::new()),
-            //&mut embassy_net::StackResources::<NUMBER_SOCKETS_STACK_RESOURCES>::new(), // mk_static!(StackResources<3>, StackResources::<3>::new()),
+            RESOURCES.init(embassy_net::StackResources::new()),
             seed,
         );
         Self {

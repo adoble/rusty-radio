@@ -6,6 +6,8 @@ runner = "espflash flash --monitor"
 ESP_LOG="info"
 
 # Tuning base on https://github.com/esp-rs/esp-hal/issues/1605#issuecomment-2133150064
+# WARNING: Any changes in these environment varaibles has to be followed by 
+# a clean build for them to take effect. 
 ESP_WIFI_CONFIG_RX_QUEUE_SIZE       =	"20"
 ESP_WIFI_CONFIG_TX_QUEUE_SIZE       =	"5"
 ESP_WIFI_CONFIG_STATIC_RX_BUF_NUM	=   "10"
