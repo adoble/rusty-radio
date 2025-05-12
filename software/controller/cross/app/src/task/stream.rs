@@ -40,7 +40,7 @@ enum StreamingState {
 
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
-pub async fn stream(stack: Stack<'static>) {
+pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
 
@@ -65,7 +65,8 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("INFO: Stack is up!");
     let config = stack.config_v4().unwrap();
 
-    let url = Url::parse(STATION_URL).unwrap();
+    //let url = Url::parse(STATION_URL).unwrap();
+    let url = Url::parse(station_url).unwrap();
 
     loop {
         if stack.is_link_up() {

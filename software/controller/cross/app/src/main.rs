@@ -69,6 +69,19 @@ type Vs1053DriverType<'a> = Vs1053Driver<
     AsyncDelay,
 >;
 
+// TODO All the hard coded stations have to be made variable.
+// NOTE: This station does a number of redirects by setting the response header "location". Note that it does
+// not give a return code 3xx which is strange.
+// Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
+// For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
+// const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
+
+// NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
+const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
+
+// Local server for testing
+//const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     esp_println::println!("Init!");
@@ -134,7 +147,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(run_network_stack(hardware.runner)).ok();
     spawner.spawn(button_monitor(hardware.button_pin)).ok();
 
-    spawner.spawn(stream(hardware.sta_stack)).ok();
+    spawner.spawn(stream(hardware.sta_stack, STATION_URL)).ok();
 
     spawner.spawn(play_music()).ok();
 
