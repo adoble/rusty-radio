@@ -3,7 +3,7 @@ use heapless::String;
 use crate::error::HttpBuilderError;
 
 /// The maximum size of the path in the request.
-const PATH_SIZE: usize = 128;
+const PATH_SIZE: usize = 256; // TODO This is perhaps rather small  , better 512
 
 /// The maximum size of the headers in the request.
 const HEADER_SIZE: usize = 512;

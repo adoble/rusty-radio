@@ -21,8 +21,10 @@ use http_builder::{Method, Request};
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 const BUFFER_SIZE: usize = 6000;
 
-// A buffer to hold the response URL).
-const MAX_LOCATION_LEN: usize = 256;
+// Max size for a url
+const MAX_URL_LEN: usize = 256;
+// TODO Actual URLS after redirects come close to this limit
+// TODO This needs to be the saem size as a the PATH_LEN in crate::http_builder::Request
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
@@ -30,9 +32,15 @@ enum StreamingState {
     Playing,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StationUrl {
+    Redirect(String<MAX_URL_LEN>),
+    Final,
+}
+
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
-pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
+pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
 
@@ -57,8 +65,6 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     esp_println::println!("INFO: Stack is up!");
     let config = stack.config_v4().unwrap();
 
-    let url = Url::parse(station_url).unwrap();
-
     loop {
         if stack.is_link_up() {
             break;
@@ -66,24 +72,6 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
         Timer::after(Duration::from_millis(500)).await;
     }
     esp_println::println!("INFO: Stack link is now up!");
-
-    let host = url.host();
-    let port = url.port_or_default();
-    let path = url.path();
-    esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
-
-    let remote_ip_addresses = stack
-        .dns_query(host, embassy_net::dns::DnsQueryType::A)
-        .await
-        .unwrap();
-    let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
-
-    let remote_endpoint = match remote_ip_addr {
-        IpAddress::Ipv4(ipv4_addr) => {
-            let octets = ipv4_addr.octets();
-            (Ipv4Addr::from(octets), port)
-        }
-    };
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
@@ -93,50 +81,93 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
 
-    // Connect to the socket using the  IP address from the DNS
-    socket.connect(remote_endpoint).await.unwrap();
-
-    // Request the data
-    let mut request = Request::new(Method::GET, path).unwrap();
-    request.host(host).unwrap();
-
-    // Set the user agent. Note this does not have to be a spoof of
-    // a "normal" browser agent such as
-    // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
-    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
-
-    request.header("Connection", "keep-alive").unwrap();
-
-    esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
-
-    socket
-        .write_all(request.to_string().as_bytes())
-        .await
-        .expect("ERROR: Could not write request");
-    socket
-        .flush()
-        .await
-        .expect("ERROR: Could not flush request");
-
-    let mut header_buffer = [0u8; 2048];
     let mut body_buffer = [0u8; BUFFER_SIZE];
 
-    // Read and process headers first
-    let redirect_url: Option<String<MAX_LOCATION_LEN>> =
-        match read_headers(&mut socket, &mut header_buffer).await {
+    let mut url: String<MAX_URL_LEN> = String::new();
+    url.push_str(initial_url).expect("ERROR: url to big");
+    let mut station_url = StationUrl::Redirect(url);
+
+    while let StationUrl::Redirect(url) = station_url {
+        let url = Url::parse(&url).unwrap();
+
+        let host = url.host();
+        let port = url.port_or_default();
+        let path = url.path();
+        esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
+
+        let remote_ip_addresses = stack
+            .dns_query(host, embassy_net::dns::DnsQueryType::A)
+            .await
+            .unwrap();
+
+        esp_println::println!("DEBUG: DNS Query OK");
+
+        let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
+
+        let remote_endpoint = match remote_ip_addr {
+            IpAddress::Ipv4(ipv4_addr) => {
+                let octets = ipv4_addr.octets();
+                (Ipv4Addr::from(octets), port)
+            }
+        };
+
+        // Connect to the socket using the  IP address from the DNS
+        socket.connect(remote_endpoint).await.unwrap();
+
+        // Request the data
+        let mut request = Request::new(Method::GET, path).unwrap();
+        request.host(host).unwrap();
+
+        // Set the user agent. Note this does not have to be a spoof of
+        // a "normal" browser agent such as
+        // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
+        request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+
+        request.header("Connection", "keep-alive").unwrap();
+
+        esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
+
+        socket
+            .write_all(request.to_string().as_bytes())
+            .await
+            .expect("ERROR: Could not write request");
+        socket
+            .flush()
+            .await
+            .expect("ERROR: Could not flush request");
+
+        let mut header_buffer = [0u8; 2048];
+
+        // Read and process headers first
+        station_url = match read_headers(&mut socket, &mut header_buffer).await {
             Ok(Some(url)) => {
                 esp_println::println!("DEBUG: Redirect to: {}", url);
-                return; // TODO: Handle redirect
+
+                socket.close();
+
+                // esp_println::println!(
+                //     "DEBUG: Header buffer\n{:?}",
+                //     core::str::from_utf8(&header_buffer)
+                // );
+
+                StationUrl::Redirect(url)
             }
             Ok(None) => {
                 // Headers read successfully, no redirect - continue with streaming
-                None
+
+                // esp_println::println!(
+                //     "DEBUG: Header buffer\n{:?}",
+                //     core::str::from_utf8(&header_buffer)
+                // );
+
+                StationUrl::Final
             }
             Err(e) => {
-                esp_println::println!("Error reading headers: {:?}", e);
+                esp_println::println!("ERROR: Reading headers: {:?}", e);
                 return;
             }
         };
+    }
 
     // Now stream the body
     stream_body(&mut socket, &mut body_buffer).await;
@@ -147,7 +178,7 @@ async fn read_headers(
     socket: &mut TcpSocket<'_>,
     header_buffer: &mut [u8],
     // ) -> Result<Option<String<MAX_LOCATION_LEN>>, embedded_io_async::Error> {
-) -> Result<Option<String<MAX_LOCATION_LEN>>, embassy_net::tcp::Error> {
+) -> Result<Option<String<MAX_URL_LEN>>, embassy_net::tcp::Error> {
     let mut header_pos = 0;
     let mut found_end = false;
 
@@ -243,13 +274,20 @@ async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
     }
 }
 
-// Helper functions
+// Helper function to find a particular header. It is case insenstive
 fn find_header(buf: &[u8], header: &[u8]) -> Option<usize> {
     buf.windows(header.len())
-        .position(|window| window == header)
+        .position(|window| {
+            window.len() == header.len()
+                && window
+                    .iter()
+                    .zip(header.iter())
+                    .all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
+        })
         .map(|p| p + header.len())
 }
 
+// Helper function to find a new line.
 fn find_newline(buf: &[u8]) -> Option<usize> {
     buf.iter().position(|&b| b == b'\r' || b == b'\n')
 }
