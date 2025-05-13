@@ -9,6 +9,8 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
+use heapless::String;
+
 use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
 
 use crate::task::sync::ACCESS_WEB_SIGNAL;
@@ -18,6 +20,9 @@ use http_builder::{Method, Request};
 // Empirically determeined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 const BUFFER_SIZE: usize = 6000;
+
+// A buffer to hold the response URL).
+const MAX_LOCATION_LEN: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
@@ -52,7 +57,6 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     esp_println::println!("INFO: Stack is up!");
     let config = stack.config_v4().unwrap();
 
-    //let url = Url::parse(STATION_URL).unwrap();
     let url = Url::parse(station_url).unwrap();
 
     loop {
@@ -66,7 +70,7 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
     let host = url.host();
     let port = url.port_or_default();
     let path = url.path();
-    esp_println::println!("DEBUG: Host = {}, Path = {}, Port = {}", host, path, port);
+    esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
 
     let remote_ip_addresses = stack
         .dns_query(host, embassy_net::dns::DnsQueryType::A)
@@ -114,66 +118,88 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
         .await
         .expect("ERROR: Could not flush request");
 
-    // This buffer size has been emprically determined to provide a performance that can
-    // read a 128kb/ s ( 16 KB/s) music stream
-    let mut body_read_buffer = [0u8; BUFFER_SIZE]; //  buffer that matches to music channel message size
-
-    // Skip over the HTTP headers
     let mut header_buffer = [0u8; 2048];
-    let mut header_pos = 0;
-    let mut found_end = false;
+    let mut body_buffer = [0u8; BUFFER_SIZE];
 
-    // Read until we find the end of headers (\r\n\r\n)
-    while header_pos < header_buffer.len() && !found_end {
-        match socket
-            .read(&mut header_buffer[header_pos..header_pos + 1])
-            .await
-        {
-            Ok(0) => {
-                esp_println::println!("Connection closed while reading headers");
-                break;
+    // Read and process headers first
+    let redirect_url: Option<String<MAX_LOCATION_LEN>> =
+        match read_headers(&mut socket, &mut header_buffer).await {
+            Ok(Some(url)) => {
+                esp_println::println!("DEBUG: Redirect to: {}", url);
+                return; // TODO: Handle redirect
             }
-            Ok(n) => {
-                //esp_println::println!("DEBUG:: Read {} bytes", n);
-                header_pos += n;
-
-                // Check for end of headers
-                if header_pos >= 4
-                    && header_buffer[header_pos - 4] == b'\r'
-                    && header_buffer[header_pos - 3] == b'\n'
-                    && header_buffer[header_pos - 2] == b'\r'
-                    && header_buffer[header_pos - 1] == b'\n'
-                {
-                    found_end = true;
-                }
+            Ok(None) => {
+                // Headers read successfully, no redirect - continue with streaming
+                None
             }
             Err(e) => {
                 esp_println::println!("Error reading headers: {:?}", e);
-                break;
+                return;
+            }
+        };
+
+    // Now stream the body
+    stream_body(&mut socket, &mut body_buffer).await;
+}
+
+// New function to handle header reading
+async fn read_headers(
+    socket: &mut TcpSocket<'_>,
+    header_buffer: &mut [u8],
+    // ) -> Result<Option<String<MAX_LOCATION_LEN>>, embedded_io_async::Error> {
+) -> Result<Option<String<MAX_LOCATION_LEN>>, embassy_net::tcp::Error> {
+    let mut header_pos = 0;
+    let mut found_end = false;
+
+    while header_pos < header_buffer.len() && !found_end {
+        match socket
+            .read(&mut header_buffer[header_pos..header_pos + 1])
+            .await?
+        {
+            0 => break,
+            n => {
+                header_pos += n;
+                if header_pos >= 4
+                    && header_buffer[header_pos - 4..header_pos] == [b'\r', b'\n', b'\r', b'\n']
+                {
+                    found_end = true;
+                }
             }
         }
     }
 
     if !found_end {
-        esp_println::println!("ERROR: Failed to find end of headers");
-        Timer::after_secs(5).await;
-        return;
-    } else {
-        esp_println::println!("DEBUG: Found end of headers at position {}", header_pos);
+        return Ok(None);
     }
 
-    // The pipe is initally filled up  75% of its capacity before starting to play
-    let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+    // Parse Location header if present
+    // TODO this uses "location" in lower case which seems against the usual HTTP conventions. Investigate!
+    if let Some(loc_start) = find_header(&header_buffer[..header_pos], b"location: ") {
+        if let Some(loc_end) = find_newline(&header_buffer[loc_start..header_pos]) {
+            if let Ok(str_slice) =
+                core::str::from_utf8(&header_buffer[loc_start..loc_start + loc_end])
+            {
+                let mut result = String::new();
+                if result.push_str(str_slice).is_ok() {
+                    return Ok(Some(result));
+                }
+            }
+        }
+    }
 
-    // Streaming with performance monitoring
+    Ok(None)
+}
+
+// Hndle streaming of body, i.e. the mp3 data.
+async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
-
     let mut read_state = StreamingState::FillingPipe;
+    let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
     loop {
         let read_start = Instant::now();
-        match socket.read(&mut body_read_buffer).await {
+        match socket.read(buffer).await {
             Ok(0) => {
                 esp_println::println!("Connection closed");
                 break;
@@ -184,7 +210,7 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
 
                 // Write immediately without trying to read more
                 let write_start = Instant::now();
-                MUSIC_PIPE.write_all(&body_read_buffer[..n]).await;
+                MUSIC_PIPE.write_all(&buffer[..n]).await;
 
                 if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
                 {
@@ -215,4 +241,15 @@ pub async fn stream(stack: Stack<'static>, station_url: &'static str) {
             }
         }
     }
+}
+
+// Helper functions
+fn find_header(buf: &[u8], header: &[u8]) -> Option<usize> {
+    buf.windows(header.len())
+        .position(|window| window == header)
+        .map(|p| p + header.len())
+}
+
+fn find_newline(buf: &[u8]) -> Option<usize> {
+    buf.iter().position(|&b| b == b'\r' || b == b'\n')
 }
