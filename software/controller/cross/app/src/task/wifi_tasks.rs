@@ -10,6 +10,8 @@ use embassy_net::Runner;
 
 use embassy_time::{Duration, Timer};
 
+use crate::task::sync::WIFI_CONNECTED_SIGNAL;
+
 #[embassy_executor::task]
 pub async fn wifi_connect(mut controller: WifiController<'static>) {
     esp_println::println!("Wait to get wifi connected");
@@ -31,15 +33,18 @@ pub async fn wifi_connect(mut controller: WifiController<'static>) {
             let res = controller.set_configuration(&wifi_config);
             esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
-            esp_println::println!("Starting wifi");
             controller.start_async().await.unwrap();
-            esp_println::println!("Wifi started!");
+            esp_println::println!("INFO: Wifi started!");
         }
 
         match controller.connect_async().await {
-            Ok(_) => esp_println::println!("Wifi connected!"),
+            Ok(_) => {
+                esp_println::println!("INFO: Wifi connected!");
+                WIFI_CONNECTED_SIGNAL.signal(true)
+            }
             Err(e) => {
-                esp_println::println!("Failed to connect to wifi: {e:?}");
+                esp_println::println!("ERROR: Failed to connect to wifi: {e:?}");
+                WIFI_CONNECTED_SIGNAL.signal(false);
                 Timer::after(Duration::from_millis(5000)).await
             }
         }

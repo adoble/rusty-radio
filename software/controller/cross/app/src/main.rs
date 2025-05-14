@@ -30,6 +30,7 @@ use task::{
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
+    wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
@@ -142,16 +143,17 @@ async fn main(spawner: Spawner) {
     // Print the registers using the shared driver for the vs1053
     print_registers().await;
 
+    // Setting up the network
     spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
-
     spawner.spawn(run_network_stack(hardware.runner)).ok();
+
+    // Tasks to handle peripherals
     spawner.spawn(button_monitor(hardware.button_pin)).ok();
+    spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
+    // Streaming and playing music
     spawner.spawn(stream(hardware.sta_stack, STATION_URL)).ok();
-
     spawner.spawn(play_music()).ok();
-
-    hardware.led.set_high();
 }
 
 async fn print_registers() {
