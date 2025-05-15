@@ -57,8 +57,8 @@ use async_delay::AsyncDelay;
 
 static_assertions::const_assert!(true);
 
+use stations::{Station, StationError, Stations};
 use vs1053_driver::Vs1053Driver;
-
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
@@ -139,6 +139,10 @@ async fn main(spawner: Spawner) {
             driver.begin().await.unwrap();
         }
     }
+
+    // Now set up the stations
+    let mut stations = Stations::new();
+    stations.load_stations();
 
     // Print the registers using the shared driver for the vs1053
     print_registers().await;

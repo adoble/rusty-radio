@@ -83,6 +83,8 @@ httparse = {version = "1.10.1", default-features = false}
 
 http-builder = { path = "../../http-builder" }
 
+stations = {path = "../../stations"}
+
  
 
 [dev-dependencies]

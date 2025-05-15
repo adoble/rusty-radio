@@ -16,12 +16,17 @@ const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 // Local server for testing
 //const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
-const STATIONS: &[&str] = &[
-    "",
-    "https://liveradio.swr.de/sw282p3/swr1rp/",
-    "https://liveradio.swr.de/sw282p3/swr4bw/",
-    "http://listen.181fm.com/181-classical_128k.mp3",
-    "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
+const STATIONS: &[(&str, &str)] = &[
+    ("SWR1", "https://liveradio.swr.de/sw282p3/swr1rp/"),
+    ("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/"),
+    (
+        "181 FM Classic",
+        "http://listen.181fm.com/181-classical_128k.mp3",
+    ),
+    (
+        "Absolut Oldie Classics",
+        "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
+    ),
 ];
 const MAX_URL_LEN: usize = 512;
 const MAX_NUMBER_STATIONS: usize = 256;
@@ -48,7 +53,7 @@ impl<'a> Station<'a> {
         self.url
     }
 
-    // Get the name of the station
+    /// Get the name of the station
     pub fn name(&self) -> String<MAX_STATION_NAME_LEN> {
         self.name.clone()
     }
@@ -59,6 +64,14 @@ pub struct Stations<'a>(Vec<Station<'a>, MAX_NUMBER_STATIONS>);
 impl<'a> Stations<'a> {
     pub fn new() -> Stations<'a> {
         Stations(Vec::new())
+    }
+
+    /// Load up the stations
+    /// TODO read the stations from another source
+    pub fn load_stations(&mut self) {
+        STATIONS
+            .iter()
+            .for_each(|s| self.add_station(s.0, s.1).unwrap());
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Station> {
