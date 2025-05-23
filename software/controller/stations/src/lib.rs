@@ -1,14 +1,14 @@
 #![cfg_attr(not(test), no_std)]
 
 use heapless::{String, Vec};
-use nourl::{Error, Url};
+use nourl::Url;
 
 // TODO All the hard coded stations have to be made variable.
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
 // Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
 // For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
-const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
+//const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
 // NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
 //const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
@@ -28,7 +28,7 @@ const STATIONS: &[(&str, &str)] = &[
         "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
     ),
 ];
-const MAX_URL_LEN: usize = 512;
+//const MAX_URL_LEN: usize = 512;
 const MAX_NUMBER_STATIONS: usize = 256;
 const MAX_STATION_NAME_LEN: usize = 24;
 pub struct Station<'a> {
