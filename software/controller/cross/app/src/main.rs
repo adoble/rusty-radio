@@ -155,6 +155,12 @@ async fn main(spawner: Spawner) {
     spawner.spawn(button_monitor(hardware.button_pin)).ok();
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
+    // Select station  TODO
+    let station_id = 0;
+    let station = stations
+        .get_station(station_id)
+        .expect("ERROR: Cannot get station {station_id}");
+
     // Streaming and playing music
     spawner.spawn(stream(hardware.sta_stack, STATION_URL)).ok();
     spawner.spawn(play_music()).ok();
