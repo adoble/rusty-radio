@@ -8,9 +8,43 @@ pub const MAX_URL_LEN: usize = 256;
 /// This is limited for of a HTTP response that contains what is required for this project.
 #[derive(Default, Clone)]
 pub struct Response {
-    pub code: Option<u16>,
+    pub status_code: ResponseStatusCode,
     pub location: Option<String<MAX_URL_LEN>>,
     pub size: usize, //TODO
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub enum ResponseStatusCode {
+    Informational(u16),
+    Successful(u16),
+    Redirection(u16),
+    ClientError(u16),
+    ServerError(u16),
+    Invalid(u16),
+    #[default]
+    Unknown,
+}
+
+impl From<u16> for ResponseStatusCode {
+    fn from(value: u16) -> Self {
+        match value {
+            100..200 => Self::Informational(value),
+            200..300 => Self::Successful(value),
+            300..400 => Self::Redirection(value),
+            400..500 => Self::ClientError(value),
+            500..600 => Self::ServerError(value),
+            _ => Self::Invalid(value),
+        }
+    }
+}
+
+impl From<Option<u16>> for ResponseStatusCode {
+    fn from(value: Option<u16>) -> Self {
+        match value {
+            Some(status_code) => ResponseStatusCode::from(status_code),
+            None => ResponseStatusCode::Unknown,
+        }
+    }
 }
 
 impl Response {
@@ -27,7 +61,7 @@ impl Response {
         };
 
         let headers = response.headers;
-        let code = response.code;
+        let code = ResponseStatusCode::from(response.code);
 
         let redirect_location = headers
             .iter()
@@ -51,23 +85,14 @@ impl Response {
         };
 
         Ok(Response {
-            code,
+            status_code: code,
             location: redirect_url,
             size,
         })
     }
 
-    /// Returns true if a successful HTTP response  
-    pub fn is_ok(&self) -> bool {
-        let successful_range = 200..300;
-        self.code
-            .is_some_and(|code| successful_range.contains(&code))
-    }
-
-    /// Returns true if a  HTTP redirect  
-    pub fn is_redirect(&self) -> bool {
-        let redirect_range = 300..400;
-        self.code.is_some_and(|code| redirect_range.contains(&code))
+    pub fn status_code(&self) -> ResponseStatusCode {
+        self.status_code.clone()
     }
 }
 
@@ -86,52 +111,53 @@ mod tests {
 
         let response = r.unwrap();
 
-        assert_eq!(response.code.unwrap(), 200);
+        assert_eq!(response.status_code, ResponseStatusCode::Successful(200));
         assert!(response.location.is_some());
         assert_eq!(response.location.unwrap(), "http://redirect.com");
     }
 
     #[test]
-    fn test_ok() {
-        let mut response = Response {
-            code: Some(200),
-            ..Default::default()
-        };
+    fn test_response_status_code_from_u16() {
+        let response_status_code = ResponseStatusCode::from(200);
+        assert_eq!(response_status_code, ResponseStatusCode::Successful(200));
 
-        assert!(response.is_ok());
+        let response_status_code = ResponseStatusCode::from(300);
+        assert_eq!(response_status_code, ResponseStatusCode::Redirection(300));
 
-        response.code = Some(226);
+        let response_status_code = ResponseStatusCode::from(306);
+        assert_eq!(response_status_code, ResponseStatusCode::Redirection(306));
 
-        assert!(response.is_ok());
+        let response_status_code = ResponseStatusCode::from(499);
+        assert_eq!(response_status_code, ResponseStatusCode::ClientError(499));
 
-        response.code = Some(300);
+        let response_status_code = ResponseStatusCode::from(500);
+        assert_eq!(response_status_code, ResponseStatusCode::ServerError(500));
 
-        assert!(!response.is_ok());
-
-        response.code = None;
-
-        assert!(!response.is_ok());
+        let response_status_code = ResponseStatusCode::from(600);
+        assert_eq!(response_status_code, ResponseStatusCode::Invalid(600));
     }
 
     #[test]
-    fn test_is_redirect() {
-        let mut response = Response {
-            code: Some(300),
-            ..Default::default()
-        };
+    fn test_response_status_code_from_option_u16() {
+        let response_status_code = ResponseStatusCode::from(Some(200));
+        assert_eq!(response_status_code, ResponseStatusCode::Successful(200));
 
-        assert!(response.is_redirect());
+        let response_status_code = ResponseStatusCode::from(Some(300));
+        assert_eq!(response_status_code, ResponseStatusCode::Redirection(300));
 
-        response.code = Some(301);
+        let response_status_code = ResponseStatusCode::from(Some(306));
+        assert_eq!(response_status_code, ResponseStatusCode::Redirection(306));
 
-        assert!(response.is_redirect());
+        let response_status_code = ResponseStatusCode::from(Some(499));
+        assert_eq!(response_status_code, ResponseStatusCode::ClientError(499));
 
-        response.code = Some(400);
+        let response_status_code = ResponseStatusCode::from(Some(500));
+        assert_eq!(response_status_code, ResponseStatusCode::ServerError(500));
 
-        assert!(!response.is_redirect());
+        let response_status_code = ResponseStatusCode::from(Some(600));
+        assert_eq!(response_status_code, ResponseStatusCode::Invalid(600));
 
-        response.code = None;
-
-        assert!(!response.is_redirect());
+        let response_status_code = ResponseStatusCode::from(None);
+        assert_eq!(response_status_code, ResponseStatusCode::Unknown);
     }
 }
