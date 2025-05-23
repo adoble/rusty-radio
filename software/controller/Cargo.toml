@@ -1,5 +1,5 @@
 [workspace]
-members = [ "http-builder", "stations", "vs1053-driver", "xtask"]
+members = [ "http-builder", "stations", "vs1053-driver","http", "xtask"]
 resolver = "2"
 
 

@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 55743
+Connection: keep-alive
+Cache-Control: s-maxage=300, public, max-age=0
+Location: http://redirect.com
+Content-Language: en-US
+Date: Thu, 06 Dec 2018 17:37:18 GMT
+
+<!doctype html>
+<html>
+</html>
