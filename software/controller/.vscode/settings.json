@@ -8,8 +8,9 @@
     
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
-        "http-builder/Cargo.toml",
+        "http/Cargo.toml",
         "cross/Cargo.toml",
+        "stations/Cargo.toml", 
         //"cross/app/Cargo.toml",
         
     ],
