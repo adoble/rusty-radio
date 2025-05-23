@@ -9,4 +9,4 @@ mod response;
 pub use error::RequestError;
 pub use request::Method;
 pub use request::Request;
-pub use response::{Response, MAX_URL_LEN};
+pub use response::{Response, ResponseStatusCode, MAX_URL_LEN};
