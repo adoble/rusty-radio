@@ -15,16 +15,17 @@ use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
 
 use crate::task::sync::ACCESS_WEB_SIGNAL;
 
-use http_builder::{Method, Request};
+use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
+// use http_builder::{Method, Request};
 
-// Empirically determeined value. This value  has to be used in
+// Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 const BUFFER_SIZE: usize = 6000;
 
 // Max size for a url
-const MAX_URL_LEN: usize = 256;
+//const MAX_URL_LEN: usize = 256;
 // TODO Actual URLS after redirects come close to this limit
-// TODO This needs to be the saem size as a the PATH_LEN in crate::http_builder::Request
+// TODO This needs to be the same size as a the PATH_LEN in crate::http_builder::Request
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
@@ -33,9 +34,9 @@ enum StreamingState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum StationUrl {
-    Redirect(String<MAX_URL_LEN>),
-    Final,
+enum StreamError {
+    Tcp(embassy_net::tcp::Error),
+    HeadersEndNotFound,
 }
 
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
@@ -83,12 +84,12 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
 
     let mut body_buffer = [0u8; BUFFER_SIZE];
 
-    let mut url: String<MAX_URL_LEN> = String::new();
-    url.push_str(initial_url).expect("ERROR: url to big");
-    let mut station_url = StationUrl::Redirect(url);
+    let mut url_str: String<MAX_URL_LEN> = String::new();
+    url_str.push_str(initial_url).expect("ERROR: url to big");
 
-    while let StationUrl::Redirect(url) = station_url {
-        let url = Url::parse(&url).unwrap();
+    'redirect: loop {
+        // while let StationUrl::Redirect(url) = station_url {
+        let url = Url::parse(&url_str).unwrap();
 
         let host = url.host();
         let port = url.port_or_default();
@@ -100,7 +101,7 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
             .await
             .unwrap();
 
-        esp_println::println!("DEBUG: DNS Query OK");
+        esp_println::println!("IINFO: DNS Query OK");
 
         let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
 
@@ -137,55 +138,45 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
             .expect("ERROR: Could not flush request");
 
         let mut header_buffer = [0u8; 2048];
-
-        // Read and process headers first
-        station_url = match read_headers(&mut socket, &mut header_buffer).await {
-            Ok(Some(url)) => {
-                esp_println::println!("DEBUG: Redirect to: {}", url);
-
-                socket.close();
-
-                // esp_println::println!(
-                //     "DEBUG: Header buffer\n{:?}",
-                //     core::str::from_utf8(&header_buffer)
-                // );
-
-                StationUrl::Redirect(url)
-            }
-            Ok(None) => {
-                // Headers read successfully, no redirect - continue with streaming
-
-                // esp_println::println!(
-                //     "DEBUG: Header buffer\n{:?}",
-                //     core::str::from_utf8(&header_buffer)
-                // );
-
-                StationUrl::Final
-            }
-            Err(e) => {
-                esp_println::println!("ERROR: Reading headers: {:?}", e);
-                return;
-            }
+        if read_headers(&mut socket, &mut header_buffer).await.is_err() {
+            panic!("Cannot read headers!");
         };
+        let Ok(response) = Response::new(&header_buffer) else {
+            panic!("Cannot process HTTP response!");
+        };
+
+        match response.status_code() {
+            ResponseStatusCode::Successful(_) => break 'redirect, // Start streaming the audiocontent
+            ResponseStatusCode::Redirection(_) => {
+                url_str = response
+                    .location
+                    .expect("ERROR: Redirect, but no redirection location speciifed!");
+                socket.close();
+                esp_println::println!("DEBUG: Redirecting to: {url_str}");
+                continue 'redirect;
+            }
+            other => panic!("Received invalid HTTP response code {:?}", other),
+        }
     }
 
     // Now stream the body
     stream_body(&mut socket, &mut body_buffer).await;
 }
 
-// New function to handle header reading
+/// Read the headers into the header buffer
 async fn read_headers(
     socket: &mut TcpSocket<'_>,
     header_buffer: &mut [u8],
-    // ) -> Result<Option<String<MAX_LOCATION_LEN>>, embedded_io_async::Error> {
-) -> Result<Option<String<MAX_URL_LEN>>, embassy_net::tcp::Error> {
+    //) -> Result<Option<String<MAX_URL_LEN>>, embassy_net::tcp::Error> {
+) -> Result<(), StreamError> {
     let mut header_pos = 0;
     let mut found_end = false;
 
     while header_pos < header_buffer.len() && !found_end {
         match socket
             .read(&mut header_buffer[header_pos..header_pos + 1])
-            .await?
+            .await
+            .map_err(|e| StreamError::Tcp(e))?
         {
             0 => break,
             n => {
@@ -200,25 +191,27 @@ async fn read_headers(
     }
 
     if !found_end {
-        return Ok(None);
+        Err(StreamError::HeadersEndNotFound)
+    } else {
+        Ok(())
     }
 
-    // Parse Location header if present
-    // TODO this uses "location" in lower case which seems against the usual HTTP conventions. Investigate!
-    if let Some(loc_start) = find_header(&header_buffer[..header_pos], b"location: ") {
-        if let Some(loc_end) = find_newline(&header_buffer[loc_start..header_pos]) {
-            if let Ok(str_slice) =
-                core::str::from_utf8(&header_buffer[loc_start..loc_start + loc_end])
-            {
-                let mut result = String::new();
-                if result.push_str(str_slice).is_ok() {
-                    return Ok(Some(result));
-                }
-            }
-        }
-    }
+    // // Parse Location header if present
+    // // TODO this uses "location" in lower case which seems against the usual HTTP conventions. Investigate!
+    // if let Some(loc_start) = find_header(&header_buffer[..header_pos], b"location: ") {
+    //     if let Some(loc_end) = find_newline(&header_buffer[loc_start..header_pos]) {
+    //         if let Ok(str_slice) =
+    //             core::str::from_utf8(&header_buffer[loc_start..loc_start + loc_end])
+    //         {
+    //             let mut result = String::new();
+    //             if result.push_str(str_slice).is_ok() {
+    //                 return Ok(Some(result));
+    //             }
+    //         }
+    //     }
+    // }
 
-    Ok(None)
+    //Ok(None)
 }
 
 // Hndle streaming of body, i.e. the mp3 data.
@@ -274,20 +267,22 @@ async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
     }
 }
 
-// Helper function to find a particular header. It is case insenstive
-fn find_header(buf: &[u8], header: &[u8]) -> Option<usize> {
-    buf.windows(header.len())
-        .position(|window| {
-            window.len() == header.len()
-                && window
-                    .iter()
-                    .zip(header.iter())
-                    .all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
-        })
-        .map(|p| p + header.len())
-}
+// // Helper function to find a particular header. It is case insenstive
+// #[deprecated]
+// fn find_header(buf: &[u8], header: &[u8]) -> Option<usize> {
+//     buf.windows(header.len())
+//         .position(|window| {
+//             window.len() == header.len()
+//                 && window
+//                     .iter()
+//                     .zip(header.iter())
+//                     .all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
+//         })
+//         .map(|p| p + header.len())
+// }
 
-// Helper function to find a new line.
-fn find_newline(buf: &[u8]) -> Option<usize> {
-    buf.iter().position(|&b| b == b'\r' || b == b'\n')
-}
+// // Helper function to find a new line.
+// #[deprecated]
+// fn find_newline(buf: &[u8]) -> Option<usize> {
+//     buf.iter().position(|&b| b == b'\r' || b == b'\n')
+// }

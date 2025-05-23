@@ -81,7 +81,8 @@ heapless = "0.8.0"
 embedded-nal = "0.9.0"
 httparse = {version = "1.10.1", default-features = false}
 
-http-builder = { path = "../../http-builder" }
+# http-builder = { path = "../../http-builder" }
+http = { path = "../../http" }
 
 stations = {path = "../../stations"}
 
