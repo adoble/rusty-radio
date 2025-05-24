@@ -5,6 +5,8 @@ use embassy_sync::{
 
 use crate::Vs1053DriverType;
 
+use stations::Station;
+
 // Signal that the web should be accessed
 pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 
@@ -36,3 +38,7 @@ pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal
 // We need to share the VS1053 driver between tasks so put it in a static mutex
 type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
+
+// This signal is used to indicate the current station
+pub static STATION_SELECTED: signal::Signal<CriticalSectionRawMutex, Station> =
+    signal::Signal::new();
