@@ -44,19 +44,8 @@ enum StreamError {
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
-    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
-
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
-
-    //esp_println::println!("INFO: Starting to play radio station");
-
-    loop {
-        let start_access = ACCESS_WEB_SIGNAL.wait().await;
-        if start_access {
-            break;
-        }
-    }
 
     // This is important. Need to make sure the DHCP is up so
     // that the ip address can be found from the host name
@@ -77,6 +66,7 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
         Timer::after(Duration::from_millis(500)).await;
     }
     //esp_println::println!("INFO: Stack link is now up!");
+    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
