@@ -73,6 +73,7 @@ impl Stations {
     }
 
     /// Load up the stations
+    /// Note: Station protocols are http: and not https:
     /// TODO read the stations from another source
     pub fn load_stations(&mut self) -> Result<(), StationError> {
         // STATIONS
@@ -80,13 +81,15 @@ impl Stations {
         //     .for_each(|s| self.add_station(s.0, s.1).unwrap());
 
         self.add_station("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")?;
-        self.add_station("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/")?;
+        self.add_station("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/")?;
         self.add_station(
             "181 FM Classic",
             "http://listen.181fm.com/181-classical_128k.mp3",
         )?;
-        self.add_station("Absolut Oldie Classics",
-        "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3")?;
+        self.add_station(
+            "Absolut Oldie Classics",
+            "http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
+        )?;
 
         Ok(())
     }

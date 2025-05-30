@@ -44,7 +44,7 @@ enum StreamError {
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
-    esp_println::print!("DEBUG: stream task started");
+    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
 
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];

@@ -75,7 +75,7 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 // not give a return code 3xx which is strange.
 // Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
 // For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
-const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
+//const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
 // NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
 //const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
@@ -83,7 +83,7 @@ const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 // Local server for testing
 //const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
-const STATION: (&str, &str) = ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
+//const STATION: (&str, &str) = ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -156,38 +156,21 @@ async fn main(spawner: Spawner) {
     spawner.spawn(button_monitor(hardware.button_pin)).ok();
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
-    // Select station  TODO
+    // Set up the list of stations // and make static
     //static STATIONS: StaticCell<Stations> = StaticCell::new();
-
-    // PROBLEM CODE
-    // Load the stations.
-    //TODO currently a test load
     let mut stations = Stations::new();
-    esp_println::println!("DEBUG: About to load station");
-    stations.add_station(STATION.0, STATION.1).unwrap();
-    esp_println::println!("DEBUG: Station loaded");
+    stations
+        .load_stations()
+        .expect("Cannot initialise the stations");
+    //let stations = STATIONS.init(stations);
 
-    // if stations.load_stations().is_err() {
-    //     esp_println::println!("ERROR: Cannot load stations!");
-    // }
-    // esp_println::println!("DEBUG: Loaded stations");
-
-    // //let stations = STATIONS.init(stations);
-
-    // let station_id = 0;
-    // let station = stations
-    //     .get_station(station_id)
-    //     .expect("ERROR: Cannot get station {station_id}");
-
-    // static CURRENT_STATION: StaticCell<Station> = StaticCell::new();
-    // let current_station = CURRENT_STATION.init(station);
-
-    esp_println::println!("DEBUG: Getting the current station");
-
+    // (Test) select a station and make it static
+    let station_id = 1;
+    let station = stations
+        .get_station(station_id)
+        .expect("ERROR: Cannot get station {station_id}");
     static CURRENT_STATION: StaticCell<Station> = StaticCell::new();
-    let station = Station::new("SWR3", STATION_URL).unwrap();
     let current_station = CURRENT_STATION.init(station);
-    esp_println::println!("DEBUG: Got  current station");
 
     // Streaming and playing music
     spawner
