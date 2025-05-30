@@ -1,15 +1,17 @@
 // Code taken from the project rust-projects/edge-hhtp-embassy-esp
 
-use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
+use embassy_net::{
+    tcp::{State, TcpSocket},
+    IpAddress, Stack,
+};
 use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
+use stations::Station;
 
 use core::net::Ipv4Addr;
 
 use nourl::Url;
-
-use heapless::String;
 
 use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
 
@@ -20,7 +22,10 @@ use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
-const BUFFER_SIZE: usize = 6000;
+const BUFFER_SIZE: usize = 6000; // THIS WORKS with good enough performance
+
+const AUDIO_BUFFER_SIZE: usize = 6000;
+//const AUDIO_BUFFER_SIZE: usize = 4000; // This still works!
 
 // Max size for a url
 //const MAX_URL_LEN: usize = 256;
@@ -41,11 +46,13 @@ enum StreamError {
 
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
-pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
+pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
+    esp_println::print!("DEBUG: stream task started");
+
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
 
-    esp_println::println!("INFO: Starting to play radio station");
+    //esp_println::println!("INFO: Starting to play radio station");
 
     loop {
         let start_access = ACCESS_WEB_SIGNAL.wait().await;
@@ -56,14 +63,14 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
 
     // This is important. Need to make sure the DHCP is up so
     // that the ip address can be found from the host name
-    esp_println::println!("INFO: waiting for DHCP...");
+    //esp_println::println!("INFO: waiting for DHCP...");
     while !stack.is_config_up() {
         Timer::after_millis(100).await;
     }
-    esp_println::println!("INFO: DHCP is now up!");
+    //esp_println::println!("INFO: DHCP is now up!");
 
     stack.wait_config_up().await;
-    esp_println::println!("INFO: Stack is up!");
+    //esp_println::println!("INFO: Stack is up!");
     let config = stack.config_v4().unwrap();
 
     loop {
@@ -72,7 +79,7 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
         }
         Timer::after(Duration::from_millis(500)).await;
     }
-    esp_println::println!("INFO: Stack link is now up!");
+    //esp_println::println!("INFO: Stack link is now up!");
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
@@ -82,10 +89,12 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
     socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
 
-    let mut body_buffer = [0u8; BUFFER_SIZE];
+    let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
 
-    let mut url_str: String<MAX_URL_LEN> = String::new();
-    url_str.push_str(initial_url).expect("ERROR: url to big");
+    //let mut url_str: String<MAX_URL_LEN> = String::new();
+    let initial_url = initial_station.url();
+    let mut url_str = initial_url.clone();
+    //url_str.push_str(initial_url).expect("ERROR: url to big");
 
     'redirect: loop {
         // while let StationUrl::Redirect(url) = station_url {
@@ -94,14 +103,14 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
         let host = url.host();
         let port = url.port_or_default();
         let path = url.path();
-        esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
+        //esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
 
         let remote_ip_addresses = stack
             .dns_query(host, embassy_net::dns::DnsQueryType::A)
             .await
             .unwrap();
 
-        esp_println::println!("IINFO: DNS Query OK");
+        //esp_println::println!("INFO: DNS Query OK");
 
         let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
 
@@ -112,7 +121,7 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
             }
         };
 
-        // Connect to the socket using the  IP address from the DNS
+        // Connect to the socket using the IP address from the DNS
         socket.connect(remote_endpoint).await.unwrap();
 
         // Request the data
@@ -126,7 +135,7 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
 
         request.header("Connection", "keep-alive").unwrap();
 
-        esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
+        //esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
 
         socket
             .write_all(request.to_string().as_bytes())
@@ -150,9 +159,11 @@ pub async fn stream(stack: Stack<'static>, initial_url: &'static str) {
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
                     .location
-                    .expect("ERROR: Redirect, but no redirection location speciifed!");
-                socket.close();
-                esp_println::println!("DEBUG: Redirecting to: {url_str}");
+                    .expect("ERROR: Redirect, but no redirection location specifed!");
+                // socket.close();
+                socket.abort();
+                socket.flush().await.unwrap();
+                esp_println::println!("DEBUG: Redirecting: {url_str}");
                 continue 'redirect;
             }
             other => panic!("Received invalid HTTP response code {:?}", other),
@@ -225,7 +236,7 @@ async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
         let read_start = Instant::now();
         match socket.read(buffer).await {
             Ok(0) => {
-                esp_println::println!("Connection closed");
+                //esp_println::println!("Connection closed");
                 break;
             }
             Ok(n) => {

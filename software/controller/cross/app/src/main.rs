@@ -83,15 +83,20 @@ const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 // Local server for testing
 //const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
+const STATION: (&str, &str) = ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    esp_println::println!("Init!");
+    esp_println::println!("Rusty Radio started");
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
-    esp_alloc::heap_allocator!(72 * 1024); // TODO is this too big!
+    //esp_alloc::heap_allocator!(72 * 1024); // This value works!
+    esp_alloc::heap_allocator!(76 * 1024); // TODO is this too big!
+
+    //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
     let mut hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
@@ -140,12 +145,8 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    // Now set up the stations
-    let mut stations = Stations::new();
-    stations.load_stations();
-
     // Print the registers using the shared driver for the vs1053
-    print_registers().await;
+    //print_registers().await;
 
     // Setting up the network
     spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
@@ -156,34 +157,65 @@ async fn main(spawner: Spawner) {
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Select station  TODO
-    let station_id = 0;
-    let station = stations
-        .get_station(station_id)
-        .expect("ERROR: Cannot get station {station_id}");
+    //static STATIONS: StaticCell<Stations> = StaticCell::new();
+
+    // PROBLEM CODE
+    // Load the stations.
+    //TODO currently a test load
+    let mut stations = Stations::new();
+    esp_println::println!("DEBUG: About to load station");
+    stations.add_station(STATION.0, STATION.1).unwrap();
+    esp_println::println!("DEBUG: Station loaded");
+
+    // if stations.load_stations().is_err() {
+    //     esp_println::println!("ERROR: Cannot load stations!");
+    // }
+    // esp_println::println!("DEBUG: Loaded stations");
+
+    // //let stations = STATIONS.init(stations);
+
+    // let station_id = 0;
+    // let station = stations
+    //     .get_station(station_id)
+    //     .expect("ERROR: Cannot get station {station_id}");
+
+    // static CURRENT_STATION: StaticCell<Station> = StaticCell::new();
+    // let current_station = CURRENT_STATION.init(station);
+
+    esp_println::println!("DEBUG: Getting the current station");
+
+    static CURRENT_STATION: StaticCell<Station> = StaticCell::new();
+    let station = Station::new("SWR3", STATION_URL).unwrap();
+    let current_station = CURRENT_STATION.init(station);
+    esp_println::println!("DEBUG: Got  current station");
 
     // Streaming and playing music
-    spawner.spawn(stream(hardware.sta_stack, STATION_URL)).ok();
+    spawner
+        .spawn(stream(hardware.sta_stack, current_station))
+        .ok();
+
     spawner.spawn(play_music()).ok();
+    esp_println::println!("DEBUG: All tasks spawned");
 }
 
-async fn print_registers() {
-    let mut driver_unlocked = CODEC_DRIVER.lock().await;
-    if let Some(driver) = driver_unlocked.as_mut() {
-        // Set the volume so we can see the value when we dump the registers
-        let left_vol = 0x11;
-        let right_vol = 0x22;
+// async fn print_registers() {
+//     let mut driver_unlocked = CODEC_DRIVER.lock().await;
+//     if let Some(driver) = driver_unlocked.as_mut() {
+//         // Set the volume so we can see the value when we dump the registers
+//         let left_vol = 0x11;
+//         let right_vol = 0x22;
 
-        driver.set_volume(left_vol, right_vol).await.unwrap();
-        // Should see 1122 as the vol reg
-        let registers = driver.dump_registers().await.unwrap();
+//         driver.set_volume(left_vol, right_vol).await.unwrap();
+//         // Should see 1122 as the vol reg
+//         let registers = driver.dump_registers().await.unwrap();
 
-        esp_println::println!("Dumped registers:");
-        esp_println::println!("mode: {:X}", registers.mode);
-        esp_println::println!("status: {:X}", registers.status);
-        esp_println::println!("clockf: {:X}", registers.clock_f);
-        esp_println::println!("volume: {:X}", registers.volume);
-        esp_println::println!("audio_data : {:X}", registers.audio_data);
-    } else {
-        esp_println::println!("ERROR: Could not print registers");
-    }
-}
+//         esp_println::println!("Dumped registers:");
+//         esp_println::println!("mode: {:X}", registers.mode);
+//         esp_println::println!("status: {:X}", registers.status);
+//         esp_println::println!("clockf: {:X}", registers.clock_f);
+//         esp_println::println!("volume: {:X}", registers.volume);
+//         esp_println::println!("audio_data : {:X}", registers.audio_data);
+//     } else {
+//         esp_println::println!("ERROR: Could not print registers");
+//     }
+// }

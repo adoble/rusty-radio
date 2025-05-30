@@ -1,12 +1,11 @@
 #![cfg_attr(not(test), no_std)]
 
 use heapless::{String, Vec};
-use nourl::Url;
 
 // TODO All the hard coded stations have to be made variable.
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
-// Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
+// Analysed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
 // For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
 //const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
 
@@ -16,41 +15,48 @@ use nourl::Url;
 // Local server for testing
 //const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
-const STATIONS: &[(&str, &str)] = &[
-    ("SWR1", "https://liveradio.swr.de/sw282p3/swr1rp/"),
-    ("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/"),
-    (
-        "181 FM Classic",
-        "http://listen.181fm.com/181-classical_128k.mp3",
-    ),
-    (
-        "Absolut Oldie Classics",
-        "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
-    ),
-];
+// const STATIONS: &[(&str, &str)] = &[
+//     ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3"),
+//     ("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/"),
+//     (
+//         "181 FM Classic",
+//         "http://listen.181fm.com/181-classical_128k.mp3",
+//     ),
+//     (
+//         "Absolut Oldie Classics",
+//         "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
+//     ),
+// ];
 //const MAX_URL_LEN: usize = 512;
 const MAX_NUMBER_STATIONS: usize = 256;
 const MAX_STATION_NAME_LEN: usize = 24;
-pub struct Station<'a> {
+
+// TODO this same constant is specified many times in other code.
+// This can lead to incosistencies!
+const MAX_URL_LEN: usize = 256;
+#[derive(Clone)]
+pub struct Station {
     name: String<MAX_STATION_NAME_LEN>,
-    url: Url<'a>,
+    url: String<MAX_URL_LEN>,
 }
 
-impl<'a> Station<'a> {
-    // Purposely private as creation  is done in Stations
-    fn new(station_name: &'a str, station_url: &'a str) -> Result<Self, StationError> {
+impl Station {
+    pub fn new(station_name: &str, station_url: &str) -> Result<Self, StationError> {
         let mut name = String::new();
         name.push_str(station_name)
             .map_err(|_| StationError::NameTooLong)?;
 
-        let url = Url::parse(station_url).map_err(|_| StationError::UrlIncorrect)?;
+        //let url = Url::parse(station_url).map_err(|_| StationError::UrlIncorrect)?;
+        let mut url: String<MAX_URL_LEN> = String::new();
+        url.push_str(station_url)
+            .map_err(|_| StationError::UrlTooLong)?;
 
         Ok(Station { name, url })
     }
 
     /// Get the URL of the station
-    pub fn url(&self) -> Url {
-        self.url
+    pub fn url(&self) -> String<MAX_URL_LEN> {
+        self.url.clone()
     }
 
     /// Get the name of the station
@@ -59,30 +65,41 @@ impl<'a> Station<'a> {
     }
 }
 
-pub struct Stations<'a>(Vec<Station<'a>, MAX_NUMBER_STATIONS>);
+pub struct Stations(Vec<Station, MAX_NUMBER_STATIONS>);
 
-impl<'a> Stations<'a> {
-    pub fn new() -> Stations<'a> {
+impl Stations {
+    pub fn new() -> Stations {
         Stations(Vec::new())
     }
 
     /// Load up the stations
     /// TODO read the stations from another source
-    pub fn load_stations(&mut self) {
-        STATIONS
-            .iter()
-            .for_each(|s| self.add_station(s.0, s.1).unwrap());
+    pub fn load_stations(&mut self) -> Result<(), StationError> {
+        // STATIONS
+        //     .iter()
+        //     .for_each(|s| self.add_station(s.0, s.1).unwrap());
+
+        self.add_station("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")?;
+        self.add_station("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/")?;
+        self.add_station(
+            "181 FM Classic",
+            "http://listen.181fm.com/181-classical_128k.mp3",
+        )?;
+        self.add_station("Absolut Oldie Classics",
+        "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3")?;
+
+        Ok(())
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Station> {
         self.0.iter()
     }
 
-    pub fn add_station(&mut self, name: &'a str, url: &'a str) -> Result<(), StationError> {
+    pub fn add_station(&mut self, name: &str, url: &str) -> Result<(), StationError> {
         let station = Station::new(name, url)?;
 
         self.0
-            .push(station)
+            .push(station.clone())
             .map_err(|_| StationError::TooManyStations)?;
 
         Ok(())
@@ -92,8 +109,15 @@ impl<'a> Stations<'a> {
         self.0.len()
     }
 
-    pub fn get_station(&self, index: usize) -> Option<&Station> {
-        self.0.get(index)
+    pub fn get_station(&self, index: usize) -> Option<Station> {
+        let station = self.0.get(index);
+
+        station.map(|s| s.clone())
+
+        // match station {
+        //     Some(station) => Some(station.clone()),
+        //     None => None,
+        // }
     }
 }
 
@@ -120,7 +144,7 @@ mod tests {
         let station = result.unwrap();
 
         assert_eq!(station.name, "SWR3");
-        assert_eq!(station.url.host(), "liveradio.swr.de");
+        assert_eq!(station.url, "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
 
         let very_long_station_name =
             "A very long station name that no one would really use in real life (unless it was some kind of gimmic)";

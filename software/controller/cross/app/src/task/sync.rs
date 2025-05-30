@@ -29,7 +29,8 @@ pub static WIFI_CONNECTED_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> 
 // > = Channel::new();
 
 // Pipe to stream internet radio content to the mp3 codec
-pub const MUSIC_PIPE_LEN: usize = 130_000;
+// pub const MUSIC_PIPE_LEN: usize = 130_000;   // Old value
+pub const MUSIC_PIPE_LEN: usize = 6_000;
 pub static MUSIC_PIPE: Pipe<CriticalSectionRawMutex, MUSIC_PIPE_LEN> = Pipe::new();
 
 // Signals that the music can start playing
@@ -40,5 +41,6 @@ type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'s
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // This signal is used to indicate the current station
-pub static STATION_SELECTED: signal::Signal<CriticalSectionRawMutex, Station> =
-    signal::Signal::new();
+
+//pub static STATION_SELECTED: signal::Signal<CriticalSectionRawMutex, Station> =
+//    signal::Signal::new();
