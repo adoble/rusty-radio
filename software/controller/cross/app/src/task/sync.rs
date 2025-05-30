@@ -28,10 +28,17 @@ pub static WIFI_CONNECTED_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> 
 //     MUSIC_CHANNEL_CAPACITY,
 // > = Channel::new();
 
+// Audio buffer size = 16,000 bytes/sec × 0.375 sec = 6,000 bytes (6 KB)
+// The size of the pipe cannot be smaller than the size of the audio buffer used in
+// stream task.
+pub const AUDIO_BUFFER_SIZE: usize = 6_000;
+// pub const AUDIO_BUFFER_SIZE: usize = 4000; // This still works if more space required
+
 // Pipe to stream internet radio content to the mp3 codec
 // pub const MUSIC_PIPE_LEN: usize = 130_000;   // Old value
-pub const MUSIC_PIPE_LEN: usize = 6_000;
-pub static MUSIC_PIPE: Pipe<CriticalSectionRawMutex, MUSIC_PIPE_LEN> = Pipe::new();
+// pub const MUSIC_PIPE_LEN: usize = 6_000;  // Reduced value still works
+//pub const MUSIC_PIPE_LEN: usize = 4_000; //
+pub static MUSIC_PIPE: Pipe<CriticalSectionRawMutex, AUDIO_BUFFER_SIZE> = Pipe::new();
 
 // Signals that the music can start playing
 pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();

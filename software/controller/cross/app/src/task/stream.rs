@@ -13,19 +13,16 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
-use crate::task::sync::{MUSIC_PIPE, START_PLAYING};
+use crate::task::sync::{AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING};
 
 use crate::task::sync::ACCESS_WEB_SIGNAL;
 
-use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
+use http::{Method, Request, Response, ResponseStatusCode};
 // use http_builder::{Method, Request};
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 const BUFFER_SIZE: usize = 6000; // THIS WORKS with good enough performance
-
-const AUDIO_BUFFER_SIZE: usize = 6000;
-//const AUDIO_BUFFER_SIZE: usize = 4000; // This still works!
 
 // Max size for a url
 //const MAX_URL_LEN: usize = 256;
@@ -206,27 +203,10 @@ async fn read_headers(
     } else {
         Ok(())
     }
-
-    // // Parse Location header if present
-    // // TODO this uses "location" in lower case which seems against the usual HTTP conventions. Investigate!
-    // if let Some(loc_start) = find_header(&header_buffer[..header_pos], b"location: ") {
-    //     if let Some(loc_end) = find_newline(&header_buffer[loc_start..header_pos]) {
-    //         if let Ok(str_slice) =
-    //             core::str::from_utf8(&header_buffer[loc_start..loc_start + loc_end])
-    //         {
-    //             let mut result = String::new();
-    //             if result.push_str(str_slice).is_ok() {
-    //                 return Ok(Some(result));
-    //             }
-    //         }
-    //     }
-    // }
-
-    //Ok(None)
 }
 
 // Hndle streaming of body, i.e. the mp3 data.
-async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
+async fn stream_body(socket: &mut TcpSocket<'_>, audio_buffer: &mut [u8]) {
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;
@@ -234,7 +214,7 @@ async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
 
     loop {
         let read_start = Instant::now();
-        match socket.read(buffer).await {
+        match socket.read(audio_buffer).await {
             Ok(0) => {
                 //esp_println::println!("Connection closed");
                 break;
@@ -245,7 +225,7 @@ async fn stream_body(socket: &mut TcpSocket<'_>, buffer: &mut [u8]) {
 
                 // Write immediately without trying to read more
                 let write_start = Instant::now();
-                MUSIC_PIPE.write_all(&buffer[..n]).await;
+                MUSIC_PIPE.write_all(&audio_buffer[..n]).await;
 
                 if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
                 {
