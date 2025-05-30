@@ -15,10 +15,7 @@ use nourl::Url;
 
 use crate::task::sync::{AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING};
 
-use crate::task::sync::ACCESS_WEB_SIGNAL;
-
 use http::{Method, Request, Response, ResponseStatusCode};
-// use http_builder::{Method, Request};
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml

@@ -23,13 +23,13 @@ use hardware::Hardware;
 
 mod task;
 use task::{
-    //access_radio_stations::access_radio_stations,
-    button_monitor::button_monitor,
     play_music::play_music,
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
+    //access_radio_stations::access_radio_stations,
+    tuner::tuner,
     wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
@@ -153,16 +153,15 @@ async fn main(spawner: Spawner) {
     spawner.spawn(run_network_stack(hardware.runner)).ok();
 
     // Tasks to handle peripherals
-    spawner.spawn(button_monitor(hardware.button_pin)).ok();
+    spawner.spawn(tuner(hardware.button_pin)).ok();
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
-    // Set up the list of stations // and make static
-    //static STATIONS: StaticCell<Stations> = StaticCell::new();
+    // Set up the list of stations
+    // Note: Do not make static
     let mut stations = Stations::new();
     stations
         .load_stations()
         .expect("Cannot initialise the stations");
-    //let stations = STATIONS.init(stations);
 
     // (Test) select a station and make it static
     let station_id = 1;
