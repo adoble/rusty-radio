@@ -11,7 +11,7 @@ use stations::{Station, Stations};
 #[embassy_executor::task]
 pub async fn tuner(mut pin: Input<'static>) {
     // //Set up the list of stations
-    // let mut stations = Stations::new();
+    let stations = Stations::new();
     // stations
     //     .load_stations()
     //     .expect("Cannot initialise the stations");
@@ -24,7 +24,10 @@ pub async fn tuner(mut pin: Input<'static>) {
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
     // Send the inital station
-    let initial_station = Station::new(0).expect("ERROR: Could not set station (0)");
+    // let initial_station = Station::new(0).expect("ERROR: Could not set station (0)");
+    let initial_station = stations
+        .get_station(0)
+        .expect("ERROR: Could not set intial station (0)");
     station_change_sender.send(initial_station);
 
     loop {
@@ -47,7 +50,10 @@ pub async fn tuner(mut pin: Input<'static>) {
             //     .expect("ERROR: Station {current_station_id} not found!");
             // esp_println::println!("\nSTATION: {}\n", station.name());
 
-            let station = Station::new(1).expect("ERROR: Could not create station (2)");
+            //let station = Station::new(1).expect("ERROR: Could not create station (2)");
+            let station = stations
+                .get_station(1)
+                .expect("ERROR: Could not create station (2)");
 
             // if station != current_station {
             station_change_sender.send(station.clone());
