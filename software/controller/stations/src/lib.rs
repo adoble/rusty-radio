@@ -75,8 +75,13 @@ impl Stations {
         STATION_DATA.len()
     }
 
-    pub fn get_station(&self, index: usize) -> Option<Station> {
+    pub fn get_station(&mut self, index: usize) -> Option<Station> {
+        self.current_station = index;
         Station::new(index)
+    }
+
+    pub fn reset(&mut self) {
+        self.current_station = 0;
     }
 }
 

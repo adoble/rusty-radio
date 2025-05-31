@@ -11,7 +11,7 @@ use stations::{Station, Stations};
 #[embassy_executor::task]
 pub async fn tuner(mut pin: Input<'static>) {
     // //Set up the list of stations
-    let stations = Stations::new();
+    let mut stations = Stations::new();
     // stations
     //     .load_stations()
     //     .expect("Cannot initialise the stations");
@@ -51,12 +51,13 @@ pub async fn tuner(mut pin: Input<'static>) {
             // esp_println::println!("\nSTATION: {}\n", station.name());
 
             //let station = Station::new(1).expect("ERROR: Could not create station (2)");
-            let station = stations
-                .get_station(1)
-                .expect("ERROR: Could not create station (2)");
+            let mut station = stations.next();
+            if station.is_none() {
+                station = stations.get_station(0);
+            }
 
             // if station != current_station {
-            station_change_sender.send(station.clone());
+            station_change_sender.send(station.unwrap().clone());
             //     current_station = station;
             // };
         }
