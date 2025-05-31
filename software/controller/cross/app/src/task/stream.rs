@@ -11,11 +11,13 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
+use heapless::String;
+
 use crate::task::sync::{
     StationChangeReceiver, AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH,
 };
 
-use http::{Method, Request, Response, ResponseStatusCode};
+use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
@@ -83,7 +85,10 @@ pub async fn stream(stack: Stack<'static>) {
     esp_println::println!("\nPLAYING: {}\n", initial_station.name());
 
     let initial_url = initial_station.url();
-    let mut url_str = initial_url.clone();
+    let mut url_str = String::<MAX_URL_LEN>::new();
+    url_str
+        .push_str(initial_url)
+        .expect("ERROR: Initial URL is too long");
 
     'redirect: loop {
         // while let StationUrl::Redirect(url) = station_url {
@@ -163,7 +168,10 @@ pub async fn stream(stack: Stack<'static>) {
         // Stream the audio until a new station has been selected by the tuner
         let new_station =
             stream_audio(&mut socket, &mut body_buffer, &mut station_change_receiver).await;
-        url_str = new_station.url();
+        url_str.clear();
+        url_str
+            .push_str(new_station.url())
+            .expect("ERROR: New station url too long");
         socket.abort();
         socket.flush().await.unwrap();
     }

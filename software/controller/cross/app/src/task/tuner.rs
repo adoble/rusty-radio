@@ -24,8 +24,7 @@ pub async fn tuner(mut pin: Input<'static>) {
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
     // Send the inital station
-    let initial_station = Station::new("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")
-        .expect("ERROR: Could not set station (0)");
+    let initial_station = Station::new(0).expect("ERROR: Could not set station (0)");
     station_change_sender.send(initial_station);
 
     loop {
@@ -48,8 +47,7 @@ pub async fn tuner(mut pin: Input<'static>) {
             //     .expect("ERROR: Station {current_station_id} not found!");
             // esp_println::println!("\nSTATION: {}\n", station.name());
 
-            let station = Station::new("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/")
-                .expect("ERROR: Could not create station (2)");
+            let station = Station::new(1).expect("ERROR: Could not create station (2)");
 
             // if station != current_station {
             station_change_sender.send(station.clone());

@@ -57,7 +57,7 @@ use async_delay::AsyncDelay;
 
 static_assertions::const_assert!(true);
 
-use stations::{Station, StationError, Stations};
+use stations::{Station, Stations};
 use vs1053_driver::Vs1053Driver;
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -157,13 +157,10 @@ async fn main(spawner: Spawner) {
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Set up the list of stations
-    // Note: Do not make static
     let mut stations = Stations::new();
-    stations
-        .load_stations()
-        .expect("Cannot initialise the stations");
 
     // (Test) select a station and make it static
+    // TODO do we ned to make it static - it already is?
     let station_id = 0;
     let station = stations
         .get_station(station_id)
