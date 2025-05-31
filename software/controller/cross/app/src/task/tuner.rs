@@ -18,6 +18,9 @@ pub async fn tuner(mut pin: Input<'static>) {
 
     let mut current_sender_id = 0;
 
+    // let mut current_station = Station::new("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")
+    //     .expect("ERROR: Could not create station (1) ");
+
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
     loop {
@@ -41,8 +44,12 @@ pub async fn tuner(mut pin: Input<'static>) {
             // esp_println::println!("\nSTATION: {}\n", station.name());
 
             let station = Station::new("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/")
-                .expect("ERROR: Could not create station");
-            station_change_sender.send(station);
+                .expect("ERROR: Could not create station (2)");
+
+            // if station != current_station {
+            station_change_sender.send(station.clone());
+            //     current_station = station;
+            // };
         }
     }
 }

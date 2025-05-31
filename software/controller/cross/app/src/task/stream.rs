@@ -1,9 +1,7 @@
 // Code taken from the project rust-projects/edge-hhtp-embassy-esp
 
-use embassy_net::{
-    tcp::{State, TcpSocket},
-    IpAddress, Stack,
-};
+use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
+use embassy_sync::watch::Receiver;
 use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
@@ -13,7 +11,7 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
-use crate::task::sync::{AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING};
+use crate::task::sync::{AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH};
 
 use http::{Method, Request, Response, ResponseStatusCode};
 
@@ -37,6 +35,9 @@ enum StreamError {
     Tcp(embassy_net::tcp::Error),
     HeadersEndNotFound,
 }
+
+type StationChangeReceiver =
+    Receiver<'static, embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, Station, 1>;
 
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
@@ -74,6 +75,11 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
 
     let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
+
+    // Set up the receiver for changes in the station
+    let mut station_change_receiver: StationChangeReceiver = STATION_CHANGE_WATCH
+        .receiver()
+        .expect("No station change receiver. Check the number of receivers set.");
 
     //let mut url_str: String<MAX_URL_LEN> = String::new();
     let initial_url = initial_station.url();
@@ -139,7 +145,15 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
         };
 
         match response.status_code() {
-            ResponseStatusCode::Successful(_) => break 'redirect, // Start streaming the audiocontent
+            // ResponseStatusCode::Successful(_) => break 'redirect, // Start streaming the audiocontent
+            ResponseStatusCode::Successful(_) => (), // Start streaming the audiocontent
+            // ResponseStatusCode::Successful(_) => {
+            //     let new_station = stream_audio(&mut socket, &mut body_buffer).await;
+            //     url_str = new_station.url();
+            //     socket.abort();
+            //     socket.flush().await.unwrap();
+            //     continue 'redirect;
+            // }
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
                     .location
@@ -152,10 +166,17 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
             }
             other => panic!("Received invalid HTTP response code {:?}", other),
         }
+
+        // Stream the audio until a new station has been selected by the tuner
+        let new_station =
+            stream_audio(&mut socket, &mut body_buffer, &mut station_change_receiver).await;
+        url_str = new_station.url();
+        socket.abort();
+        socket.flush().await.unwrap();
     }
 
     // Now stream the body
-    stream_body(&mut socket, &mut body_buffer).await;
+    // stream_body(&mut socket, &mut body_buffer).await;
 }
 
 /// Read the headers into the header buffer
@@ -192,19 +213,28 @@ async fn read_headers(
     }
 }
 
-// Hndle streaming of body, i.e. the mp3 data.
-async fn stream_body(socket: &mut TcpSocket<'_>, audio_buffer: &mut [u8]) {
+// Handle streaming of body, i.e. the mp3 data.
+async fn stream_audio(
+    socket: &mut TcpSocket<'_>,
+    audio_buffer: &mut [u8],
+    station_change_receiver: &mut StationChangeReceiver,
+) -> Station {
     let mut total_bytes = 0u32;
     let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+
+    // // Set up the receiver for changes in the station
+    // let mut station_change_receiver: StationChangeReceiver = STATION_CHANGE_WATCH
+    //     .receiver()
+    //     .expect("No station change receiver. Check the number of receivers set.");
 
     loop {
         let read_start = Instant::now();
         match socket.read(audio_buffer).await {
             Ok(0) => {
                 //esp_println::println!("Connection closed");
-                break;
+                panic!("Connection closed");
             }
             Ok(n) => {
                 let read_time = read_start.elapsed().as_micros();
@@ -242,25 +272,10 @@ async fn stream_body(socket: &mut TcpSocket<'_>, audio_buffer: &mut [u8]) {
                 Timer::after(Duration::from_millis(10)).await;
             }
         }
+
+        if let Some(new_station) = station_change_receiver.try_changed() {
+            esp_println::println!("DEBUG: Station changed to {}", new_station.name());
+            break new_station;
+        }
     }
 }
-
-// // Helper function to find a particular header. It is case insenstive
-// #[deprecated]
-// fn find_header(buf: &[u8], header: &[u8]) -> Option<usize> {
-//     buf.windows(header.len())
-//         .position(|window| {
-//             window.len() == header.len()
-//                 && window
-//                     .iter()
-//                     .zip(header.iter())
-//                     .all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
-//         })
-//         .map(|p| p + header.len())
-// }
-
-// // Helper function to find a new line.
-// #[deprecated]
-// fn find_newline(buf: &[u8]) -> Option<usize> {
-//     buf.iter().position(|&b| b == b'\r' || b == b'\n')
-// }

@@ -53,4 +53,4 @@ pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 //    signal::Signal::new();
 
 // This watches for changes to the station
-pub static STATION_CHANGE_WATCH: Watch<CriticalSectionRawMutex, Station, 2> = Watch::new();
+pub static STATION_CHANGE_WATCH: Watch<CriticalSectionRawMutex, Station, 1> = Watch::new();

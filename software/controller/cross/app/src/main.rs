@@ -164,7 +164,7 @@ async fn main(spawner: Spawner) {
         .expect("Cannot initialise the stations");
 
     // (Test) select a station and make it static
-    let station_id = 1;
+    let station_id = 0;
     let station = stations
         .get_station(station_id)
         .expect("ERROR: Cannot get station {station_id}");

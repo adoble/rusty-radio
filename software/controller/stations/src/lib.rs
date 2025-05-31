@@ -34,7 +34,7 @@ const MAX_STATION_NAME_LEN: usize = 24;
 // TODO this same constant is specified many times in other code.
 // This can lead to incosistencies!
 const MAX_URL_LEN: usize = 256;
-#[derive(Clone)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub struct Station {
     name: String<MAX_STATION_NAME_LEN>,
     url: String<MAX_URL_LEN>,
