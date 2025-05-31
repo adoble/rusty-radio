@@ -27,7 +27,7 @@ use task::{
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
-    sync::CODEC_DRIVER,
+    sync::{CODEC_DRIVER, STATION_CHANGE_WATCH},
     //access_radio_stations::access_radio_stations,
     tuner::tuner,
     wifi_connected_indicator::wifi_connected_indicator,
@@ -172,9 +172,7 @@ async fn main(spawner: Spawner) {
     let current_station = CURRENT_STATION.init(station);
 
     // Streaming and playing music
-    spawner
-        .spawn(stream(hardware.sta_stack, current_station))
-        .ok();
+    spawner.spawn(stream(hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
     esp_println::println!("DEBUG: All tasks spawned");

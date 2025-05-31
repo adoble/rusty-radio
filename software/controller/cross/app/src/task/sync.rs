@@ -1,6 +1,10 @@
 /// Synchronisation between the different tasks.
 use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, pipe::Pipe, signal, watch::Watch,
+    blocking_mutex::raw::CriticalSectionRawMutex,
+    mutex::Mutex,
+    pipe::Pipe,
+    signal,
+    watch::{Receiver, Watch},
 };
 
 use crate::Vs1053DriverType;
@@ -54,3 +58,6 @@ pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // This watches for changes to the station
 pub static STATION_CHANGE_WATCH: Watch<CriticalSectionRawMutex, Station, 1> = Watch::new();
+
+pub type StationChangeReceiver =
+    Receiver<'static, embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, Station, 1>;

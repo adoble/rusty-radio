@@ -11,7 +11,9 @@ use core::net::Ipv4Addr;
 
 use nourl::Url;
 
-use crate::task::sync::{AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH};
+use crate::task::sync::{
+    StationChangeReceiver, AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH,
+};
 
 use http::{Method, Request, Response, ResponseStatusCode};
 
@@ -36,12 +38,9 @@ enum StreamError {
     HeadersEndNotFound,
 }
 
-type StationChangeReceiver =
-    Receiver<'static, embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, Station, 1>;
-
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
-pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
+pub async fn stream(stack: Stack<'static>) {
     let mut rx_buffer = [0; BUFFER_SIZE];
     let mut tx_buffer = [0; BUFFER_SIZE];
 
@@ -63,8 +62,6 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
         }
         Timer::after(Duration::from_millis(500)).await;
     }
-    //esp_println::println!("INFO: Stack link is now up!");
-    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
@@ -77,14 +74,16 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
     let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
 
     // Set up the receiver for changes in the station
-    let mut station_change_receiver: StationChangeReceiver = STATION_CHANGE_WATCH
+    let mut station_change_receiver = STATION_CHANGE_WATCH
         .receiver()
-        .expect("No station change receiver. Check the number of receivers set.");
+        .expect("Cannot get station change receiver.");
 
-    //let mut url_str: String<MAX_URL_LEN> = String::new();
+    // Get the initial station
+    let initial_station = station_change_receiver.get().await;
+    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
+
     let initial_url = initial_station.url();
     let mut url_str = initial_url.clone();
-    //url_str.push_str(initial_url).expect("ERROR: url to big");
 
     'redirect: loop {
         // while let StationUrl::Redirect(url) = station_url {
@@ -145,15 +144,8 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
         };
 
         match response.status_code() {
-            // ResponseStatusCode::Successful(_) => break 'redirect, // Start streaming the audiocontent
             ResponseStatusCode::Successful(_) => (), // Start streaming the audiocontent
-            // ResponseStatusCode::Successful(_) => {
-            //     let new_station = stream_audio(&mut socket, &mut body_buffer).await;
-            //     url_str = new_station.url();
-            //     socket.abort();
-            //     socket.flush().await.unwrap();
-            //     continue 'redirect;
-            // }
+
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
                     .location
@@ -164,6 +156,7 @@ pub async fn stream(stack: Stack<'static>, initial_station: &'static Station) {
                 esp_println::println!("DEBUG: Redirecting: {url_str}");
                 continue 'redirect;
             }
+
             other => panic!("Received invalid HTTP response code {:?}", other),
         }
 
@@ -223,11 +216,6 @@ async fn stream_audio(
     let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
-
-    // // Set up the receiver for changes in the station
-    // let mut station_change_receiver: StationChangeReceiver = STATION_CHANGE_WATCH
-    //     .receiver()
-    //     .expect("No station change receiver. Check the number of receivers set.");
 
     loop {
         let read_start = Instant::now();

@@ -10,7 +10,7 @@ use stations::{Station, Stations};
 
 #[embassy_executor::task]
 pub async fn tuner(mut pin: Input<'static>) {
-    // Set up the list of stations
+    // //Set up the list of stations
     // let mut stations = Stations::new();
     // stations
     //     .load_stations()
@@ -22,6 +22,11 @@ pub async fn tuner(mut pin: Input<'static>) {
     //     .expect("ERROR: Could not create station (1) ");
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
+
+    // Send the inital station
+    let initial_station = Station::new("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")
+        .expect("ERROR: Could not set station (0)");
+    station_change_sender.send(initial_station);
 
     loop {
         pin.wait_for_falling_edge().await;
