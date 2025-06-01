@@ -156,18 +156,6 @@ async fn main(spawner: Spawner) {
     spawner.spawn(tuner(hardware.button_pin)).ok();
     spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
-    // Set up the list of stations
-    let mut stations = Stations::new();
-
-    // (Test) select a station and make it static
-    // TODO do we ned to make it static - it already is?
-    let station_id = 0;
-    let station = stations
-        .get_station(station_id)
-        .expect("ERROR: Cannot get station {station_id}");
-    static CURRENT_STATION: StaticCell<Station> = StaticCell::new();
-    let current_station = CURRENT_STATION.init(station);
-
     // Streaming and playing music
     spawner.spawn(stream(hardware.sta_stack)).ok();
 

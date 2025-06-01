@@ -6,25 +6,16 @@ use esp_hal::gpio::Input;
 
 use embassy_time::{Duration, Timer};
 
-use stations::{Station, Stations};
+use stations::Stations;
 
 #[embassy_executor::task]
 pub async fn tuner(mut pin: Input<'static>) {
-    // //Set up the list of stations
+    //Set up the list of stations
     let mut stations = Stations::new();
-    // stations
-    //     .load_stations()
-    //     .expect("Cannot initialise the stations");
-
-    let mut current_sender_id = 0;
-
-    // let mut current_station = Station::new("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3")
-    //     .expect("ERROR: Could not create station (1) ");
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
     // Send the inital station
-    // let initial_station = Station::new(0).expect("ERROR: Could not set station (0)");
     let initial_station = stations
         .get_station(0)
         .expect("ERROR: Could not set intial station (0)");
@@ -40,26 +31,13 @@ pub async fn tuner(mut pin: Input<'static>) {
         if pin.is_low() {
             // Pin is still low so acknowledge
             esp_println::println!("Button pressed after debounce!");
-            current_sender_id += 1;
-            // if current_sender_id >= stations.number_stations() {
-            //     current_sender_id = 0;
-            // }
 
-            // let station = stations
-            //     .get_station(current_sender_id)
-            //     .expect("ERROR: Station {current_station_id} not found!");
-            // esp_println::println!("\nSTATION: {}\n", station.name());
-
-            //let station = Station::new(1).expect("ERROR: Could not create station (2)");
             let mut station = stations.next();
             if station.is_none() {
                 station = stations.get_station(0);
             }
 
-            // if station != current_station {
             station_change_sender.send(station.unwrap().clone());
-            //     current_station = station;
-            // };
         }
     }
 }
