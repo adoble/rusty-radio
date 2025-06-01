@@ -11,8 +11,6 @@
         "http/Cargo.toml",
         "cross/Cargo.toml",
         "stations/Cargo.toml", 
-        //"cross/app/Cargo.toml",
-        
     ],
 
 }

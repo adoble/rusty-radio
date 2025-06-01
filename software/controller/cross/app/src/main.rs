@@ -27,7 +27,7 @@ use task::{
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
-    sync::{CODEC_DRIVER, STATION_CHANGE_WATCH},
+    sync::CODEC_DRIVER,
     //access_radio_stations::access_radio_stations,
     tuner::tuner,
     wifi_connected_indicator::wifi_connected_indicator,
@@ -49,15 +49,12 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 
-//use embassy_time::{Duration, Timer};
-
 use static_cell::StaticCell;
 
 use async_delay::AsyncDelay;
 
 static_assertions::const_assert!(true);
 
-use stations::{Station, Stations};
 use vs1053_driver::Vs1053Driver;
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -70,7 +67,7 @@ type Vs1053DriverType<'a> = Vs1053Driver<
     AsyncDelay,
 >;
 
-// TODO All the hard coded stations have to be made variable.
+// INFO: Notes on stations
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
 // not give a return code 3xx which is strange.
 // Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
@@ -99,7 +96,7 @@ async fn main(spawner: Spawner) {
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
-    let mut hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+    let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 

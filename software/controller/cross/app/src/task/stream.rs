@@ -1,7 +1,6 @@
 // Code taken from the project rust-projects/edge-hhtp-embassy-esp
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
-use embassy_sync::watch::Receiver;
 use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
@@ -21,12 +20,8 @@ use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
-const BUFFER_SIZE: usize = 6000; // THIS WORKS with good enough performance
-
-// Max size for a url
-//const MAX_URL_LEN: usize = 256;
-// TODO Actual URLS after redirects come close to this limit
-// TODO This needs to be the same size as a the PATH_LEN in crate::http_builder::Request
+// Reducing it can give problems with some stations.
+const BUFFER_SIZE: usize = 6000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
@@ -52,11 +47,8 @@ pub async fn stream(stack: Stack<'static>) {
     while !stack.is_config_up() {
         Timer::after_millis(100).await;
     }
-    //esp_println::println!("INFO: DHCP is now up!");
 
     stack.wait_config_up().await;
-    //esp_println::println!("INFO: Stack is up!");
-    let config = stack.config_v4().unwrap();
 
     loop {
         if stack.is_link_up() {
@@ -104,8 +96,6 @@ pub async fn stream(stack: Stack<'static>) {
             .await
             .unwrap();
 
-        //esp_println::println!("INFO: DNS Query OK");
-
         let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
 
         let remote_endpoint = match remote_ip_addr {
@@ -125,11 +115,10 @@ pub async fn stream(stack: Stack<'static>) {
         // Set the user agent. Note this does not have to be a spoof of
         // a "normal" browser agent such as
         // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
+        // TODO Get the program name and version from the Cargo.toml file
         request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
 
         request.header("Connection", "keep-alive").unwrap();
-
-        //esp_println::println!("DEBUG: HTTP Request:\n{}", request.to_string());
 
         socket
             .write_all(request.to_string().as_bytes())
@@ -149,13 +138,12 @@ pub async fn stream(stack: Stack<'static>) {
         };
 
         match response.status_code() {
-            ResponseStatusCode::Successful(_) => (), // Start streaming the audiocontent
+            ResponseStatusCode::Successful(_) => (), // Start streaming the audio content
 
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
                     .location
                     .expect("ERROR: Redirect, but no redirection location specifed!");
-                // socket.close();
                 socket.abort();
                 socket.flush().await.unwrap();
                 esp_println::println!("DEBUG: Redirecting: {url_str}");
@@ -175,9 +163,6 @@ pub async fn stream(stack: Stack<'static>) {
         socket.abort();
         socket.flush().await.unwrap();
     }
-
-    // Now stream the body
-    // stream_body(&mut socket, &mut body_buffer).await;
 }
 
 /// Read the headers into the header buffer
@@ -193,7 +178,7 @@ async fn read_headers(
         match socket
             .read(&mut header_buffer[header_pos..header_pos + 1])
             .await
-            .map_err(|e| StreamError::Tcp(e))?
+            .map_err(StreamError::Tcp)?
         {
             0 => break,
             n => {

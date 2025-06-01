@@ -1,34 +1,10 @@
 #![cfg_attr(not(test), no_std)]
 
-// TODO All the hard coded stations have to be made variable.
-// NOTE: This station does a number of redirects by setting the response header "location". Note that it does
-// not give a return code 3xx which is strange.
-// Analysed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
-// For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
-//const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
-
-// NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
-//const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
-
-// Local server for testing
-//const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
-
-// const STATIONS: &[(&str, &str)] = &[
-//     ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3"),
-//     ("SWR4", "https://liveradio.swr.de/sw282p3/swr4bw/"),
-//     (
-//         "181 FM Classic",
-//         "http://listen.181fm.com/181-classical_128k.mp3",
-//     ),
-//     (
-//         "Absolut Oldie Classics",
-//         "https://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
-//     ),
-// ];
-
 static STATION_DATA: &[(&str, &str)] = &[
+    // SWR3 does a number of redirects, 128 kB/s
     ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3"),
     ("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/"),
+    // 181 FM Classic does no redirects, 128 kB/s
     (
         "181 FM Classic",
         "http://listen.181fm.com/181-classical_128k.mp3",
@@ -37,6 +13,8 @@ static STATION_DATA: &[(&str, &str)] = &[
         "Absolut Oldie Classics",
         "http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
     ),
+    // Local server for testing, 128 kB/s
+    //("Hijo de la Luna", "http://192.168.2.107:8080/music/2"),
 ];
 
 #[derive(Clone, PartialEq)]
@@ -82,6 +60,12 @@ impl Stations {
 
     pub fn reset(&mut self) {
         self.current_station = 0;
+    }
+}
+
+impl Default for Stations {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
