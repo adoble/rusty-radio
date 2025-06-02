@@ -1,21 +1,58 @@
 #![cfg_attr(not(test), no_std)]
 
-static STATION_DATA: &[(&str, &str)] = &[
+// The music type needs to be specified as the extension is not enough to decide.
+
+static STATION_DATA: &[(&str, &str, &str)] = &[
     // SWR3 does a number of redirects, 128 kB/s
-    ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3"),
-    ("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/"),
+    (
+        "SWR3",
+        "http://liveradio.swr.de/sw282p3/swr3/play.mp3",
+        "mp3",
+    ),
+    ("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/", "mp3"),
     // 181 FM Classic does no redirects, 128 kB/s
     (
         "181 FM Classic",
         "http://listen.181fm.com/181-classical_128k.mp3",
+        "mp3",
     ),
     (
         "Absolut Oldie Classics",
         "http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
+        "mp3",
+    ),
+    // AAC Station
+    (
+        "bigFM",
+        "http://streams.bigfm.de/bigfm-deutschland-128-aac?usid=0-0-H-A-D-30",
+        "aac",
     ),
     // Local server for testing, 128 kB/s
     //("Hijo de la Luna", "http://192.168.2.107:8080/music/2"),
 ];
+
+#[derive(Default, Debug, PartialEq, PartialOrd)]
+pub enum MusicType {
+    #[default]
+    MP3,
+    AAC,
+    M3U,
+    Unknown,
+}
+
+impl From<&str> for MusicType {
+    fn from(value: &str) -> Self {
+        match value {
+            "mp3" => MusicType::MP3,
+            "MP3" => MusicType::MP3,
+            "aac" => MusicType::AAC,
+            "AAC" => MusicType::AAC,
+            "m3u" => MusicType::M3U,
+            "M3U" => MusicType::M3U,
+            _ => MusicType::Unknown,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq)]
 pub struct Station {
@@ -37,6 +74,10 @@ impl Station {
 
     pub fn url(&self) -> &'static str {
         STATION_DATA[self.index].1
+    }
+
+    pub fn music_type(&self) -> MusicType {
+        STATION_DATA[self.index].2.into()
     }
 }
 
@@ -90,16 +131,49 @@ impl Iterator for Stations {
 mod tests {
     use super::*;
 
-    //type TestResult = Result<(), StationError>;
+    #[test]
+    fn test_get_station() {
+        let mut stations = Stations::new();
+
+        let number_stations = stations.number_stations();
+
+        assert!(number_stations == STATION_DATA.len());
+
+        let station_id = 1;
+        assert!(station_id < STATION_DATA.len());
+        assert_eq!(stations.get_station(station_id).unwrap().name(), "SWR4");
+    }
 
     #[test]
-    fn get_station() {
+    fn test_number_stations() {
         let stations = Stations::new();
 
-        assert!(stations.number_stations() == STATION_DATA.len());
+        let number_stations = stations.number_stations();
 
-        assert_eq!(stations.get_station(1).unwrap().name(), "SWR4");
-        assert!(stations.get_station(4).is_none());
+        assert!(number_stations == STATION_DATA.len());
+    }
+
+    #[test]
+    fn test_no_station() {
+        let mut stations = Stations::new();
+
+        let number_stations = stations.number_stations();
+
+        assert!(stations.get_station(number_stations).is_none());
+    }
+
+    #[test]
+    fn test_music_type() {
+        let mut stations = Stations::new();
+        assert_eq!(
+            stations.get_station(0).unwrap().music_type(),
+            MusicType::MP3
+        );
+
+        assert_eq!(
+            stations.get_station(4).unwrap().music_type(),
+            MusicType::AAC
+        );
     }
 
     #[test]

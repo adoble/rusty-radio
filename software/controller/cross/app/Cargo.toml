@@ -74,19 +74,19 @@ static_assertions  = "1.1.0"
 embedded-io-async  = "0.6.1"
 
 vs1053-driver = { path = "../../vs1053-driver" }
-embedded-hal  = "1.0.0"
-arrayvec = {version="0.7.6", default-features = false}
-nourl = "0.1.4"
-heapless = "0.8.0"
+embedded-hal  = "1.0.0"# http-builder = { path = "../../http-builder" }
+
 embedded-nal = "0.9.0"
 httparse = {version = "1.10.1", default-features = false}
 
-# http-builder = { path = "../../http-builder" }
-http = { path = "../../http" }
+nourl = "0.1.4"
+heapless = "0.8.0"
+#m3u = "1.0.0"
 
+# Local libs
+http = { path = "../../http" }
 stations = {path = "../../stations"}
 
- 
 
 [dev-dependencies]
 embedded-hal-mock = { version = "0.11.1", features = [
