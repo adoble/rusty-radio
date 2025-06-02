@@ -4,8 +4,11 @@ All notable changes to the Rusty Radio Controller project will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.4]
 
+### Added
+
+- Significant code changes to allow more than one station to be tuned.
 
 
 ## [0.0.3]
