@@ -86,6 +86,7 @@ heapless = "0.8.0"
 # Local libs
 http = { path = "../../http" }
 stations = {path = "../../stations"}
+m3u = {path = "../../m3u"}
 
 
 [dev-dependencies]

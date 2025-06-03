@@ -1,0 +1,9 @@
+baudrate = 460800
+
+[connection]
+
+[[usb_device]]
+vid = "303a"
+pid = "1001"
+
+[flash]

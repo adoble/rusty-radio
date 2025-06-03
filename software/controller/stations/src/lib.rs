@@ -3,6 +3,12 @@
 // The music type needs to be specified as the extension is not enough to decide.
 
 static STATION_DATA: &[(&str, &str, &str)] = &[
+    // Simple M3U stations (no m3u extensions)
+    (
+        "Hit Radio FFH",
+        "http://streams.ffh.de/radioffh/mp3/hqlivestream.m3u",
+        "m3u",
+    ),
     // SWR3 does a number of redirects, 128 kB/s
     (
         "SWR3",
@@ -37,6 +43,7 @@ pub enum MusicType {
     MP3,
     AAC,
     M3U,
+    M3U8,
     Unknown,
 }
 
@@ -49,6 +56,8 @@ impl From<&str> for MusicType {
             "AAC" => MusicType::AAC,
             "m3u" => MusicType::M3U,
             "M3U" => MusicType::M3U,
+            "m3u8" => MusicType::M3U8,
+            "M3U8" => MusicType::M3U8,
             _ => MusicType::Unknown,
         }
     }
