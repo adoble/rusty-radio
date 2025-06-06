@@ -5,41 +5,172 @@
 
 use core::str::Utf8Error;
 
-pub struct M3U<'a> {
-    contents: &'a [u8],
+use heapless::String;
+
+pub struct M3U<const MAX_URL_LEN: usize> {
+    // contents: &'a [u8],
+    url_buffer: [u8; MAX_URL_LEN],
+    state: State,
+    pos: usize,
 }
 
-impl<'a> M3U<'a> {
-    pub fn new(contents: &'a [u8]) -> M3U<'a> {
-        M3U { contents }
+#[derive(Clone, Debug)]
+enum State {
+    Initial,
+    H,
+    T1,
+    T2,
+    P,
+    Colon,
+    Slash1,
+    Slash2,
+    Rest,
+}
+
+impl<const MAX_URL_LEN: usize> M3U<MAX_URL_LEN> {
+    pub fn new() -> M3U<MAX_URL_LEN> {
+        M3U {
+            url_buffer: [0; MAX_URL_LEN],
+            state: State::Initial,
+            pos: 0,
+        }
     }
 
-    pub fn location(&self) -> Result<&str, M3UError> {
-        let m3u_file_contents = str::from_utf8(self.contents).unwrap();
+    // Extracts the first URL it finds in an extended M3U file and uses that as the next location
+    // This functions expects individual characters from a stream of data to be given.If no url currently
+    // found in the parsing process then it returns None. This means it should be goven more characters
+    // until the URL is found and Some is returned.
+    // It is designed to be sparing with memory.
+    // TODO  can we make this a "stream"  function
+    // TODO can we , should we, extend this so that it returns all the urls?
+    pub fn parse_extended_m3u(
+        &mut self,
+        char: u8,
+    ) -> Result<Option<String<MAX_URL_LEN>>, M3UError> {
+        // Assuming the first url found is the location and that it points to an audio stream and
+        // not another m3u file.
 
-        let first_line = m3u_file_contents
-            .lines()
-            .next()
-            .ok_or(M3UError::EmptyFile)?;
+        // Look for http://
 
-        if first_line.starts_with("#EXTM3U") {
-            // Extended M3U format - find first non-comment line
-            m3u_file_contents
-                .lines()
-                .find(|line| !line.starts_with('#') && !line.trim().is_empty())
-                .ok_or(M3UError::NoValidUrl)
-        } else {
-            // Simple M3U format - first line is the URL
-            Ok(first_line)
+        // let state = self.state.clone();
+        match (self.state.clone(), char) {
+            (State::Initial, b'h') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::H;
+                return Ok(None);
+            }
+            (State::Initial, _) => {
+                return Ok(None);
+            }
+
+            (State::H, b't') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::T1;
+                return Ok(None);
+            }
+            (State::T1, b't') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::T2;
+                return Ok(None);
+            }
+            (State::T2, b'p') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::P;
+                return Ok(None);
+            }
+            (State::P, b':') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::Colon;
+                return Ok(None);
+            }
+            (State::Colon, b'/') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::Slash1;
+                return Ok(None);
+            }
+            (State::Slash1, b'/') => {
+                self.url_buffer[self.pos] = char;
+                self.pos += 1;
+                self.state = State::Slash2;
+                return Ok(None);
+            }
+            (State::Slash2, b'\n') => {
+                return Err(M3UError::MalformedUrl);
+            }
+            (State::Slash2, _) => {
+                if char.is_ascii_whitespace() {
+                    return Err(M3UError::MalformedUrl);
+                } else {
+                    self.url_buffer[self.pos] = char;
+                    self.pos += 1;
+                    self.state = State::Rest;
+                    return Ok(None);
+                }
+            }
+            (State::Rest, b'\n') => {
+                // End state
+                let url_str = core::str::from_utf8(&self.url_buffer[0..self.pos])?;
+                let mut url = String::<MAX_URL_LEN>::new();
+
+                url.push_str(url_str).map_err(|_| M3UError::UrlTooLong)?;
+                return Ok(Some(url));
+            }
+            (State::Rest, _) => {
+                // Process rest of the url
+                if char.is_ascii_whitespace() {
+                    return Err(M3UError::MalformedUrl);
+                } else {
+                    self.url_buffer[self.pos] = char;
+                    self.pos += 1;
+                    self.state = State::Rest;
+                }
+                return Ok(None);
+            }
+            (_, _) => {
+                return Err(M3UError::InvalidInternalState);
+            }
         }
     }
 }
 
+// impl<'a> M3U<'a> {
+//     pub fn new(contents: &'a [u8]) -> M3U<'a> {
+//         M3U { contents }
+//     }
+
+//     pub fn location(&self) -> Result<&str, M3UError> {
+//         let m3u_file_contents = str::from_utf8(self.contents).unwrap();
+
+//         let first_line = m3u_file_contents
+//             .lines()
+//             .next()
+//             .ok_or(M3UError::EmptyFile)?;
+
+//         if first_line.starts_with("#EXTM3U") {
+//             // Extended M3U format - find first non-comment line
+//             m3u_file_contents
+//                 .lines()
+//                 .find(|line| !line.starts_with('#') && !line.trim().is_empty())
+//                 .ok_or(M3UError::NoValidUrl)
+//         } else {
+//             // Simple M3U format - first line is the URL
+//             Ok(first_line)
+//         }
+//     }
+// }
+
 #[derive(PartialEq, Debug)]
 pub enum M3UError {
     Utf8ConversionError(Utf8Error),
-    EmptyFile,
-    NoValidUrl,
+    UrlTooLong,
+    MalformedUrl,
+    InvalidInternalState,
 }
 
 impl From<Utf8Error> for M3UError {
@@ -54,32 +185,58 @@ mod tests {
 
     const SIMPLE_M3U: &str = "http://listen.181fm.com/181-classical_128k.mp3";
 
-    #[test]
-    fn test_location_old() {
-        let buffer: &[u8; 5] = b"abcde";
-        let m3u = M3U::new(buffer);
-        assert_eq!(m3u.location().unwrap(), "abcde");
-    }
+    const EXTENDED_M3U: &str = "#EXTM3U\n\n#EXTINF:0, station name\nhttp://radio.com/stream/mp3/stream.mp3\nn#EXTINF:0, station name\nhttp://hitradio.com//mp3/stream.mp3\n";
 
     #[test]
-    fn test_location() {
-        let buffer = SIMPLE_M3U.as_bytes();
-        let m3u = M3U::new(buffer);
-        assert_eq!(
-            m3u.location().unwrap(),
-            "http://listen.181fm.com/181-classical_128k.mp3"
-        );
+    fn test_parse_extended_m3u() {
+        let mut url = String::<1024>::new();
+
+        let mut m3u = M3U::new();
+        for c in EXTENDED_M3U.chars() {
+            let b: u8 = c.try_into().unwrap();
+            let partial_url = m3u.parse_extended_m3u(b).unwrap();
+            match partial_url {
+                Some(full_url) => {
+                    url = full_url;
+                    break;
+                }
+                None => continue,
+            }
+        }
+
+        let mut expected_url = String::<1024>::new();
+        expected_url
+            .push_str("http://radio.com/stream/mp3/stream.mp3")
+            .unwrap();
+        assert_eq!(expected_url, url);
     }
 
-    #[test]
-    fn test_extended() {
-        let extended_m3u = include_str!("../test_resources/extended_m3u.m3u");
-        let buffer = extended_m3u.as_bytes();
+    // #[test]
+    // fn test_location_old() {
+    //     let buffer: &[u8; 5] = b"abcde";
+    //     let m3u = M3U::new(buffer);
+    //     assert_eq!(m3u.location().unwrap(), "abcde");
+    // }
 
-        let m3u = M3U::new(buffer);
-        assert_eq!(
-            m3u.location().unwrap(),
-            "http://listen.181fm.com/181-classical_128k.mp3"
-        );
-    }
+    // #[test]
+    // fn test_location() {
+    //     let buffer = SIMPLE_M3U.as_bytes();
+    //     let m3u = M3U::new(buffer);
+    //     assert_eq!(
+    //         m3u.location().unwrap(),
+    //         "http://listen.181fm.com/181-classical_128k.mp3"
+    //     );
+    // }
+
+    // #[test]
+    // fn test_extended() {
+    //     let extended_m3u = include_str!("../test_resources/extended_m3u.m3u");
+    //     let buffer = extended_m3u.as_bytes();
+
+    //     let m3u = M3U::new(buffer);
+    //     assert_eq!(
+    //         m3u.location().unwrap(),
+    //         "http://listen.181fm.com/181-classical_128k.mp3"
+    //     );
+    // }
 }
