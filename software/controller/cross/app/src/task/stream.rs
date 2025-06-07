@@ -4,8 +4,11 @@ use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
+
+use esp_println::println;
+
 use m3u::{M3UError, M3U};
-use stations::{MusicType, Station};
+use stations::Station;
 
 use core::net::Ipv4Addr;
 
@@ -22,7 +25,11 @@ use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 // Reducing it can give problems with some stations.
+// TODO change this name to TCP_BUFFER_SIZE
 const BUFFER_SIZE: usize = 6000;
+
+// Enough space to store all the HTTP header information
+const HEADER_SIZE: usize = 2048;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StreamingState {
@@ -31,12 +38,44 @@ enum StreamingState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+enum ContentType {
+    Audio,
+    SimpleM3U(String<MAX_URL_LEN>),
+    ExtendedM3U(String<MAX_URL_LEN>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum StreamError {
     Tcp(embassy_net::tcp::Error),
     HeadersEndNotFound,
     EmptyM3U,
-    M3UTooLarge,
+    InvalidM3U(M3UError),
+    UrlNotFoundInM3U,
+    InvalidContent,
+    MalformedUrl,
+    UrlTooLong,
+    TooManyBytesReadIn(usize),
 }
+
+impl From<core::str::Utf8Error> for StreamError {
+    fn from(_error: core::str::Utf8Error) -> Self {
+        StreamError::MalformedUrl
+    }
+}
+impl From<embassy_net::tcp::Error> for StreamError {
+    fn from(error: embassy_net::tcp::Error) -> Self {
+        StreamError::Tcp(error)
+    }
+}
+impl From<M3UError> for StreamError {
+    fn from(error: M3UError) -> Self {
+        Self::InvalidM3U(error)
+    }
+}
+
+// This is the number of characters that have to be read in the determine the content type
+// The assumption is that each content type contains at least this number of characters.
+const TOKEN_LEN: usize = 7;
 
 /// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
@@ -46,7 +85,6 @@ pub async fn stream(stack: Stack<'static>) {
 
     // This is important. Need to make sure the DHCP is up so
     // that the ip address can be found from the host name
-    //esp_println::println!("INFO: waiting for DHCP...");
     while !stack.is_config_up() {
         Timer::after_millis(100).await;
     }
@@ -77,8 +115,6 @@ pub async fn stream(stack: Stack<'static>) {
 
     // Get the initial station
     let initial_station = station_change_receiver.get().await;
-    esp_println::println!("\nPLAYING: {}\n", initial_station.name());
-    let mut music_type = initial_station.music_type();
 
     let initial_url = initial_station.url();
     let mut url_str = String::<MAX_URL_LEN>::new();
@@ -93,7 +129,6 @@ pub async fn stream(stack: Stack<'static>) {
         let host = url.host();
         let port = url.port_or_default();
         let path = url.path();
-        //esp_println::println!("INFO: Host = {}, Path = {}, Port = {}", host, path, port);
 
         let remote_ip_addresses = stack
             .dns_query(host, embassy_net::dns::DnsQueryType::A)
@@ -133,7 +168,7 @@ pub async fn stream(stack: Stack<'static>) {
             .await
             .expect("ERROR: Could not flush request");
 
-        let mut header_buffer = [0u8; 2048];
+        let mut header_buffer = [0u8; HEADER_SIZE];
         if read_headers(&mut socket, &mut header_buffer).await.is_err() {
             panic!("Cannot read headers!");
         };
@@ -143,33 +178,34 @@ pub async fn stream(stack: Stack<'static>) {
 
         match response.status_code() {
             ResponseStatusCode::Successful(_) => {
-                if music_type == MusicType::M3U {
-                    esp_println::println!("DEBUG: Music type detected: {:?}", music_type);
-                    // Redirect to the url specified in the m3u file
-                    // Note that this DOES NOT support redirection to another m3u file
-                    // TODO the above
-                    let mut m3u_buffer: [u8; 1024] = [0; 1024];
-                    let r = read_m3u(&mut socket, &mut m3u_buffer).await;
+                let content_type = determine_content_type(&mut socket).await;
+                match content_type {
+                    Ok(ContentType::Audio) => (),
+                    Ok(ContentType::SimpleM3U(location)) => {
+                        url_str.clear();
+                        url_str
+                            .push_str(&location)
+                            .expect("ERROR: M3U URL too long!");
 
-                    let len = match r {
-                        Ok(len) => len,
-                        Err(_) => panic!("Cannot read M3U file!"),
-                    };
+                        socket.abort();
+                        socket.flush().await.unwrap();
+                        continue 'redirect;
+                    }
+                    Ok(ContentType::ExtendedM3U(location)) => {
+                        url_str.clear();
+                        url_str
+                            .push_str(&location)
+                            .expect("ERROR: M3U URL too long");
 
-                    let m3u = M3U::new(&m3u_buffer[0..len]);
-                    let m3u_location = m3u.location().expect("ERROR: M3U location not found!");
-                    esp_println::println!("DEBUG: M3U Location: {m3u_location}");
-                    url_str.clear();
-                    url_str
-                        .push_str(m3u_location)
-                        .expect("ERROR: M3U URL too long!");
-                    music_type = MusicType::MP3;
-                    socket.abort();
-                    socket.flush().await.unwrap();
-                    esp_println::println!("DEBUG: M3U Redirection: {url_str}");
-                    continue 'redirect;
+                        socket.abort();
+                        socket.flush().await.unwrap();
+                        continue 'redirect;
+                    }
+                    Err(e) => {
+                        panic!("ERROR: Unable to read content type: {:?}", e);
+                    }
                 }
-            } // Start streaming the audio content
+            }
 
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
@@ -177,7 +213,6 @@ pub async fn stream(stack: Stack<'static>) {
                     .expect("ERROR: Redirect, but no redirection location specifed!");
                 socket.abort();
                 socket.flush().await.unwrap();
-                esp_println::println!("DEBUG: Redirecting: {url_str}");
                 continue 'redirect;
             }
 
@@ -286,57 +321,154 @@ async fn stream_audio(
         }
 
         if let Some(new_station) = station_change_receiver.try_changed() {
-            esp_println::println!("DEBUG: Station changed to {}", new_station.name());
             break new_station;
         }
     }
 }
 
-/// Read the contents of M3U file into the buffer
-async fn read_m3u(socket: &mut TcpSocket<'_>, m3u_buffer: &mut [u8]) -> Result<usize, StreamError> {
-    let mut pos = 0;
-    let mut newlines = 0;
-    const MAX_EMPTY_LINES: usize = 2; // Two consecutive empty lines means end of file
+async fn determine_content_type(
+    mut socket: &mut TcpSocket<'_>,
+) -> Result<ContentType, StreamError> {
+    let mut token_buffer = [0u8; TOKEN_LEN];
 
-    while pos < m3u_buffer.len() {
-        //match socket.read(&mut m3u_buffer[pos..pos + 1]).await {
-        match socket.read(m3u_buffer).await {
+    // Only readinng in one byte at a time for maximum control when it comes to errors
+    let mut buf = [0u8; 1];
+
+    let mut pos: usize = 0;
+
+    // Read in the token at the start of the content
+    while pos < TOKEN_LEN {
+        match socket.read(&mut buf).await {
             Ok(0) => {
-                esp_println::println!("DEBUG: Read 0 bytes from m3u file");
-                // Connection closed
-                if pos == 0 {
-                    return Err(StreamError::EmptyM3U);
-                }
-                break;
+                return Err(StreamError::EmptyM3U);
             }
             Ok(n) => {
-                esp_println::println!("DEBUG: Read {n} bytes into pos {pos}");
+                token_buffer[pos..pos + n].copy_from_slice(&buf);
                 pos += n;
-
-                // // Check for newline sequences
-                // if pos >= 2 && &m3u_buffer[pos - 2..pos] == b"\r\n" {
-                //     if pos >= 4 && &m3u_buffer[pos - 4..pos] == b"\r\n\r\n" {
-                //         // Found double newline, end of file
-                //         break;
-                //     }
-                // }
-
-                // Safety check - if we've read too much without finding the end
-                if pos >= m3u_buffer.len() {
-                    return Err(StreamError::M3UTooLarge);
-                }
-                break;
             }
-            Err(e) => {
-                //esp_println::println!("ERROR: Cannot read M3U file from socket [{:?}]", e);
-                return Err(StreamError::Tcp(e));
-                //Timer::after(Duration::from_millis(10)).await;
-            }
+            Err(e) => return Err(StreamError::Tcp(e)),
         }
     }
-    let s = str::from_utf8(m3u_buffer).unwrap();
-    esp_println::println!("{}", s);
 
-    esp_println::println!("DEBUG: Read complete M3U file ({} bytes)", pos);
-    Ok(pos)
+    // Safety check
+    if pos < TOKEN_LEN {
+        return Err(StreamError::InvalidContent);
+    }
+
+    let token_read_result = core::str::from_utf8(&token_buffer);
+    let token = match token_read_result {
+        Ok(token) => token,
+        Err(_) => {
+            // Unable to convert to UTF8so assume that the content type is audio
+            return Ok(ContentType::Audio);
+        }
+    };
+
+    let content_type = match token {
+        "http://" => parse_simple_m3u(&mut socket).await?,
+        "#EXTM3U" => parse_extended_m3u(&mut socket).await?,
+        // Return audio content type in the unlikely event that the first byte scan be intepretated as UTF8
+        _ => ContentType::Audio,
+    };
+
+    Ok(content_type)
+}
+
+async fn parse_simple_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, StreamError> {
+    let mut url_buffer = [0u8; MAX_URL_LEN - TOKEN_LEN];
+
+    match socket.read(&mut url_buffer).await {
+        Ok(0) => Err(StreamError::EmptyM3U),
+        Ok(n) => {
+            let url_str = core::str::from_utf8(&url_buffer[0..n])?;
+
+            // Sometimes more then one url is recorded. Just take the first one.
+            let first_url_str = url_str.lines().next();
+
+            let first_url_str = first_url_str.ok_or(StreamError::UrlNotFoundInM3U)?;
+
+            let mut url = String::<MAX_URL_LEN>::new();
+            // This has already been read as the token
+            url.push_str("http://").unwrap();
+            url.push_str(first_url_str)
+                .map_err(|_| StreamError::UrlTooLong)?;
+            Ok(ContentType::SimpleM3U(url))
+        }
+        Err(e) => Err(StreamError::Tcp(e)),
+    }
+}
+
+// Extracts the first URL it finds in an extended M3U file and uses that as the next location
+// It is designed to be sparing with memory.
+//async fn parse_extended_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, StreamError> {
+async fn parse_extended_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, StreamError> {
+    let mut m3u = M3U::<MAX_URL_LEN>::new();
+
+    let mut char_buf = [0u8; 1];
+
+    loop {
+        match socket.read(&mut char_buf).await {
+            Ok(0) => {
+                // EOF
+                let url = m3u.terminate()?;
+                return Ok(ContentType::ExtendedM3U(url));
+            }
+            Ok(1) => {
+                let url = m3u.parse_m3u(char_buf[0])?;
+                if let Some(url) = url {
+                    return Ok(ContentType::ExtendedM3U(url));
+                } else {
+                    continue;
+                }
+            }
+            Ok(n) => return Err(StreamError::TooManyBytesReadIn(n)),
+            Err(e) => return Err(StreamError::Tcp(e)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mock_embedded_io::{MockError, Source};
+
+    #[test]
+    fn test_parse_extended_m3u_invalid_data() {
+        futures::executor::block_on(async {
+            let data_bytes = "#EXTM3U".as_bytes();
+            let mut mock_source = Source::new()
+                .data(data_bytes)
+                .error(MockError(embedded_io_async::ErrorKind::BrokenPipe));
+
+            let result = parse_extended_m3u(&mut mock_source).await;
+            assert!(matches!(result, Err(StreamError::InvalidM3U)));
+        });
+    }
+
+    #[test]
+    fn test_parse_extended_m3u_valid_url() {
+        futures::executor::block_on(async {
+            let data = "#EXTM3U\nhttp://example.com/stream\n";
+            let mut mock_source = Source::new().data(data.as_bytes());
+
+            let result = parse_extended_m3u(&mut mock_source).await;
+            match result {
+                Ok(ContentType::ExtendedM3U(url)) => {
+                    assert_eq!(url.as_str(), "http://example.com/stream");
+                }
+                _ => panic!("Expected ExtendedM3U content type"),
+            }
+        });
+    }
+
+    #[test]
+    fn test_determine_content_type() {
+        futures::executor::block_on(async {
+            let data = "http://example.com/stream\n";
+            let mut mock_source = Source::new().data(data.as_bytes());
+
+            let result = determine_content_type(&mut mock_source).await;
+            assert!(matches!(result, Ok(ContentType::SimpleM3U(_))));
+        });
+    }
 }

@@ -55,59 +55,55 @@ impl<const MAX_URL_LEN: usize> M3U<MAX_URL_LEN> {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::H;
-                return Ok(None);
+                Ok(None)
             }
-            (State::Initial, _) => {
-                return Ok(None);
-            }
+            (State::Initial, _) => Ok(None),
 
             (State::H, b't') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::T1;
-                return Ok(None);
+                Ok(None)
             }
             (State::T1, b't') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::T2;
-                return Ok(None);
+                Ok(None)
             }
             (State::T2, b'p') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::P;
-                return Ok(None);
+                Ok(None)
             }
             (State::P, b':') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::Colon;
-                return Ok(None);
+                Ok(None)
             }
             (State::Colon, b'/') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::Slash1;
-                return Ok(None);
+                Ok(None)
             }
             (State::Slash1, b'/') => {
                 self.url_buffer[self.pos] = char;
                 self.pos += 1;
                 self.state = State::Slash2;
-                return Ok(None);
+                Ok(None)
             }
-            (State::Slash2, b'\n') => {
-                return Err(M3UError::MalformedUrl);
-            }
+            (State::Slash2, b'\n') => Err(M3UError::MalformedUrl),
             (State::Slash2, _) => {
                 if char.is_ascii_whitespace() {
-                    return Err(M3UError::MalformedUrl);
+                    Err(M3UError::MalformedUrl)
                 } else {
                     self.url_buffer[self.pos] = char;
                     self.pos += 1;
                     self.state = State::Rest;
-                    return Ok(None);
+                    Ok(None)
                 }
             }
             (State::Rest, b'\n') | (State::Rest, b'\r') => {
@@ -116,22 +112,20 @@ impl<const MAX_URL_LEN: usize> M3U<MAX_URL_LEN> {
                 let mut url = String::<MAX_URL_LEN>::new();
 
                 url.push_str(url_str).map_err(|_| M3UError::UrlTooLong)?;
-                return Ok(Some(url));
+                Ok(Some(url))
             }
             (State::Rest, _) => {
                 // Process rest of the url
                 if char.is_ascii_whitespace() {
-                    return Err(M3UError::MalformedUrl);
+                    Err(M3UError::MalformedUrl)
                 } else {
                     self.url_buffer[self.pos] = char;
                     self.pos += 1;
                     self.state = State::Rest;
+                    Ok(None)
                 }
-                return Ok(None);
             }
-            (_, _) => {
-                return Err(M3UError::InvalidInternalState);
-            }
+            (_, _) => Err(M3UError::InvalidInternalState),
         }
     }
 
@@ -144,14 +138,20 @@ impl<const MAX_URL_LEN: usize> M3U<MAX_URL_LEN> {
                 let mut url = String::<MAX_URL_LEN>::new();
 
                 url.push_str(url_str).map_err(|_| M3UError::UrlTooLong)?;
-                return Ok(url);
+                Ok(url)
             }
-            _ => return Err(M3UError::MalformedUrl),
+            _ => Err(M3UError::MalformedUrl),
         }
     }
 }
 
-#[derive(PartialEq, Debug)]
+impl<const MAX_URL_LEN: usize> Default for M3U<MAX_URL_LEN> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum M3UError {
     Utf8ConversionError(Utf8Error),
     UrlTooLong,

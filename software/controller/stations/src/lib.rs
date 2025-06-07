@@ -2,36 +2,28 @@
 
 // The music type needs to be specified as the extension is not enough to decide.
 
-static STATION_DATA: &[(&str, &str, &str)] = &[
+static STATION_DATA: &[(&str, &str)] = &[
     // Simple M3U stations (no m3u extensions)
     (
         "Hit Radio FFH",
         "http://streams.ffh.de/radioffh/mp3/hqlivestream.m3u",
-        "m3u",
     ),
     // SWR3 does a number of redirects, 128 kB/s
-    (
-        "SWR3",
-        "http://liveradio.swr.de/sw282p3/swr3/play.mp3",
-        "mp3",
-    ),
-    ("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/", "mp3"),
+    ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3"),
+    ("SWR4", "http://liveradio.swr.de/sw282p3/swr4bw/"),
     // 181 FM Classic does no redirects, 128 kB/s
     (
         "181 FM Classic",
         "http://listen.181fm.com/181-classical_128k.mp3",
-        "mp3",
     ),
     (
         "Absolut Oldie Classics",
         "http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
-        "mp3",
     ),
     // AAC Station
     (
         "bigFM",
         "http://streams.bigfm.de/bigfm-deutschland-128-aac?usid=0-0-H-A-D-30",
-        "aac",
     ),
     // Local server for testing, 128 kB/s
     //("Hijo de la Luna", "http://192.168.2.107:8080/music/2"),
@@ -83,10 +75,6 @@ impl Station {
 
     pub fn url(&self) -> &'static str {
         STATION_DATA[self.index].1
-    }
-
-    pub fn music_type(&self) -> MusicType {
-        STATION_DATA[self.index].2.into()
     }
 }
 

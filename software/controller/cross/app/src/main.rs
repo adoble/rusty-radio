@@ -1,7 +1,7 @@
+#![cfg_attr(not(test), no_std)]
 #![no_main]
-#![no_std]
+// #![no_std]
 // Make std available when testing
-//#![cfg_attr(not(test), no_std)]
 
 //! An internet radio
 //!

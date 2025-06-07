@@ -30,12 +30,13 @@ pub async fn tuner(mut pin: Input<'static>) {
 
         if pin.is_low() {
             // Pin is still low so acknowledge
-            esp_println::println!("Button pressed after debounce!");
 
             let mut station = stations.next();
             if station.is_none() {
                 station = stations.get_station(0);
             }
+
+            esp_println::println!("\n\nINFO: Playing: {}\n\n", station.clone().unwrap().name());
 
             station_change_sender.send(station.unwrap().clone());
         }
