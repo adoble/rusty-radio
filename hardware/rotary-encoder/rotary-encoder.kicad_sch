@@ -4,6 +4,10 @@
 	(generator_version "9.0")
 	(uuid "5779ae7a-4ab1-4048-9dfc-9e0260fa5b2d")
 	(paper "A4")
+	(title_block
+		(title "\"Analogue\" Rotary Encoder circuit")
+		(comment 1 "Only one MCU pin is used")
+	)
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_01x03"
 			(pin_names
