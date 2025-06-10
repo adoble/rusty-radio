@@ -23,8 +23,7 @@ use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
 // Reducing it can give problems with some stations.
-// TODO change this name to TCP_BUFFER_SIZE
-const BUFFER_SIZE: usize = 6000;
+const TCP_BUFFER_SIZE: usize = 6000;
 
 // Enough space to store all the HTTP header information
 const HEADER_SIZE: usize = 2048;
@@ -75,11 +74,17 @@ impl From<M3UError> for StreamError {
 // The assumption is that each content type contains at least this number of characters.
 const TOKEN_LEN: usize = 7;
 
-/// This task accesses an internet radio station and sends the data to MUSIC_CHANNEL.
+/// This task is the core of the rusty-radio project.
+/// It accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
-    let mut rx_buffer = [0; BUFFER_SIZE];
-    let mut tx_buffer = [0; BUFFER_SIZE];
+    stream_station(stack).await;
+}
+
+//#[embassy_executor::task]
+pub async fn stream_station(stack: Stack<'static>) {
+    let mut rx_buffer = [0; TCP_BUFFER_SIZE];
+    let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
     // This is important. Need to make sure the DHCP is up so
     // that the ip address can be found from the host name
@@ -154,10 +159,7 @@ pub async fn stream(stack: Stack<'static>) {
         // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
         // Note that this is based on the data in cross/app/Cargo.toml
         let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-
         request.header("User-Agent", user_agent).unwrap();
-        //    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
-        esp_println::println!("User-Agent: {}", user_agent);
 
         request.header("Connection", "keep-alive").unwrap();
 
