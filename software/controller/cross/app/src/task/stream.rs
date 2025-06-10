@@ -5,8 +5,6 @@ use embassy_time::{Duration, Instant, Timer};
 
 use embedded_io_async::Write;
 
-use esp_println::println;
-
 use m3u::{M3UError, M3U};
 use stations::Station;
 
@@ -154,8 +152,12 @@ pub async fn stream(stack: Stack<'static>) {
         // Set the user agent. Note this does not have to be a spoof of
         // a "normal" browser agent such as
         // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
-        // TODO Get the program name and version from the Cargo.toml file
-        request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+        // Note that this is based on the data in cross/app/Cargo.toml
+        let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+        request.header("User-Agent", user_agent).unwrap();
+        //    request.header("User-Agent", "RustyRadio/0.1.0").unwrap();
+        esp_println::println!("User-Agent: {}", user_agent);
 
         request.header("Connection", "keep-alive").unwrap();
 
