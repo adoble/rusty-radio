@@ -43,17 +43,44 @@ enum ContentType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum StreamError {
+    // Recoverabe errors
+    MalformedUrl,
+    Dns(embassy_net::dns::Error),
+    IpAddressNotFound,
+    ConnectionError(embassy_net::tcp::ConnectError),
+    HttpRequest(http::RequestError),
+
+    // Non recoverable errors
+    CannotGetStationChangeReceiver,
+
+    // Not categorised
     Tcp(embassy_net::tcp::Error),
     HeadersEndNotFound,
     EmptyM3U,
     InvalidM3U(M3UError),
     UrlNotFoundInM3U,
     InvalidContent,
-    MalformedUrl,
     UrlTooLong,
     TooManyBytesReadIn(usize),
 }
 
+impl From<http::RequestError> for StreamError {
+    fn from(error: http::RequestError) -> Self {
+        StreamError::HttpRequest(error)
+    }
+}
+
+impl From<embassy_net::tcp::ConnectError> for StreamError {
+    fn from(error: embassy_net::tcp::ConnectError) -> Self {
+        StreamError::ConnectionError(error)
+    }
+}
+
+impl From<embassy_net::dns::Error> for StreamError {
+    fn from(error: embassy_net::dns::Error) -> Self {
+        Self::Dns(error)
+    }
+}
 impl From<core::str::Utf8Error> for StreamError {
     fn from(_error: core::str::Utf8Error) -> Self {
         StreamError::MalformedUrl
@@ -69,6 +96,11 @@ impl From<M3UError> for StreamError {
         Self::InvalidM3U(error)
     }
 }
+impl From<nourl::Error> for StreamError {
+    fn from(_error: nourl::Error) -> Self {
+        Self::MalformedUrl
+    }
+}
 
 // This is the number of characters that have to be read in the determine the content type
 // The assumption is that each content type contains at least this number of characters.
@@ -78,11 +110,11 @@ const TOKEN_LEN: usize = 7;
 /// It accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
-    stream_station(stack).await;
+    stream_station(stack).await.unwrap();
 }
 
 //#[embassy_executor::task]
-pub async fn stream_station(stack: Stack<'static>) {
+async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
     let mut rx_buffer = [0; TCP_BUFFER_SIZE];
     let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
@@ -114,7 +146,7 @@ pub async fn stream_station(stack: Stack<'static>) {
     // Set up the receiver for changes in the station
     let mut station_change_receiver = STATION_CHANGE_WATCH
         .receiver()
-        .expect("Cannot get station change receiver.");
+        .ok_or(StreamError::CannotGetStationChangeReceiver)?;
 
     // Get the initial station
     let initial_station = station_change_receiver.get().await;
@@ -123,11 +155,11 @@ pub async fn stream_station(stack: Stack<'static>) {
     let mut url_str = String::<MAX_URL_LEN>::new();
     url_str
         .push_str(initial_url)
-        .expect("ERROR: Initial URL is too long");
+        .map_err(|_| StreamError::UrlTooLong)?;
 
     'redirect: loop {
         // while let StationUrl::Redirect(url) = station_url {
-        let url = Url::parse(&url_str).unwrap();
+        let url = Url::parse(&url_str)?;
 
         let host = url.host();
         let port = url.port_or_default();
@@ -135,10 +167,13 @@ pub async fn stream_station(stack: Stack<'static>) {
 
         let remote_ip_addresses = stack
             .dns_query(host, embassy_net::dns::DnsQueryType::A)
-            .await
-            .unwrap();
+            .await?;
 
-        let remote_ip_addr = remote_ip_addresses[0]; //TODO Error case!
+        let remote_ip_addr = if remote_ip_addresses.is_empty() {
+            remote_ip_addresses[0]
+        } else {
+            return Err(StreamError::IpAddressNotFound);
+        };
 
         let remote_endpoint = match remote_ip_addr {
             IpAddress::Ipv4(ipv4_addr) => {
@@ -148,29 +183,23 @@ pub async fn stream_station(stack: Stack<'static>) {
         };
 
         // Connect to the socket using the IP address from the DNS
-        socket.connect(remote_endpoint).await.unwrap();
+        socket.connect(remote_endpoint).await?;
 
         // Request the data
-        let mut request = Request::new(Method::GET, path).unwrap();
-        request.host(host).unwrap();
+        let mut request = Request::new(Method::GET, path)?;
+        request.host(host)?;
 
         // Set the user agent. Note this does not have to be a spoof of
         // a "normal" browser agent such as
         // "Mozilla/5.0 (X11; Linux x86_64; rv:138.0) Gecko/20100101 Firefox/138.0"
         // Note that this is based on the data in cross/app/Cargo.toml
         let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-        request.header("User-Agent", user_agent).unwrap();
+        request.header("User-Agent", user_agent)?;
 
-        request.header("Connection", "keep-alive").unwrap();
+        request.header("Connection", "keep-alive")?;
 
-        socket
-            .write_all(request.to_string().as_bytes())
-            .await
-            .expect("ERROR: Could not write request");
-        socket
-            .flush()
-            .await
-            .expect("ERROR: Could not flush request");
+        socket.write_all(request.to_string().as_bytes()).await?;
+        socket.flush().await?;
 
         let mut header_buffer = [0u8; HEADER_SIZE];
         if read_headers(&mut socket, &mut header_buffer).await.is_err() {

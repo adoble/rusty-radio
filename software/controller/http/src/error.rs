@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RequestError {
     /// Error when trying to convert a string to a fixed-size string.
     StringConversionError,
