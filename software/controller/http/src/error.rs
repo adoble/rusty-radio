@@ -8,7 +8,7 @@ pub enum RequestError {
     RequestBuilderCreationError,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseError {
     /// Unexpected EOF
     UnexpectedEof,

@@ -49,19 +49,33 @@ enum StreamError {
     IpAddressNotFound,
     ConnectionError(embassy_net::tcp::ConnectError),
     HttpRequest(http::RequestError),
+    HttpResponse(http::ResponseError),
+    HeadersEndNotFound,
+    M3uUrlTooLong,
+    UnableToReadContentType(embassy_net::tcp::Error),
+    NoRedirectionLocationFound,
+    InvalidHttpCode(ResponseStatusCode),
+    RedirectionUrlTooLong,
+    ConnectionPrematurelyClosed,
 
     // Non recoverable errors
     CannotGetStationChangeReceiver,
+    StringAllocationTooSmall,
 
     // Not categorised
     Tcp(embassy_net::tcp::Error),
-    HeadersEndNotFound,
     EmptyM3U,
     InvalidM3U(M3UError),
     UrlNotFoundInM3U,
     InvalidContent,
     UrlTooLong,
     TooManyBytesReadIn(usize),
+}
+
+impl From<http::ResponseError> for StreamError {
+    fn from(error: http::ResponseError) -> Self {
+        StreamError::HttpResponse(error)
+    }
 }
 
 impl From<http::RequestError> for StreamError {
@@ -169,7 +183,7 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
             .dns_query(host, embassy_net::dns::DnsQueryType::A)
             .await?;
 
-        let remote_ip_addr = if remote_ip_addresses.is_empty() {
+        let remote_ip_addr = if !remote_ip_addresses.is_empty() {
             remote_ip_addresses[0]
         } else {
             return Err(StreamError::IpAddressNotFound);
@@ -202,40 +216,35 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
         socket.flush().await?;
 
         let mut header_buffer = [0u8; HEADER_SIZE];
-        if read_headers(&mut socket, &mut header_buffer).await.is_err() {
-            panic!("Cannot read headers!");
-        };
-        let Ok(response) = Response::new(&header_buffer) else {
-            panic!("Cannot process HTTP response!");
-        };
+
+        read_headers(&mut socket, &mut header_buffer).await?;
+
+        let response = Response::new(&header_buffer)?;
 
         match response.status_code() {
             ResponseStatusCode::Successful(_) => {
-                let content_type = determine_content_type(&mut socket).await;
+                let content_type = determine_content_type(&mut socket).await?;
                 match content_type {
-                    Ok(ContentType::Audio) => (),
-                    Ok(ContentType::SimpleM3U(location)) => {
+                    ContentType::Audio => (),
+                    ContentType::SimpleM3U(location) => {
                         url_str.clear();
                         url_str
                             .push_str(&location)
-                            .expect("ERROR: M3U URL too long!");
+                            .map_err(|_| StreamError::M3uUrlTooLong)?;
 
                         socket.abort();
-                        socket.flush().await.unwrap();
+                        socket.flush().await?;
                         continue 'redirect;
                     }
-                    Ok(ContentType::ExtendedM3U(location)) => {
+                    ContentType::ExtendedM3U(location) => {
                         url_str.clear();
                         url_str
                             .push_str(&location)
-                            .expect("ERROR: M3U URL too long");
+                            .map_err(|_| StreamError::M3uUrlTooLong)?;
 
                         socket.abort();
-                        socket.flush().await.unwrap();
+                        socket.flush().await?;
                         continue 'redirect;
-                    }
-                    Err(e) => {
-                        panic!("ERROR: Unable to read content type: {:?}", e);
                     }
                 }
             }
@@ -243,24 +252,24 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
             ResponseStatusCode::Redirection(_) => {
                 url_str = response
                     .location
-                    .expect("ERROR: Redirect, but no redirection location specifed!");
+                    .ok_or(StreamError::NoRedirectionLocationFound)?;
                 socket.abort();
-                socket.flush().await.unwrap();
+                socket.flush().await?;
                 continue 'redirect;
             }
 
-            other => panic!("Received invalid HTTP response code {:?}", other),
+            other => return Err(StreamError::InvalidHttpCode(other)),
         }
 
         // Stream the audio until a new station has been selected by the tuner
         let new_station =
-            stream_audio(&mut socket, &mut body_buffer, &mut station_change_receiver).await;
+            stream_audio(&mut socket, &mut body_buffer, &mut station_change_receiver).await?;
         url_str.clear();
         url_str
             .push_str(new_station.url())
-            .expect("ERROR: New station url too long");
+            .map_err(|_| StreamError::RedirectionUrlTooLong)?;
         socket.abort();
-        socket.flush().await.unwrap();
+        socket.flush().await?;
     }
 }
 
@@ -303,18 +312,19 @@ async fn stream_audio(
     socket: &mut TcpSocket<'_>,
     audio_buffer: &mut [u8],
     station_change_receiver: &mut StationChangeReceiver,
-) -> Station {
-    let mut total_bytes = 0u32;
-    let mut last_stats = Instant::now();
+) -> Result<Station, StreamError> {
+    // let mut total_bytes = 0u32;
+    // let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
+
+    let (mut total_bytes, mut last_stats) = (0u32, Instant::now());
 
     loop {
         let read_start = Instant::now();
         match socket.read(audio_buffer).await {
             Ok(0) => {
-                //esp_println::println!("Connection closed");
-                panic!("Connection closed");
+                return Err(StreamError::ConnectionPrematurelyClosed);
             }
             Ok(n) => {
                 let read_time = read_start.elapsed().as_micros();
@@ -354,7 +364,7 @@ async fn stream_audio(
         }
 
         if let Some(new_station) = station_change_receiver.try_changed() {
-            break new_station;
+            break Ok(new_station);
         }
     }
 }
@@ -379,7 +389,7 @@ async fn determine_content_type(
                 token_buffer[pos..pos + n].copy_from_slice(&buf);
                 pos += n;
             }
-            Err(e) => return Err(StreamError::Tcp(e)),
+            Err(e) => return Err(StreamError::UnableToReadContentType(e)),
         }
     }
 
@@ -398,8 +408,8 @@ async fn determine_content_type(
     };
 
     let content_type = match token {
-        "http://" => parse_simple_m3u(&mut socket).await?,
-        "#EXTM3U" => parse_extended_m3u(&mut socket).await?,
+        "http://" => parse_simple_m3u(socket).await?,
+        "#EXTM3U" => parse_extended_m3u(socket).await?,
         // Return audio content type in the unlikely event that the first byte scan be intepretated as UTF8
         _ => ContentType::Audio,
     };
@@ -422,7 +432,8 @@ async fn parse_simple_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, Str
 
             let mut url = String::<MAX_URL_LEN>::new();
             // This has already been read as the token
-            url.push_str("http://").unwrap();
+            url.push_str("http://")
+                .map_err(|_| StreamError::StringAllocationTooSmall)?;
             url.push_str(first_url_str)
                 .map_err(|_| StreamError::UrlTooLong)?;
             Ok(ContentType::SimpleM3U(url))

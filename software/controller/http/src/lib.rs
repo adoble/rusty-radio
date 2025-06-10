@@ -6,7 +6,7 @@ mod error;
 mod request;
 mod response;
 
-pub use error::RequestError;
+pub use error::{RequestError, ResponseError};
 pub use request::Method;
 pub use request::Request;
 pub use response::{Response, ResponseStatusCode, MAX_URL_LEN};
