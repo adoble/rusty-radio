@@ -6,6 +6,7 @@ use embassy_time::{Duration, Instant, Timer};
 use embedded_io_async::Write;
 
 use m3u::{M3UError, M3U};
+use static_assertions::const_assert;
 use stations::Station;
 
 use core::net::Ipv4Addr;
@@ -43,33 +44,37 @@ enum ContentType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum StreamError {
-    // Recoverabe errors
-    MalformedUrl,
+    // Recoverabe errors. These are problems with the station.
+    // The user is given is ability to change the station if it
+    // does not work.
     Dns(embassy_net::dns::Error),
     IpAddressNotFound,
     ConnectionError(embassy_net::tcp::ConnectError),
+    ConnectionPrematurelyClosed,
+    Tcp(embassy_net::tcp::Error),
+
+    StationUrlTooLong,
+    MalformedUrl,
+
     HttpRequest(http::RequestError),
     HttpResponse(http::ResponseError),
     HeadersEndNotFound,
-    M3uUrlTooLong,
     UnableToReadContentType(embassy_net::tcp::Error),
-    NoRedirectionLocationFound,
     InvalidHttpCode(ResponseStatusCode),
+    InvalidContent,
+    TooManyBytesReadIn(usize),
+
+    NoRedirectionLocationFound,
     RedirectionUrlTooLong,
-    ConnectionPrematurelyClosed,
 
-    // Non recoverable errors
-    CannotGetStationChangeReceiver,
-    StringAllocationTooSmall,
-
-    // Not categorised
-    Tcp(embassy_net::tcp::Error),
     EmptyM3U,
     InvalidM3U(M3UError),
+    M3uUrlTooLong,
     UrlNotFoundInM3U,
-    InvalidContent,
-    UrlTooLong,
-    TooManyBytesReadIn(usize),
+
+    // Non recoverable errors. These are due to program errors and
+    // should not happen
+    StringAllocationTooSmall,
 }
 
 impl From<http::ResponseError> for StreamError {
@@ -124,11 +129,41 @@ const TOKEN_LEN: usize = 7;
 /// It accesses an internet radio station and sends the data to MUSIC_CHANNEL.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
-    stream_station(stack).await.unwrap();
+    // Set up the receiver for changes in the station
+    let Some(mut station_change_receiver) = STATION_CHANGE_WATCH.receiver() else {
+        panic!("Cannot get station change receiver");
+    };
+
+    let station_change_sender = STATION_CHANGE_WATCH.sender();
+
+    loop {
+        match stream_station(stack, &mut station_change_receiver).await {
+            Ok(_) => (), //  stream_station will only return if there is an error
+
+            Err(StreamError::StringAllocationTooSmall) => {
+                panic!("Unrecoverable error in stream: String allocation too small")
+            }
+            Err(e) => {
+                esp_println::println!("ERROR: {:?}", e);
+                // Wait until the station changes
+
+                let station = station_change_receiver.changed().await;
+
+                // Resignal the station so that stream_station will pick it up again
+                station_change_sender.send(station);
+
+                // Try again with the new station
+                continue;
+            }
+        }
+    }
 }
 
 //#[embassy_executor::task]
-async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
+async fn stream_station(
+    stack: Stack<'static>,
+    station_change_receiver: &mut StationChangeReceiver,
+) -> Result<(), StreamError> {
     let mut rx_buffer = [0; TCP_BUFFER_SIZE];
     let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
@@ -157,11 +192,6 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
 
     let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
 
-    // Set up the receiver for changes in the station
-    let mut station_change_receiver = STATION_CHANGE_WATCH
-        .receiver()
-        .ok_or(StreamError::CannotGetStationChangeReceiver)?;
-
     // Get the initial station
     let initial_station = station_change_receiver.get().await;
 
@@ -169,7 +199,7 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
     let mut url_str = String::<MAX_URL_LEN>::new();
     url_str
         .push_str(initial_url)
-        .map_err(|_| StreamError::UrlTooLong)?;
+        .map_err(|_| StreamError::StationUrlTooLong)?;
 
     'redirect: loop {
         // while let StationUrl::Redirect(url) = station_url {
@@ -263,7 +293,7 @@ async fn stream_station(stack: Stack<'static>) -> Result<(), StreamError> {
 
         // Stream the audio until a new station has been selected by the tuner
         let new_station =
-            stream_audio(&mut socket, &mut body_buffer, &mut station_change_receiver).await?;
+            stream_audio(&mut socket, &mut body_buffer, station_change_receiver).await?;
         url_str.clear();
         url_str
             .push_str(new_station.url())
@@ -369,9 +399,7 @@ async fn stream_audio(
     }
 }
 
-async fn determine_content_type(
-    mut socket: &mut TcpSocket<'_>,
-) -> Result<ContentType, StreamError> {
+async fn determine_content_type(socket: &mut TcpSocket<'_>) -> Result<ContentType, StreamError> {
     let mut token_buffer = [0u8; TOKEN_LEN];
 
     // Only readinng in one byte at a time for maximum control when it comes to errors
@@ -418,6 +446,9 @@ async fn determine_content_type(
 }
 
 async fn parse_simple_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, StreamError> {
+    // Make sure that  MAX_URL_LEN can contain the token and, at least, a minimal url (http://a.de);
+    const_assert!(MAX_URL_LEN > TOKEN_LEN + 4);
+
     let mut url_buffer = [0u8; MAX_URL_LEN - TOKEN_LEN];
 
     match socket.read(&mut url_buffer).await {
@@ -432,10 +463,10 @@ async fn parse_simple_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, Str
 
             let mut url = String::<MAX_URL_LEN>::new();
             // This has already been read as the token
-            url.push_str("http://")
-                .map_err(|_| StreamError::StringAllocationTooSmall)?;
+            // SAFETY: We know this fits due to const_assert
+            url.push_str("http://").unwrap();
             url.push_str(first_url_str)
-                .map_err(|_| StreamError::UrlTooLong)?;
+                .map_err(|_| StreamError::StationUrlTooLong)?;
             Ok(ContentType::SimpleM3U(url))
         }
         Err(e) => Err(StreamError::Tcp(e)),

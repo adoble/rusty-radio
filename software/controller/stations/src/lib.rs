@@ -16,6 +16,8 @@ static STATION_DATA: &[(&str, &str)] = &[
         "181 FM Classic",
         "http://listen.181fm.com/181-classical_128k.mp3",
     ),
+    // Error station
+    ("Bad Wolf", "https://aqswdefr.de"),
     (
         "Absolut Oldie Classics",
         "http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3",
