@@ -86,6 +86,7 @@ heapless = "0.8.0"
 http = { path = "../../http" }
 stations = {path = "../../stations"}
 m3u = {path = "../../m3u"}
+mcp23s17-async = "0.1.0"
 
 
 [dev-dependencies]
