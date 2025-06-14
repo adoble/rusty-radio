@@ -5306,8 +5306,8 @@
 				)
 			)
 		)
-		(property "Value" "LED"
-			(at 157.734 61.214 0)
+		(property "Value" "GREEN"
+			(at 154.432 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5383,7 +5383,7 @@
 				)
 			)
 		)
-		(property "Value" "1K"
+		(property "Value" "510"
 			(at 162.56 62.23 90)
 			(effects
 				(font
