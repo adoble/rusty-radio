@@ -3325,8 +3325,8 @@
 	)
 	(text_box "GPA[0..6] set as input / pull-up"
 		(exclude_from_sim no)
-		(at 160.02 156.21 0)
-		(size 11.43 30.48)
+		(at 92.71 172.085 0)
+		(size 11.43 13.97)
 		(margins 0.9525 0.9525 0.9525 0.9525)
 		(stroke
 			(width 0)
@@ -3339,7 +3339,7 @@
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify left top)
 		)
 		(uuid "d2e71c00-7404-4125-a918-28e6a4540a45")
 	)
@@ -6450,7 +6450,8 @@
 	)
 	(symbol
 		(lib_id "Device:RotaryEncoder")
-		(at 101.6 154.94 90)
+		(at 101.6 154.94 270)
+		(mirror x)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -6458,7 +6459,7 @@
 		(dnp no)
 		(uuid "f2ff0b81-2580-4541-aeac-b8d238b66d92")
 		(property "Reference" "SW1"
-			(at 95.25 155.194 0)
+			(at 107.95 155.194 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6466,7 +6467,7 @@
 			)
 		)
 		(property "Value" "RotaryEncoder"
-			(at 92.71 155.194 0)
+			(at 110.49 155.194 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6474,7 +6475,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 97.536 158.75 0)
+			(at 105.664 158.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6483,7 +6484,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 94.996 154.94 0)
+			(at 108.204 154.94 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6501,7 +6502,7 @@
 			)
 		)
 		(property "Field5" "Tuner"
-			(at 107.95 154.94 0)
+			(at 95.25 154.94 0)
 			(effects
 				(font
 					(size 1.27 1.27)

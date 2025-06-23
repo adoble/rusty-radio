@@ -1,0 +1,20 @@
+[package]
+name = "mcp23s17-async"
+version = "0.1.1"
+edition = "2021"
+authors = ["Fundevoge <59122389+Fundevoge@users.noreply.github.com>"]
+license = "MIT"
+description = """Asynchronous MCP23S17 driver
+
+A driver for the MCP23S17 16 bit I/O expander chip
+addressed over an asynchronous SPI bus.
+"""
+readme = "README.md"
+# homepage = "https://docs.rs/mcp23s17-async/"
+repository = "https://github.com/Fundevoge/mcp23s17-async/"
+keywords = ["MCP23S17", "embedded-hal-async", "async"]
+categories = ["hardware-support", "embedded", "no-std"]
+
+[dependencies]
+embedded-hal-async = "1.0.0"
+bitflags = "2.8.0"

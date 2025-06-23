@@ -23,14 +23,14 @@ static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RE
     StaticCell::new();
 
 pub struct Hardware {
-    pub button_pin: Input<'static>,
-
+    //pub button_pin: Input<'static>,
     pub xcs: Output<'static>,
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
     pub reset: Output<'static>,
-
-    pub led: Output<'static>,
+    pub mux_cs: Output<'static>,
+    //pub led: Output<'static>,
+    pub intr: Input<'static>,
     // pub rng: Rng,
     pub system_timer: SystemTimer,
 
@@ -63,13 +63,17 @@ impl Hardware {
         let wifi_peripherals =
             WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, radio_clk, timg1, rng);
         Hardware {
-            button_pin: Input::new(peripherals.GPIO9, Pull::Up),
+            //button_pin: Input::new(peripherals.GPIO9, Pull::Up),
+            mux_cs: Output::new(peripherals.GPIO2, Level::High),
 
             xcs: Output::new(peripherals.GPIO4, Level::High),
             xdcs: Output::new(peripherals.GPIO10, Level::High),
             dreq: Input::new(peripherals.GPIO8, Pull::None),
             reset: Output::new(peripherals.GPIO20, Level::High),
-            led: Output::new(peripherals.GPIO3, Level::Low),
+            //led: Output::new(peripherals.GPIO3, Level::Low),
+
+            // Assuming that the interrupt signal is actively driven and not open drain.
+            intr: Input::new(peripherals.GPIO3, Pull::None),
 
             system_timer: SystemTimer::new(systimer),
             // SPI

@@ -28,11 +28,19 @@ use task::{
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
+    sync::MULTIPLEXER_DRIVER,
+    //
+    // TEST
+    test_button_board::test_button_board,
+    //
     //access_radio_stations::access_radio_stations,
-    tuner::tuner,
-    wifi_connected_indicator::wifi_connected_indicator,
+    tuner2::tuner2,
+    //wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
+
+mod front_panel;
+use front_panel::FrontPanel;
 
 // External crates
 use esp_backtrace as _;
@@ -56,7 +64,12 @@ use async_delay::AsyncDelay;
 static_assertions::const_assert!(true);
 
 use vs1053_driver::Vs1053Driver;
+
+use mcp23s17_async::Mcp23s17;
+
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
+
+static FRONT_PANEL: StaticCell<FrontPanel> = StaticCell::new();
 
 type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
 
@@ -66,6 +79,11 @@ type Vs1053DriverType<'a> = Vs1053Driver<
     Output<'a>,
     AsyncDelay,
 >;
+
+type MultiplexerDriverType<'a> =
+    Mcp23s17<SpiDeviceWithConfig<'a, NoopRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
+
+const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
 // INFO: Notes on stations
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
@@ -111,6 +129,7 @@ async fn main(spawner: Spawner) {
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
 
     // The stack needs to be static so that it can be used in tasks.
+    // TODO move the somewhere else in the code
     STACK.init(hardware.sta_stack);
 
     // Init the vs1053 spi speeds
@@ -141,22 +160,58 @@ async fn main(spawner: Spawner) {
             driver.begin().await.unwrap();
         }
     }
+    // Setup spi for the front panel controller
+    let mut spi_multiplexer_config = SpiConfig::default();
+    spi_multiplexer_config.frequency = 10.MHz();
+
+    let spi_multiplexer_device: SpiDeviceWithConfig<
+        '_,
+        NoopRawMutex,
+        Spi<'_, esp_hal::Async>,
+        Output<'_>,
+    > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
+
+    // TODO the new function is not protected with a mutex. Do we need a begin() function? Can I just do this with  a new function?
+    // Do I even need a mutex here as this is not beinh done in a seperate task.
+    let multiplexer_driver: Mcp23s17<
+        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+    > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
+        .await
+        .unwrap();
+
+    // Setup the mutex for the mutiplexer driver
+    {
+        *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
+    }
+
+    let front_panel = FrontPanel::new()
+        .await
+        .expect("ERROR: Cannot initialise front panel");
+
+    let front_panel = FRONT_PANEL.init(front_panel);
 
     // Print the registers using the shared driver for the vs1053
     //print_registers().await;
+
+    // TODO set these to must_spawn
 
     // Setting up the network
     spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
     spawner.spawn(run_network_stack(hardware.runner)).ok();
 
     // Tasks to handle peripherals
-    spawner.spawn(tuner(hardware.button_pin)).ok();
-    spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
+    //spawner.spawn(tuner(hardware.button_pin)).ok();
+    spawner.spawn(tuner2(front_panel, hardware.intr)).ok();
+    //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Streaming and playing music
     spawner.spawn(stream(hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
+
+    // spawner
+    //     .spawn(test_button_board(front_panel, &hardware.intr))
+    //     .ok();
     esp_println::println!("DEBUG: All tasks spawned");
 }
 

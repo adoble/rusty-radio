@@ -94,16 +94,16 @@ impl FrontPanel {
                 .await?;
 
             multiplexer_driver
-                .set_interrupt_mode(BTN_1, InterruptMode::ActiveHigh)
+                .set_interrupt_mode(BTN_1, InterruptMode::ActiveLow)
                 .await?;
             multiplexer_driver
-                .set_interrupt_mode(BTN_2, InterruptMode::ActiveHigh)
+                .set_interrupt_mode(BTN_2, InterruptMode::ActiveLow)
                 .await?;
             multiplexer_driver
-                .set_interrupt_mode(BTN_3, InterruptMode::ActiveHigh)
+                .set_interrupt_mode(BTN_3, InterruptMode::ActiveLow)
                 .await?;
             multiplexer_driver
-                .set_interrupt_mode(BTN_4, InterruptMode::ActiveHigh)
+                .set_interrupt_mode(BTN_4, InterruptMode::ActiveLow)
                 .await?;
 
             Ok(FrontPanel {

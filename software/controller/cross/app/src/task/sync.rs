@@ -7,7 +7,7 @@ use embassy_sync::{
     watch::{Receiver, Watch},
 };
 
-use crate::Vs1053DriverType;
+use crate::{MultiplexerDriverType, Vs1053DriverType};
 
 use stations::Station;
 
@@ -50,6 +50,12 @@ pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal
 // We need to share the VS1053 driver between tasks so put it in a static mutex
 type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
+
+// We need to share the front panel driver between tasks so put it in a static mutex
+pub static MULTIPLEXER_DRIVER: Mutex<
+    CriticalSectionRawMutex,
+    Option<MultiplexerDriverType<'static>>,
+> = Mutex::new(None);
 
 // This signal is used to indicate the current station
 

@@ -71,10 +71,9 @@ enum StreamError {
     InvalidM3U(M3UError),
     M3uUrlTooLong,
     UrlNotFoundInM3U,
-
     // Non recoverable errors. These are due to program errors and
     // should not happen
-    StringAllocationTooSmall,
+    //StringAllocationTooSmall,
 }
 
 impl From<http::ResponseError> for StreamError {
@@ -140,9 +139,9 @@ pub async fn stream(stack: Stack<'static>) {
         match stream_station(stack, &mut station_change_receiver).await {
             Ok(_) => (), //  stream_station will only return if there is an error
 
-            Err(StreamError::StringAllocationTooSmall) => {
-                panic!("Unrecoverable error in stream: String allocation too small")
-            }
+            // Err(StreamError::StringAllocationTooSmall) => {
+            //     panic!("Unrecoverable error in stream: String allocation too small")
+            // }
             Err(e) => {
                 esp_println::println!("ERROR: {:?}", e);
                 // Wait until the station changes
