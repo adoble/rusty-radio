@@ -6450,8 +6450,7 @@
 	)
 	(symbol
 		(lib_id "Device:RotaryEncoder")
-		(at 101.6 154.94 270)
-		(mirror x)
+		(at 101.6 154.94 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -6459,7 +6458,7 @@
 		(dnp no)
 		(uuid "f2ff0b81-2580-4541-aeac-b8d238b66d92")
 		(property "Reference" "SW1"
-			(at 107.95 155.194 0)
+			(at 95.25 154.686 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6467,7 +6466,7 @@
 			)
 		)
 		(property "Value" "RotaryEncoder"
-			(at 110.49 155.194 0)
+			(at 108.204 157.226 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6475,7 +6474,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 105.664 158.75 0)
+			(at 97.536 158.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6484,7 +6483,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 108.204 154.94 0)
+			(at 94.996 154.94 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6502,7 +6501,7 @@
 			)
 		)
 		(property "Field5" "Tuner"
-			(at 95.25 154.94 0)
+			(at 101.346 148.59 90)
 			(effects
 				(font
 					(size 1.27 1.27)
