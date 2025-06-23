@@ -1,7 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 #![no_main]
-// #![no_std]
-// Make std available when testing
 
 //! An internet radio
 //!
@@ -29,10 +27,7 @@ use task::{
     //stream2::stream2,
     sync::CODEC_DRIVER,
     sync::MULTIPLEXER_DRIVER,
-    //
-    // TEST
-    test_button_board::test_button_board,
-    //
+
     //access_radio_stations::access_radio_stations,
     tuner2::tuner2,
     //wifi_connected_indicator::wifi_connected_indicator,

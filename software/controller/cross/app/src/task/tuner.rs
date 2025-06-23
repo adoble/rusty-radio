@@ -9,6 +9,7 @@ use embassy_time::{Duration, Timer};
 use stations::Stations;
 
 #[embassy_executor::task]
+#[deprecated]
 pub async fn tuner(mut pin: Input<'static>) {
     //Set up the list of stations
     let mut stations = Stations::new();

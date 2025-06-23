@@ -1,10 +1,8 @@
-use embassy_time::{Duration, Timer};
-
+// TODO remove
+#![allow(deprecated)]
 use crate::{front_panel::Buttons, FrontPanel};
 
 use esp_hal::gpio::Input;
-
-const DEBOUNCE_DURATION: u64 = 50;
 
 // TODO test out using fugit or something similar to set a time duration
 
@@ -14,6 +12,7 @@ const DEBOUNCE_DURATION: u64 = 50;
 // [ ]  test descriminating the button
 
 #[embassy_executor::task]
+#[deprecated]
 pub async fn test_button_board(
     front_panel: &'static FrontPanel,
     mut _interrupt_pin: Input<'static>,

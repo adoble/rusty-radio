@@ -1,6 +1,6 @@
 use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel};
 
-const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
+//const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
 use esp_hal::gpio::Input;
 
@@ -15,7 +15,7 @@ use stations::Stations;
 
 // DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
 #[embassy_executor::task]
-pub async fn tuner2(front_panel: &'static FrontPanel, mut interrupt_pin: Input<'static>) {
+pub async fn tuner2(front_panel: &'static FrontPanel, mut _interrupt_pin: Input<'static>) {
     //Set up the list of stations
     let mut stations = Stations::new();
 
