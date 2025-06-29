@@ -1,4 +1,4 @@
-// Code taken from the project rust-projects/edge-hhtp-embassy-esp
+use crate::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 use embassy_time::{Duration, Instant, Timer};
@@ -341,7 +341,7 @@ async fn stream_audio(
     socket: &mut TcpSocket<'_>,
     audio_buffer: &mut [u8],
     station_change_receiver: &mut StationChangeReceiver,
-) -> Result<Station, StreamError> {
+) -> Result<RadioStation, StreamError> {
     // let mut total_bytes = 0u32;
     // let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;

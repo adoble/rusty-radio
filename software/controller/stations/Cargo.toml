@@ -1,7 +1,8 @@
 [package]
 name = "stations"
-version = "0.0.1"
+version = "0.2.1"
 edition = "2021"
 
 [dependencies]
+csv-core = "0.1.12"
 heapless = "0.8.0"

@@ -1,0 +1,30 @@
+RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
+RPR1 Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies
+SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
+BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop
+BBC Radio 2,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_two,UK,Pop
+BBC Radio 3,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_three,UK,Classical
+BBC Radio 4 FM,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_fourfm,UK,Favorites,Culture
+Classical,http://listen.181fm.com/181-classical_128k.mp3,Classical
+Antenne,http://mp3channels.webradio.antenne.de/antenne,Pop
+WDR3,http://wdr-wdr3-live.icecast.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3,Culture
+Rockland,https://stream.rockland.de/rockland.mp3,Pop
+FFH,http://mp3.ffh.de/radioffh/hqlivestream.mp3,Pop
+FFH+ 80er,http://mp3.ffh.de/ffhplus/hq80er.mp3,Oldies
+FFH+ Charts,http://mp3.ffh.de/ffhplus/hqcharts.mp3,Pop
+FFH Workout,http://mp3.ffh.de/ffhchannels/hqworkout.mp3,Pop
+FFH Lounge,http://mp3.ffh.de/ffhchannels/hqlounge.mp3,Lounge
+Ambient Radio,https://uk2.internet-radio.com/proxy/ambientradio?mp=/;,UK,Lounge
+SWR1,https://liveradio.swr.de/sw282p3/swr1rp/play.mp3,Info
+SWR2,https://swr-edge-3032-dus-ts-cdn.cast.addradio.de/swr/swr2/live/mp3/256/stream.mp3,Culture
+Antenne Bayern,http://s5-webradio.antenne.de/antenne,Pop
+Bayern 3,https://br-br3-live.cast.addradio.de/br/br3/live/mp3/mid,Pop
+Bayern 24,https://br-edge-10aa-fra-dtag-cdn.cast.addradio.de/br/br24/live/mp3/mid,Info
+WDR2,http://wdr-wdr2-rheinland.icecast.wdr.de/wdr/wdr2/rheinland/mp3/128/stream.mp3,Pop
+Big FM,http://streams.bigfm.de/hmr-128-mp3,Pop
+WDR5,http://wdr-wdr5-live.icecast.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3,Culture
+Deutschland Funk,https://d141.rndfnk.com/ard/dlf/01/mp3/128/stream.mp3?sid=26NX3YxVs70L3thJ5wumxrEFFdj&token=6PMy-92a2xAcn2OaB-S3TDVJB8DHnq5rcExiGdTfawg&tvf=QighNUVW3BZkMTQxLnJuZGZuay5jb20,Info
+Deutschland Funk Kultur,https://dradio-edge-2097-dus-lg-cdn.cast.addradio.de/dradio/kultur/live/mp3/128/stream.mp3,Culture
+BBC World Service,http://bbcwssc.ic.llnwd.net/stream/bbcwssc_mp1_ws-eieuk_backup,Info,UK
+Absolut Oldie Classics,https://edge05.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3,Oldies,Favorites
+ABC Classic,http://live-radio02.mediahubaustralia.com/2FMW/mp3/,Classic

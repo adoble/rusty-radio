@@ -1,4 +1,4 @@
-use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel};
+use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel, RadioStations};
 
 //const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
 
@@ -6,7 +6,7 @@ use esp_hal::gpio::Input;
 
 use embassy_time::{Duration, Timer};
 
-use stations::Stations;
+//use stations::Stations;
 
 // type FrontPanelDriverMutextType =
 //     Mutex<CriticalSectionRawMutex, Option<FrontPanelDriverType<'static>>>;
@@ -15,16 +15,33 @@ use stations::Stations;
 
 // DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
 #[embassy_executor::task]
-pub async fn tuner2(front_panel: &'static FrontPanel, mut _interrupt_pin: Input<'static>) {
+pub async fn tuner2(
+    stations: &'static RadioStations,
+    front_panel: &'static FrontPanel,
+    mut _interrupt_pin: Input<'static>,
+) {
     //Set up the list of stations
-    let mut stations = Stations::new();
+    //let mut stations = Stations::new();
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
-    // Send the inital station
+    // Determine the initial station from:
+    // 1. The last set station - TODO
+    // 2. The first preset stations if set
+    // 3. The first station in the station list
     let initial_station = stations
-        .get_station(0)
-        .expect("ERROR: Could not set intial station (0)");
+        .preset(0)
+        .ok()
+        .flatten()
+        .or_else(|| stations.get_station(0).expect("No initial station found"))
+        .expect("No initial station found");
+
+    esp_println::println!("DEBUG: Initial station {:?}", initial_station);
+
+    // Send the inital station
+    // let initial_station = stations
+    //     .get_station(0)
+    //     .expect("ERROR: Could not set intial station (0)");
     station_change_sender.send(initial_station);
 
     // TODO
@@ -43,31 +60,43 @@ pub async fn tuner2(front_panel: &'static FrontPanel, mut _interrupt_pin: Input<
             esp_println::println!("DEBUG: Button pressed = {:?}", button_pressed);
             last_button_pressed = button_pressed.clone();
 
-            let station_index: Option<usize> = match button_pressed {
+            // let station_index: Option<usize> = match button_pressed {
+            //     Buttons::RotaryEncoderSwitch => {
+            //         esp_println::println!("INFO: Rotary Switch pressed");
+            //         None
+            //     }
+            //     Buttons::Button1 => Some(0),
+            //     Buttons::Button2 => Some(1),
+            //     Buttons::Button3 => Some(2),
+            //     Buttons::Button4 => Some(3),
+            //     Buttons::None => None, // No button pressed so keep waiting
+            //     Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
+            // };
+
+            let selected_station = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
                     esp_println::println!("INFO: Rotary Switch pressed");
-                    None
+                    Ok(None)
                 }
-                Buttons::Button1 => Some(0),
-                Buttons::Button2 => Some(1),
-                Buttons::Button3 => Some(2),
-                Buttons::Button4 => Some(3),
-                Buttons::None => None, // No button pressed so keep waiting
+                Buttons::Button1 => stations.preset(0),
+                Buttons::Button2 => stations.preset(1),
+                Buttons::Button3 => stations.preset(2),
+                Buttons::Button4 => stations.preset(3),
+                Buttons::None => Ok(None), // No button pressed so keep waiting
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };
-            esp_println::println!("DEBUG station index: {:?}", station_index);
 
-            if let Some(station_index) = station_index {
-                let mut station = stations.get_station(station_index);
+            match selected_station {
+                Ok(Some(station)) => {
+                    esp_println::println!("\n\nINFO: Playing: {}\n\n", station.name());
 
-                if station.is_none() {
-                    station = stations.get_station(0); // The first station is the index
+                    station_change_sender.send(station.clone());
                 }
-
-                esp_println::println!("\n\nINFO: Playing: {}\n\n", station.clone().unwrap().name());
-
-                station_change_sender.send(station.unwrap().clone());
-            };
+                Ok(None) => {
+                    esp_println::println!("INFO: No preset for button {:?}", button_pressed)
+                }
+                Err(err) => panic!("ERROR: cannot select station ({:?})", err),
+            }
         }
 
         // Debounce

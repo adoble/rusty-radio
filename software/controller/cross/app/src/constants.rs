@@ -11,3 +11,8 @@ pub const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 // This is checked at compilation time by this macro.
 // An alternative would be to use the same constant for setting up both StackResources and TcpClientState
 //const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
+
+// Constants around the creation and reading of stations.
+pub const MAX_STATION_NAME_LEN: usize = 32;
+pub const MAX_STATION_URL_LEN: usize = 256;
+pub const NUMBER_PRESETS: usize = 4;

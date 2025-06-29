@@ -14,7 +14,9 @@
 
 mod async_delay;
 mod constants;
-use constants::NUMBER_SOCKETS_STACK_RESOURCES;
+use constants::{
+    MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS, NUMBER_SOCKETS_STACK_RESOURCES,
+};
 
 mod hardware;
 use hardware::Hardware;
@@ -36,6 +38,8 @@ use task::{
 
 mod front_panel;
 use front_panel::FrontPanel;
+
+use stations::{Station, StationError, Stations};
 
 // External crates
 use esp_backtrace as _;
@@ -77,6 +81,11 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 
 type MultiplexerDriverType<'a> =
     Mcp23s17<SpiDeviceWithConfig<'a, NoopRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
+
+type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
+type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
+
+static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
 
 const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
@@ -185,6 +194,13 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
+    // set up the stations
+
+    let stations_data = include_bytes!("../../../resources/stations.txt");
+
+    let stations = RadioStations::load(stations_data).expect("ERROR: Cannot load stations");
+    let stations = RADIO_STATIONS.init(stations);
+
     // Print the registers using the shared driver for the vs1053
     //print_registers().await;
 
@@ -196,7 +212,9 @@ async fn main(spawner: Spawner) {
 
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
-    spawner.spawn(tuner2(front_panel, hardware.intr)).ok();
+    spawner
+        .spawn(tuner2(stations, front_panel, hardware.intr))
+        .ok();
     //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Streaming and playing music
