@@ -51,7 +51,7 @@ pub struct Vs1053Driver<SPI, DREQ, RST, DLY> {
 }
 
 // TODO about the delay - see https://embassy.dev/book/#_delay
-// Maybe don't need to the bridging code in AsyncDelay
+// Maybe don't need the bridging code in AsyncDelay
 impl<SPI, DREQ, RST, DLY> Vs1053Driver<SPI, DREQ, RST, DLY>
 where
     SPI: SpiDevice,

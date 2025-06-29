@@ -3,7 +3,10 @@ use heapless::String;
 use super::error::RequestError;
 
 /// The maximum size of the path in the request.
-const PATH_SIZE: usize = 256; // TODO This is perhaps rather small  , better 512
+/// This value of 256 is currently holding up under real world conditions,
+/// however particular care has to be taken with redirects as these
+/// use long URLS.
+const PATH_SIZE: usize = 256;
 
 /// The maximum size of the headers in the request.
 const HEADER_SIZE: usize = 512;

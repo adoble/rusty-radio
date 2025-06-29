@@ -112,8 +112,8 @@ async fn main(spawner: Spawner) {
     let peripherals = esp_hal::init(config);
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
-    //esp_alloc::heap_allocator!(72 * 1024); // This value works!
-    esp_alloc::heap_allocator!(76 * 1024); // TODO is this too big!
+    // Size has been emprically determined.
+    esp_alloc::heap_allocator!(76 * 1024);
 
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
@@ -121,6 +121,9 @@ async fn main(spawner: Spawner) {
     let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
+
+    // The stack needs to be static so that it can be used in tasks.
+    STACK.init(hardware.sta_stack);
 
     // This is the way to initialize esp hal embassy for the the esp32c3
     // according to the example
@@ -131,10 +134,6 @@ async fn main(spawner: Spawner) {
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
-
-    // The stack needs to be static so that it can be used in tasks.
-    // TODO move the somewhere else in the code
-    STACK.init(hardware.sta_stack);
 
     // Init the vs1053 spi speeds
     let mut spi_sci_config = SpiConfig::default();
@@ -175,15 +174,12 @@ async fn main(spawner: Spawner) {
         Output<'_>,
     > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
 
-    // TODO the new function is not protected with a mutex. Do we need a begin() function? Can I just do this with  a new function?
-    // Do I even need a mutex here as this is not beinh done in a seperate task.
+    // Set up the mutiplexer driver and provide a mutex for it.
     let multiplexer_driver: Mcp23s17<
         SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
     > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
         .await
         .unwrap();
-
-    // Setup the mutex for the mutiplexer driver
     {
         *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
     }
