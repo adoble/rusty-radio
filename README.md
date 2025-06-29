@@ -1,36 +1,40 @@
 # Rusty Radio
 
-An embedded internet radio written in Rust. 
+An embedded internet radio written in Rust.
 
- [!WARNING]
- Under construction
+> **⚠️ Work In Progress**
+>
+> This project is under active development. Features, hardware, and software may change frequently. 
 
-The radio can accept the following formats:
-* MP3
-* AAC 
-* M3U (WORK IN PROGRESS!)
+## Supported Formats
+
+Rusty Radio currently supports:
+- MP3
+- AAC
+- M3U
 
 ## System Diagram
+
 ![](./hardware/system/System.drawio.svg)
 
-## Hardware 
+## Hardware
 
-*  Uses the Seeed Studio [XIAO ESP32C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) as this has an external antenna meaning that the radio is independent of the enclosure used. 
-    * Intially used the [ESP32-C3-DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#) board.
-
-* Schematics are created using KiCad 9.0.
+- Uses the Seeed Studio [XIAO ESP32C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) for its external antenna, making the radio independent of the enclosure.
+    - Initially used the [ESP32-C3-DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#) board.
+- Uses the VS1053 chip to decode the streamed audio.
+- Schematics are created using KiCad 9.0.
 
 ## Software Architecture
 
-- The system uses esp-hal and [embassy](https://dev.to/theembeddedrustacean/embassy-on-esp-getting-started-27fi) for task scheduling. 
-
-- The project was initially generated  with `cargo generate esp-rs/esp-template`. See the [GitHub repo](https://github.com/esp-rs/esp-template). The software project root is `controller`.
+- Built with `esp-hal` and [Embassy](https://dev.to/theembeddedrustacean/embassy-on-esp-getting-started-27fi) for async task scheduling.
+- Project scaffolded using `cargo generate esp-rs/esp-template`. See the [GitHub repo](https://github.com/esp-rs/esp-template). The software project root is `controller`.
 
 ## Development Notes
 
-- ESP Rust installation set up environment variable.  A file was created at `C:\Users\T440s\export-esp.ps1` showing the injected environment variables. 
+- ESP Rust installation requires setting up environment variables. Example: `C:\Users\T440s\export-esp.ps1` contains the injected environment variables.
+- Embassy code examples are referenced from [esp-hal examples](https://github.com/esp-rs/esp-hal/tree/main/examples/src/bin).
+- For more on Embassy, see the [Embassy Book](https://embassy.dev/book/).
 
-- Embassy code examples taken from https://github.com/esp-rs/esp-hal/tree/main/examples/src/bin
+---
 
-- How to use Embassy in the [Embassy Book](https://embassy.dev/book/)
 
