@@ -9,8 +9,6 @@ use embassy_sync::{
 
 use crate::{MultiplexerDriverType, RadioStation, Vs1053DriverType};
 
-use stations::Station;
-
 // Signal that the web should be accessed
 //pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
 

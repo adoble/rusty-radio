@@ -7,7 +7,6 @@ use embedded_io_async::Write;
 
 use m3u::{M3UError, M3U};
 use static_assertions::const_assert;
-use stations::Station;
 
 use core::net::Ipv4Addr;
 

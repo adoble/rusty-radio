@@ -39,7 +39,7 @@ use task::{
 mod front_panel;
 use front_panel::FrontPanel;
 
-use stations::{Station, StationError, Stations};
+use stations::{Station, Stations};
 
 // External crates
 use esp_backtrace as _;
