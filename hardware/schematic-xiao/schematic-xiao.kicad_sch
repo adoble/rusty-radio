@@ -3218,6 +3218,27 @@
 		)
 		(uuid "e1a1ba39-f29a-4e2a-bc12-f69dc2c12ee6")
 	)
+	(text_box "FUTURE CHANGE:\n\nUse D9/IO9 as the chip select for the display. \nThere are no restrictions on this pin."
+		(exclude_from_sim no)
+		(at 172.085 102.235 0)
+		(size 24.13 37.465)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(color 132 0 0 1)
+			)
+			(justify left top)
+		)
+		(uuid "2777d2b5-019c-4a45-b4b4-88c36438f1b4")
+	)
 	(text_box "Note: USB/STD-ALN switch has been removed!"
 		(exclude_from_sim no)
 		(at 121.92 33.02 0)
@@ -3281,6 +3302,27 @@
 			(justify left bottom)
 		)
 		(uuid "4592873a-018b-4e1a-b743-62b86577a42f")
+	)
+	(text_box "FUTURE CHANGE:\n\nUse D6/IO21 as the reset for the VS1053. D6/IO21 can be an output."
+		(exclude_from_sim no)
+		(at 54.61 69.215 0)
+		(size 24.13 37.465)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(color 132 0 0 1)
+			)
+			(justify left top)
+		)
+		(uuid "6c8fa9ab-23a7-48ea-aaf2-c3f5b6e72b48")
 	)
 	(text_box "Used to power \nthe amplifier\nalone\n"
 		(exclude_from_sim no)
