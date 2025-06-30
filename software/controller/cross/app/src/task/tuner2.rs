@@ -48,6 +48,7 @@ pub async fn tuner2(
     // Initially just try the press buttons. Set up the rotary encoder later.
 
     let mut last_button_pressed = Buttons::None;
+    let mut rotary_controller_transition = false;
 
     loop {
         // Default configuration is active low
@@ -97,6 +98,28 @@ pub async fn tuner2(
                 }
                 Err(err) => panic!("ERROR: cannot select station ({:?})", err),
             }
+        }
+
+        // Now read the rotary controller. Using this approach means that there can be some spurious
+        // direction changes, but the trand is correct.
+        let rotary_encoder_state = front_panel.read_rotary_encoder().await.unwrap();
+        // if rotary_encoder_state != last_rotary_controller_state {
+
+        match rotary_encoder_state {
+            (true, true) => (),
+            (true, false) => {
+                if !rotary_controller_transition {
+                    rotary_controller_transition = true;
+                    esp_println::println!("DEBUG Increment");
+                }
+            }
+            (false, true) => {
+                if !rotary_controller_transition {
+                    rotary_controller_transition = true;
+                    esp_println::println!("DEBUG Decrement");
+                }
+            }
+            (false, false) => rotary_controller_transition = false,
         }
 
         // Debounce
