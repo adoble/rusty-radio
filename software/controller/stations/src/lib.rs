@@ -448,6 +448,30 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         }
     }
 
+    pub fn current_station(&self) -> Result<Option<Station<NAME_LEN, URL_LEN>>, StationError> {
+        match self.current_station {
+            Some(station_index) => Ok(self.get_station(station_index)?),
+            None => Ok(None),
+        }
+    }
+
+    /// Set the current station to the next one in the stations list. If the range is exceeded
+    /// the current stations is clamped to the last one in the list.
+    pub fn increment_current_station(&mut self) {
+        if let Some(mut station_id) = self.current_station {
+            station_id += 1.clamp(0, self.positions.len() - 1);
+            self.current_station = Some(station_id);
+        }
+    }
+    /// Set the current station to the previous one in the stations list. If the range is exceeded
+    /// the current stations is clamped to the first one in the list.
+    pub fn decrement_current_station(&mut self) {
+        if let Some(mut station_id) = self.current_station {
+            station_id -= 1.clamp(0, self.positions.len() - 1);
+            self.current_station = Some(station_id);
+        }
+    }
+
     /// Reset the current station to 0.
     ///
     /// Equivalent to `set_current_station(0)`
@@ -526,9 +550,15 @@ mod tests {
 
     use super::*;
 
-    const MAX_STATION_NAME_LEN: usize = 32;
+    const MAX_STATION_NAME_LEN: usize = 40;
     const MAX_STATION_URL_LEN: usize = 256;
     const NUMBER_PRESETS: usize = 4;
+
+    const STATION_DATA: &str =
+        "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
+Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
+SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
+BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1";
 
     #[test]
     fn test_add_and_get_station() {
@@ -729,5 +759,66 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         let station = stations.preset(2).unwrap();
         assert!(station.is_none());
+    }
+
+    #[test]
+    fn test_current_station() {
+        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
+Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
+SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
+BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
+    ";
+
+        let mut stations =
+            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
+                data.as_bytes(),
+            )
+            .unwrap();
+
+        stations.set_current_station(2).unwrap();
+
+        let station = stations.current_station().unwrap().unwrap();
+
+        assert_eq!(station.name(), "SWR3");
+    }
+
+    #[test]
+    fn test_increment_station() {
+        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
+Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
+SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
+BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
+    ";
+
+        let mut stations =
+            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
+                data.as_bytes(),
+            )
+            .unwrap();
+
+        stations.set_current_station(1).unwrap();
+
+        stations.increment_current_station();
+
+        let current_station = stations.current_station().unwrap().unwrap();
+
+        assert_eq!("SWR3", current_station.name());
+    }
+
+    #[test]
+    fn test_decrement_station() {
+        let mut stations =
+            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
+                STATION_DATA.as_bytes(),
+            )
+            .unwrap();
+
+        stations.set_current_station(2).unwrap();
+
+        stations.decrement_current_station();
+
+        let current_station = stations.current_station().unwrap().unwrap();
+
+        assert_eq!("Absolute Oldies- Best of the 80s", current_station.name());
     }
 }
