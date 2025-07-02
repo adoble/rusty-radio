@@ -11,11 +11,11 @@ FFH+ 80er,http://mp3.ffh.de/ffhplus/hq80er.mp3,Oldies
 FFH+ Charts,http://mp3.ffh.de/ffhplus/hqcharts.mp3,Pop
 FFH Workout,http://mp3.ffh.de/ffhchannels/hqworkout.mp3,Pop
 FFH Lounge,http://mp3.ffh.de/ffhchannels/hqlounge.mp3,Lounge
-Ambient Radio,https://uk2.internet-radio.com/proxy/ambientradio?mp=/;,UK,Lounge
+Ambient Radio,http://uk2.internet-radio.com/proxy/ambientradio?mp=/;,UK,Lounge
 Antenne Bayern,http://s5-webradio.antenne.de/antenne,Pop
 WDR2,http://wdr-wdr2-rheinland.icecast.wdr.de/wdr/wdr2/rheinland/mp3/128/stream.mp3,Pop
 Big FM,http://streams.bigfm.de/bigfm-deutschland-128-aac?usid=0-0-H-A-D-30,Pop,PRESET:2
 WDR5,http://wdr-wdr5-live.icecast.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3,Culture
-Deutschland Funk,https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3?aggregator=web,Info
+Deutschland Funk,http://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3?aggregator=web,Info
 Absolut Oldie Classics,http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3,Oldies,Favorites
 ABC Classic,http://live-radio02.mediahubaustralia.com/2FMW/mp3/,Classic
