@@ -16,7 +16,7 @@ use embassy_time::{Duration, Timer};
 // DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
 #[embassy_executor::task]
 pub async fn tuner2(
-    stations: &'static RadioStations,
+    stations: &'static mut RadioStations,
     front_panel: &'static FrontPanel,
     mut _interrupt_pin: Input<'static>,
 ) {
@@ -48,7 +48,8 @@ pub async fn tuner2(
     // Initially just try the press buttons. Set up the rotary encoder later.
 
     let mut last_button_pressed = Buttons::None;
-    let mut rotary_controller_transition = false;
+    let mut rotary_encoder_transition = false;
+    let mut rotary_encoder_movement: i32 = 0;
 
     loop {
         // Default configuration is active low
@@ -101,25 +102,55 @@ pub async fn tuner2(
         }
 
         // Now read the rotary controller. Using this approach means that there can be some spurious
-        // direction changes, but the trand is correct.
+        // direction changes, but the trend is correct.
         let rotary_encoder_state = front_panel.read_rotary_encoder().await.unwrap();
-        // if rotary_encoder_state != last_rotary_controller_state {
 
         match rotary_encoder_state {
             (true, true) => (),
             (true, false) => {
-                if !rotary_controller_transition {
-                    rotary_controller_transition = true;
+                if !rotary_encoder_transition {
+                    rotary_encoder_movement += 1;
+                    rotary_encoder_transition = true;
+
                     esp_println::println!("DEBUG Increment");
                 }
             }
             (false, true) => {
-                if !rotary_controller_transition {
-                    rotary_controller_transition = true;
+                if !rotary_encoder_transition {
+                    rotary_encoder_movement -= 1;
+
+                    rotary_encoder_transition = true;
                     esp_println::println!("DEBUG Decrement");
                 }
             }
-            (false, false) => rotary_controller_transition = false,
+            (false, false) => {
+                //rotary_encoder_movement = 0;
+                rotary_encoder_transition = false;
+            }
+        }
+
+        // esp_println::println!(
+        //     "DEBUG rotary_encoder_movement = {}",
+        //     rotary_encoder_movement
+        // );
+
+        if rotary_encoder_movement >= 4 {
+            stations.increment_current_station();
+            let station = stations.current_station().unwrap(); //TODO Error handling
+
+            esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station); // TODO unwrap?
+
+            station_change_sender.send(station.unwrap().clone());
+            rotary_encoder_movement = 0;
+        } else if rotary_encoder_movement <= -4 {
+            stations.decrement_current_station();
+
+            let station = stations.current_station().unwrap(); //TODO Error handling
+            esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station);
+
+            station_change_sender.send(station.unwrap().clone());
+
+            rotary_encoder_movement = 0;
         }
 
         // Debounce

@@ -242,6 +242,8 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
             }
             in_bytes = &in_bytes[nin..];
         }
+
+        stations.set_current_station(0)?;
         Ok(stations)
     }
 
@@ -458,17 +460,20 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
     /// Set the current station to the next one in the stations list. If the range is exceeded
     /// the current stations is clamped to the last one in the list.
     pub fn increment_current_station(&mut self) {
-        if let Some(mut station_id) = self.current_station {
-            station_id += 1.clamp(0, self.positions.len() - 1);
-            self.current_station = Some(station_id);
+        if let Some(station_id) = self.current_station {
+            let inc_station_id = (station_id + 1).clamp(0, self.positions.len() - 1);
+
+            self.current_station = Some(inc_station_id);
         }
     }
     /// Set the current station to the previous one in the stations list. If the range is exceeded
     /// the current stations is clamped to the first one in the list.
     pub fn decrement_current_station(&mut self) {
-        if let Some(mut station_id) = self.current_station {
-            station_id -= 1.clamp(0, self.positions.len() - 1);
-            self.current_station = Some(station_id);
+        if let Some(station_id) = self.current_station {
+            let dec_station_id = station_id.saturating_sub(1);
+            //let dec_station_id = (station_id - 1).clamp(0, self.positions.len() - 1);
+
+            self.current_station = Some(dec_station_id);
         }
     }
 
@@ -784,15 +789,9 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
     #[test]
     fn test_increment_station() {
-        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
-Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
-SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
-BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
-    ";
-
         let mut stations =
             Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-                data.as_bytes(),
+                STATION_DATA.as_bytes(),
             )
             .unwrap();
 
@@ -800,9 +799,19 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         stations.increment_current_station();
 
-        let current_station = stations.current_station().unwrap().unwrap();
+        let mut current_station = stations.current_station().unwrap().unwrap();
 
         assert_eq!("SWR3", current_station.name());
+
+        stations.increment_current_station();
+        stations.increment_current_station();
+        stations.increment_current_station();
+        stations.increment_current_station();
+
+        current_station = stations.current_station().unwrap().unwrap();
+
+        // Last station
+        assert_eq!("BBC Radio 1", current_station.name())
     }
 
     #[test]
@@ -817,8 +826,18 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         stations.decrement_current_station();
 
-        let current_station = stations.current_station().unwrap().unwrap();
+        let mut current_station = stations.current_station().unwrap().unwrap();
 
         assert_eq!("Absolute Oldies- Best of the 80s", current_station.name());
+
+        stations.decrement_current_station();
+        stations.decrement_current_station();
+        stations.decrement_current_station();
+        stations.decrement_current_station();
+
+        current_station = stations.current_station().unwrap().unwrap();
+
+        // First station
+        assert_eq!("RPR1", current_station.name());
     }
 }
