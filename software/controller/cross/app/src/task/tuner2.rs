@@ -48,7 +48,7 @@ pub async fn tuner2(
     // Initially just try the press buttons. Set up the rotary encoder later.
 
     let mut last_button_pressed = Buttons::None;
-    let mut rotary_encoder_transition = false;
+    //let mut rotary_encoder_transition = false;
     let mut rotary_encoder_movement: i32 = 0;
 
     loop {
@@ -61,19 +61,6 @@ pub async fn tuner2(
         if button_pressed != last_button_pressed {
             esp_println::println!("DEBUG: Button pressed = {:?}", button_pressed);
             last_button_pressed = button_pressed.clone();
-
-            // let station_index: Option<usize> = match button_pressed {
-            //     Buttons::RotaryEncoderSwitch => {
-            //         esp_println::println!("INFO: Rotary Switch pressed");
-            //         None
-            //     }
-            //     Buttons::Button1 => Some(0),
-            //     Buttons::Button2 => Some(1),
-            //     Buttons::Button3 => Some(2),
-            //     Buttons::Button4 => Some(3),
-            //     Buttons::None => None, // No button pressed so keep waiting
-            //     Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
-            // };
 
             let selected_station = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
@@ -101,38 +88,69 @@ pub async fn tuner2(
             }
         }
 
-        // Now read the rotary controller. Using this approach means that there can be some spurious
-        // direction changes, but the trend is correct.
-        let rotary_encoder_state = front_panel.read_rotary_encoder().await.unwrap();
+        // Now read the rotary controller.
+        let direction = front_panel.decode_rotary_encoder().await.unwrap();
+        match direction {
+            crate::front_panel::Direction::Clockwise => {
+                stations.increment_current_station();
+                let station = stations.current_station().unwrap(); //TODO Error handling
 
-        match rotary_encoder_state {
-            (true, true) => (),
-            (true, false) => {
-                if !rotary_encoder_transition {
-                    rotary_encoder_movement += 1;
-                    rotary_encoder_transition = true;
+                esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station); // TODO unwrap?
 
-                    esp_println::println!("DEBUG Increment");
-                }
+                station_change_sender.send(station.unwrap().clone());
+                rotary_encoder_movement = 0;
             }
-            (false, true) => {
-                if !rotary_encoder_transition {
-                    rotary_encoder_movement -= 1;
+            crate::front_panel::Direction::CounterClockwise => {
+                stations.decrement_current_station();
 
-                    rotary_encoder_transition = true;
-                    esp_println::println!("DEBUG Decrement");
-                }
+                let station = stations.current_station().unwrap(); //TODO Error handling
+                esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station);
+
+                station_change_sender.send(station.unwrap().clone());
+
+                rotary_encoder_movement = 0;
             }
-            (false, false) => {
-                //rotary_encoder_movement = 0;
-                rotary_encoder_transition = false;
-            }
+            crate::front_panel::Direction::None => (),
         }
+
+        // // Now read the rotary controller. Using this approach means that there can be some spurious
+        // // direction changes, but the trend is correct.
+        // let rotary_encoder_state = front_panel.read_rotary_encoder().await.unwrap();
+
+        // match rotary_encoder_state {
+        //     (true, true) => (),
+        //     (true, false) => {
+        //         if !rotary_encoder_transition {
+        //             rotary_encoder_movement += 1;
+        //             rotary_encoder_transition = true;
+
+        //             esp_println::println!("DEBUG Increment");
+        //         }
+        //     }
+        //     (false, true) => {
+        //         if !rotary_encoder_transition {
+        //             rotary_encoder_movement -= 1;
+
+        //             rotary_encoder_transition = true;
+        //             esp_println::println!("DEBUG Decrement");
+        //         }
+        //     }
+        //     (false, false) => {
+        //         //rotary_encoder_movement = 0;
+        //         rotary_encoder_transition = false;
+        //     }
+        // }
 
         // esp_println::println!(
         //     "DEBUG rotary_encoder_movement = {}",
         //     rotary_encoder_movement
         // );
+
+        // TODO make the rotary encoder more robust againt noise
+        // Use the idea in this https://www.best-microcontroller-projects.com/rotary-encoder.html#Digital_Debounce_Filter
+        // and the code from https://docs.rs/rotary-encoder-hal/0.6.0/src/rotary_encoder_hal/lib.rs.html#111-127
+        // (the update method). Cannot directly use the crate as it wants InputPins which we dos not have.
+        // Maybe place the code in front_panel.rs
 
         if rotary_encoder_movement >= 4 {
             stations.increment_current_station();

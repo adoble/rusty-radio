@@ -2,6 +2,8 @@ use mcp23s17_async::{InterruptMode, Mcp23s17SpiError, PinMode};
 
 use crate::task::sync::MULTIPLEXER_DRIVER;
 
+use core::sync::atomic::{AtomicU8, Ordering};
+
 // Map of the pins used in by the MCP23S17 on the button board
 const ROT_A: u8 = 0;
 const ROT_B: u8 = 1;
@@ -13,7 +15,11 @@ const BTN_4: u8 = 6;
 
 const LED: u8 = 8;
 
-#[derive(Debug, Clone, PartialEq)]
+// The state of the rotary encoder: This is help between task switching.
+static ROTARY_ENCODER_STATE: AtomicU8 = AtomicU8::new(0);
+
+/// The buttons/switches on the front panel
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Buttons {
     RotaryEncoderSwitch,
     Button1,
@@ -22,6 +28,14 @@ pub enum Buttons {
     Button4,
     None,
     Unknown,
+}
+
+/// The rotary encoder direction is either `Clockwise`, `CounterClockwise`, or `None`
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Direction {
+    Clockwise,
+    CounterClockwise,
+    None,
 }
 
 // pub struct FrontPanel<SPI>
@@ -154,6 +168,72 @@ impl FrontPanel {
             Ok(button_value)
         } else {
             Err(FrontPanelError::CannotGetMutex)
+        }
+    }
+
+    /// Read the rotary encoder to determine which direction if was moved (it at all).
+    ///
+    /// This uses a [table based noise reducing digital filter algorithm](https://www.best-microcontroller-projects.com/rotary-encoder.html)
+    ///
+    /// **Note**
+    ///
+    /// This code is taken from the crate [rotary_encoder_hal](https://crates.io/crates/rotary-encoder-hal) `update` function
+    /// (using a table) and modified to work with multiple threads.
+    ///
+    /// The crate could not directly be used as:
+    ///  - it expects the rotary encoder to be connected directly to pins on the MCU and accessed
+    ///over `embedded_hal::digital::InputPin`. These are not available here as the rotary encoder is
+    ///connected to the multiplexer (MCP23S17) over SPI to the MCU.
+    ///  - How it can handle multiple threads is not clear
+    #[allow(dead_code)]
+    pub async fn decode_rotary_encoder(&self) -> Result<Direction, FrontPanelError> {
+        let (a, b) = self.read_rotary_encoder().await?;
+
+        let mut state = ROTARY_ENCODER_STATE.load(Ordering::Relaxed);
+
+        let mut prev_next = (state << 2) & 0xF;
+
+        if a {
+            prev_next |= 0x01;
+        }
+
+        if b {
+            prev_next |= 0x02;
+        }
+
+        match prev_next {
+            /*valid cases*/
+            1 | 2 | 4 | 7 | 8 | 11 | 13 | 14 => {
+                let result = (state & 0xF0) | prev_next;
+
+                state = prev_next << 4 | prev_next;
+                ROTARY_ENCODER_STATE.store(state, Ordering::Relaxed);
+
+                Ok(Self::phase(result))
+            }
+
+            /*Invalid cases */
+            0 | 3 | 5 | 6 | 9 | 10 | 12 | 15 => {
+                state = state & 0xF0 | prev_next;
+                ROTARY_ENCODER_STATE.store(state, Ordering::Relaxed);
+
+                Ok(Direction::None)
+            }
+
+            /* let the compiler help us ensure we've covered them all */
+            0x10..=0xFF => Ok(Direction::None),
+        }
+    }
+
+    /// The useful values of `s` are:
+    /// - 0x17 | 0x7E | 0xE8 | 0x81
+    /// - 0x2B | 0xBD | 0xD4 | 0x42
+    fn phase(s: u8) -> Direction {
+        //TODO why so few arms (see table above)?
+        match s {
+            0x17 => Direction::CounterClockwise,
+            0x2b => Direction::Clockwise,
+            _ => Direction::None,
         }
     }
 
