@@ -228,11 +228,19 @@ impl FrontPanel {
     /// The useful values of `s` are:
     /// - 0x17 | 0x7E | 0xE8 | 0x81
     /// - 0x2B | 0xBD | 0xD4 | 0x42
+    // fn phase(s: u8) -> Direction {
+    //     //TODO why so few arms (see table above)?
+    //     match s {
+    //         0x17 => Direction::CounterClockwise,
+    //         0x2b => Direction::Clockwise,
+    //         _ => Direction::None,
+    //     }
+    // }
     fn phase(s: u8) -> Direction {
         //TODO why so few arms (see table above)?
         match s {
-            0x17 => Direction::CounterClockwise,
-            0x2b => Direction::Clockwise,
+            0x17 | 0x7E | 0xE8 | 0x81 => Direction::CounterClockwise,
+            0x2B | 0xBD | 0xD4 | 0x42 => Direction::Clockwise,
             _ => Direction::None,
         }
     }
