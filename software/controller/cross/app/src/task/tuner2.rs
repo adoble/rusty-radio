@@ -92,23 +92,10 @@ pub async fn tuner2(
         let direction = front_panel.decode_rotary_encoder().await.unwrap();
         match direction {
             crate::front_panel::Direction::Clockwise => {
-                stations.increment_current_station();
-                let station = stations.current_station().unwrap(); //TODO Error handling
-
-                esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station); // TODO unwrap?
-
-                station_change_sender.send(station.unwrap().clone());
-                rotary_encoder_movement = 0;
+                rotary_encoder_movement += 1;
             }
             crate::front_panel::Direction::CounterClockwise => {
-                stations.decrement_current_station();
-
-                let station = stations.current_station().unwrap(); //TODO Error handling
-                esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station);
-
-                station_change_sender.send(station.unwrap().clone());
-
-                rotary_encoder_movement = 0;
+                rotary_encoder_movement -= 1;
             }
             crate::front_panel::Direction::None => (),
         }
@@ -151,6 +138,8 @@ pub async fn tuner2(
         // and the code from https://docs.rs/rotary-encoder-hal/0.6.0/src/rotary_encoder_hal/lib.rs.html#111-127
         // (the update method). Cannot directly use the crate as it wants InputPins which we dos not have.
         // Maybe place the code in front_panel.rs
+
+        esp_println::println!("DEBUG: rotary_encoder_movement = {rotary_encoder_movement} ");
 
         if rotary_encoder_movement >= 4 {
             stations.increment_current_station();
