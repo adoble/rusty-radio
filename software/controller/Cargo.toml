@@ -1,4 +1,4 @@
 [workspace]
-members = ["stations", "vs1053-driver","http", "xtask", "m3u"]
+members = ["stations", "vs1053-driver","http", "xtask", "m3u", "periodic-map"]
 resolver = "2"
 

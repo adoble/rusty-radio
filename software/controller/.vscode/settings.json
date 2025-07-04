@@ -15,7 +15,8 @@
         "http/Cargo.toml",
         "cross/Cargo.toml",
         "stations/Cargo.toml", 
-        "m3u/Cargo.toml"
+        "m3u/Cargo.toml",
+        "periodic-map/Cargo.toml"
     ],
 
 }

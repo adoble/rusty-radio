@@ -88,6 +88,7 @@ stations = {path = "../../stations"}
 m3u = {path = "../../m3u"}
 #mcp23s17-async = "0.1.0"
 mcp23s17-async =  { path = "../../mcp23s17-async" }
+periodic-map = {path = "../../periodic-map"}
 
 
 [dev-dependencies]
