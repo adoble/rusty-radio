@@ -44,11 +44,11 @@
 //! stations.set_preset(1, 0).unwrap();
 //!
 //! // Retrieve a station by index
-//! let station = stations.get_station(0).unwrap().unwrap();
+//! let station = stations.get_station(0).unwrap();
 //! assert_eq!(station.name(), "Radio 1");
 //!
 //! // Retrieve a preset
-//! let preset_station = stations.preset(0).unwrap().unwrap();
+//! let preset_station = stations.preset(0).unwrap();
 //! assert_eq!(preset_station.name(), "Radio 2");
 //! ```
 //!
@@ -280,6 +280,13 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         let name = str::from_utf8(station_name).map_err(|_| StationError::NameNotUtf8)?;
         let url = str::from_utf8(station_url).map_err(|_| StationError::UrlNotUtf8)?;
 
+        if name.len() > NAME_LEN {
+            Err(StationError::NameTooLong)?;
+        }
+        if url.len() > URL_LEN {
+            Err(StationError::UrlTooLong)?;
+        }
+
         let name_positions = (self.pool.len(), self.pool.len() + name.len());
         self.pool
             .push_str(name)
@@ -335,7 +342,7 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
 
         self.preset_slots[preset_id] = Some(station_id);
 
-        let station = self.get_station(station_id)?;
+        let station = self.get_station(station_id);
 
         Ok(station.unwrap())
     }
@@ -348,31 +355,21 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
     ///
     /// # Returns
     ///
-    /// Returns `Ok(Some(Station))` if a station is assigned to the preset.
-    /// Returns `Ok(None)` if the preset is empty.
-    /// Returns `Err(StationError)` if the preset index is out of bounds or the station cannot be retrieved.
+    /// Returns `Some(Station)` if a station is assigned to the preset.
+    /// Returns `None` if the preset is empty or the preset index is out of bounds.
     ///
-    /// # Errors
-    ///
-    /// * [`StationError::InvalidPreset`] - If the preset index is out of range.
-    /// * [`StationError::StationNonExistent`] - If the station assigned to the preset does not exist.
-    pub fn preset(
-        &self,
-        preset_id: usize,
-    ) -> Result<Option<Station<NAME_LEN, URL_LEN>>, StationError> {
+    pub fn preset(&self, preset_id: usize) -> Option<Station<NAME_LEN, URL_LEN>> {
         // Check bounds
         if preset_id >= NUM_PRESETS {
-            Err(StationError::InvalidPreset)?
+            return None;
         }
 
         // Get the station preset
-        let station = if let Some(station_id) = self.preset_slots[preset_id] {
-            self.get_station(station_id)?
+        if let Some(station_id) = self.preset_slots[preset_id] {
+            self.get_station(station_id)
         } else {
             None
-        };
-
-        Ok(station)
+        }
     }
 
     /// Returns the number of stations that have been added.
@@ -392,18 +389,10 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
     ///
     /// # Returns
     ///
-    /// Returns `Ok(Some(Station))` if the station exists at the given index.
-    /// Returns `Ok(None)` if the index is out of bounds.
-    /// Returns `Err(StationError)` if the station name or URL cannot be constructed due to length limits.
+    /// Returns `Some(Station)` if the station exists at the given index.
+    /// Returns `None` if the index is out of bounds.
     ///
-    /// # Errors
-    ///
-    /// * [`StationError::NameTooLong`] - If the station name is too long to fit in the buffer.
-    /// * [`StationError::UrlTooLong`] - If the station URL is too long to fit in the buffer.
-    pub fn get_station(
-        &self,
-        id: usize,
-    ) -> Result<Option<Station<NAME_LEN, URL_LEN>>, StationError> {
+    pub fn get_station(&self, id: usize) -> Option<Station<NAME_LEN, URL_LEN>> {
         let station_index = self.positions.get(id);
 
         let mut station = Station::<NAME_LEN, URL_LEN>::new();
@@ -413,17 +402,15 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
                 let station_name = &self.pool[index.name.0..index.name.1];
                 let station_url = &self.pool[index.url.0..index.url.1];
 
-                station
-                    .name
-                    .push_str(station_name)
-                    .map_err(|_| StationError::NameTooLong)?;
-                station
-                    .url
-                    .push_str(station_url)
-                    .map_err(|_| StationError::UrlTooLong)?;
-                Ok(Some(station))
+                // SAFETY: No stations with names or urls that are too long for the Station strings
+                // are created (see add_station). As such not too long names are going to be copied
+                // into a station
+                station.name.push_str(station_name).unwrap();
+                station.url.push_str(station_url).unwrap();
+
+                Some(station)
             }
-            None => Ok(None),
+            None => None,
         }
     }
 
@@ -450,10 +437,10 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         }
     }
 
-    pub fn current_station(&self) -> Result<Option<Station<NAME_LEN, URL_LEN>>, StationError> {
+    pub fn current_station(&self) -> Option<Station<NAME_LEN, URL_LEN>> {
         match self.current_station {
-            Some(station_index) => Ok(self.get_station(station_index)?),
-            None => Ok(None),
+            Some(station_index) => self.get_station(station_index),
+            None => None,
         }
     }
 
@@ -510,7 +497,7 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize> Defa
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StationError {
     /// The station URL added is not in UTF8
     UrlNotUtf8,
@@ -594,7 +581,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
 
         assert_eq!(stations.number_stations(), 4);
 
-        let station = stations.get_station(1).unwrap();
+        let station = stations.get_station(1);
 
         if let Some(station) = station {
             assert_eq!(station.name(), "SWR3");
@@ -604,7 +591,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
         }
 
         // No station
-        let station = stations.get_station(4).unwrap();
+        let station = stations.get_station(4);
         assert!(station.is_none());
     }
 
@@ -643,6 +630,40 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
     }
 
     #[test]
+    fn test_add_station_with_error() {
+        let mut stations =
+            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
+
+        // Add a station with a name too long
+        let too_long_name = b"This is a station that has a name much too long!";
+        let url = b"http://musak.com/stream.mp3";
+
+        if let Err(err) = stations.add_station(too_long_name, url) {
+            assert_eq!(err, StationError::NameTooLong);
+        } else {
+            panic!("No error when station name too long");
+        }
+
+        // Add a station with an URL too long
+        let name = b"Big URL";
+        const BIG_URL_LEN: usize = 257;
+        let prefix = b"http://";
+
+        let mut too_long_url: [u8; BIG_URL_LEN] = [0; BIG_URL_LEN];
+        too_long_url[..prefix.len()].copy_from_slice(b"http://");
+
+        for i in prefix.len()..BIG_URL_LEN {
+            too_long_url[i] = 88 as u8; //'x'
+        }
+
+        if let Err(err) = stations.add_station(name, &too_long_url) {
+            assert_eq!(err, StationError::UrlTooLong);
+        } else {
+            panic!("No error when station URL too long");
+        }
+    }
+
+    #[test]
     fn test_preset() {
         let mut stations =
             Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
@@ -674,13 +695,13 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
 
         stations.set_preset(station_id, 1).unwrap();
 
-        let station = stations.preset(0).unwrap();
+        let station = stations.preset(0);
         if let Some(station) = station {
             assert_eq!(station.name(), "SWR3");
             assert_eq!(station.url(), "http://www.swr.de/stream/3/music.mp3")
         }
 
-        let station = stations.preset(3).unwrap();
+        let station = stations.preset(3);
 
         if let Some(station) = station {
             assert_eq!(station.name(), "Classic");
@@ -713,7 +734,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop
 
         let stations = stations.unwrap();
 
-        let station = stations.get_station(2).unwrap();
+        let station = stations.get_station(2);
 
         if let Some(station) = station {
             assert_eq!(station.name(), "SWR3");
@@ -741,7 +762,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         //let station = stations.get_station(2).unwrap();
 
-        let station = stations.preset(0).unwrap();
+        let station = stations.preset(0);
 
         if let Some(station) = station {
             assert_eq!(station.name(), "Absolute Oldies- Best of the 80s");
@@ -750,7 +771,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
             panic!("Station not found");
         }
 
-        let station = stations.preset(1).unwrap();
+        let station = stations.preset(1);
 
         if let Some(station) = station {
             assert_eq!(station.name(), "BBC Radio 1");
@@ -762,7 +783,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
             panic!("Station not found");
         }
 
-        let station = stations.preset(2).unwrap();
+        let station = stations.preset(2);
         assert!(station.is_none());
     }
 
@@ -782,7 +803,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         stations.set_current_station(2).unwrap();
 
-        let station = stations.current_station().unwrap().unwrap();
+        let station = stations.current_station().unwrap();
 
         assert_eq!(station.name(), "SWR3");
     }
@@ -799,7 +820,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         stations.increment_current_station();
 
-        let mut current_station = stations.current_station().unwrap().unwrap();
+        let mut current_station = stations.current_station().unwrap();
 
         assert_eq!("SWR3", current_station.name());
 
@@ -808,7 +829,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
         stations.increment_current_station();
         stations.increment_current_station();
 
-        current_station = stations.current_station().unwrap().unwrap();
+        current_station = stations.current_station().unwrap();
 
         // Last station
         assert_eq!("BBC Radio 1", current_station.name())
@@ -826,7 +847,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         stations.decrement_current_station();
 
-        let mut current_station = stations.current_station().unwrap().unwrap();
+        let mut current_station = stations.current_station().unwrap();
 
         assert_eq!("Absolute Oldies- Best of the 80s", current_station.name());
 
@@ -835,7 +856,7 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
         stations.decrement_current_station();
         stations.decrement_current_station();
 
-        current_station = stations.current_station().unwrap().unwrap();
+        current_station = stations.current_station().unwrap();
 
         // First station
         assert_eq!("RPR1", current_station.name());

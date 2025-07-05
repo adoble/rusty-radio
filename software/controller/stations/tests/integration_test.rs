@@ -10,7 +10,7 @@ fn test_load() {
 
     let stations =
         Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(data).unwrap();
-    let station = stations.get_station(5).unwrap();
+    let station = stations.get_station(5);
 
     // BBC Radio 3,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_three,UK,Classical
 
