@@ -133,6 +133,6 @@ pub async fn tuner(
             }
         }
 
-        Timer::after(Duration::from_millis(10)).await;
+        Timer::after(Duration::from_millis(5)).await;
     }
 }
