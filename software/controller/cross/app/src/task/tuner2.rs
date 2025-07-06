@@ -93,7 +93,12 @@ pub async fn tuner2(
     let periodic_map = PeriodicMap::new(VALID_WINDOW, INVALID_WINDOW).unwrap();
 
     loop {
-        let button_pressed = front_panel.button_pressed().await.unwrap();
+        let button_pressed = match front_panel.button_pressed().await {
+            Ok(button) => button,
+            // Sometimes the multiplexer misfires. If so ignore this.
+            Err(_) => continue,
+        };
+
         if button_pressed != last_button_pressed {
             esp_println::println!("DEBUG: Button pressed = {:?}", button_pressed);
             last_button_pressed = button_pressed.clone();
