@@ -1,3 +1,5 @@
+// [ ] (Finally) set up a config so that the streaming statistics are not printed.
+
 use crate::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
@@ -190,8 +192,9 @@ async fn stream_station(
 
     let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
 
-    // Get the initial station
-    let initial_station = station_change_receiver.get().await;
+    // Get the initial station.
+    // TODO assuming that this is always Some(station)
+    let initial_station = station_change_receiver.get().await.unwrap();
 
     let initial_url = initial_station.url();
     let mut url_str = String::<MAX_URL_LEN>::new();
@@ -200,8 +203,28 @@ async fn stream_station(
         .map_err(|_| StreamError::StationUrlTooLong)?;
 
     'redirect: loop {
-        // while let StationUrl::Redirect(url) = station_url {
-        let url = Url::parse(&url_str)?;
+        let url = if !url_str.is_empty() {
+            Url::parse(&url_str)?
+        } else {
+            //The URL is empty meaning no station selected so wait until one has been
+            let new_station = station_change_receiver.get().await;
+            match new_station {
+                Some(station) => {
+                    // A new station has been selected
+                    url_str.clear();
+                    url_str
+                        .push_str(station.url())
+                        .map_err(|_| StreamError::StationUrlTooLong)?;
+
+                    Url::parse(&url_str)?
+                }
+                None => {
+                    // No station selected so wait a bit and then check again
+                    Timer::after(Duration::from_millis(10)).await;
+                    continue 'redirect;
+                }
+            }
+        };
 
         let host = url.host();
         let port = url.port_or_default();
@@ -289,13 +312,35 @@ async fn stream_station(
             other => return Err(StreamError::InvalidHttpCode(other)),
         }
 
+        // // Stream the audio until a new station has been selected by the tuner
+        // let new_station =
+        //     stream_audio(&mut socket, &mut body_buffer, station_change_receiver).await?;
+        // url_str.clear();
+        // url_str
+        //     .push_str(new_station.url())
+        //     .map_err(|_| StreamError::RedirectionUrlTooLong)?;
+        // socket.abort();
+        // socket.flush().await?;
+
         // Stream the audio until a new station has been selected by the tuner
         let new_station =
             stream_audio(&mut socket, &mut body_buffer, station_change_receiver).await?;
-        url_str.clear();
-        url_str
-            .push_str(new_station.url())
-            .map_err(|_| StreamError::RedirectionUrlTooLong)?;
+
+        match new_station {
+            Some(station) => {
+                // A new station has been selected
+                url_str.clear();
+                url_str
+                    .push_str(station.url())
+                    .map_err(|_| StreamError::RedirectionUrlTooLong)?;
+            }
+            None => {
+                // No station has been selected just clear the url
+                url_str.clear();
+            }
+        }
+        // Close the socket properly. This happens if a new station has been selected AND also if no station
+        // selected, so no music plays.
         socket.abort();
         socket.flush().await?;
     }
@@ -340,7 +385,7 @@ async fn stream_audio(
     socket: &mut TcpSocket<'_>,
     audio_buffer: &mut [u8],
     station_change_receiver: &mut StationChangeReceiver,
-) -> Result<RadioStation, StreamError> {
+) -> Result<Option<RadioStation>, StreamError> {
     // let mut total_bytes = 0u32;
     // let mut last_stats = Instant::now();
     let mut read_state = StreamingState::FillingPipe;

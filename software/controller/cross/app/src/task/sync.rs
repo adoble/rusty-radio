@@ -61,7 +61,12 @@ pub static MULTIPLEXER_DRIVER: Mutex<
 //    signal::Signal::new();
 
 // This watches for changes to the station
-pub static STATION_CHANGE_WATCH: Watch<CriticalSectionRawMutex, RadioStation, 1> = Watch::new();
+pub static STATION_CHANGE_WATCH: Watch<CriticalSectionRawMutex, Option<RadioStation>, 1> =
+    Watch::new();
 
-pub type StationChangeReceiver =
-    Receiver<'static, embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex, RadioStation, 1>;
+pub type StationChangeReceiver = Receiver<
+    'static,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    Option<RadioStation>,
+    1,
+>;

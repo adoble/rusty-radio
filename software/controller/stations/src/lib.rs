@@ -85,7 +85,7 @@ const MAX_NUM_STATIONS: usize = 64;
 ///
 /// The struct cannot be created alone, but has to be obtained from the
 ///  `Stations`struct.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Station<const NAME_LEN: usize, const URL_LEN: usize> {
     /// The name of the station
     name: String<NAME_LEN>,

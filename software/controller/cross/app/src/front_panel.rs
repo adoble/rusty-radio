@@ -15,7 +15,7 @@ const BTN_4: u8 = 6;
 
 const LED: u8 = 8;
 
-// The state of the rotary encoder: This is help between task switching.
+// The state of the rotary encoder: Needs to be maintained between task switching.
 static ROTARY_ENCODER_STATE: AtomicU8 = AtomicU8::new(0);
 
 /// The buttons/switches on the front panel
@@ -239,8 +239,8 @@ impl FrontPanel {
     fn phase(s: u8) -> Direction {
         //TODO why so few arms (see table above)?
         match s {
-            0x17 | 0x7E | 0xE8 | 0x81 => Direction::CounterClockwise,
-            0x2B | 0xBD | 0xD4 | 0x42 => Direction::Clockwise,
+            0x17 => Direction::CounterClockwise,
+            0x2B => Direction::Clockwise,
             _ => Direction::None,
         }
     }

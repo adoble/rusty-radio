@@ -1,10 +1,17 @@
 use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel, RadioStations};
 
-//const DEBOUNCE_DURATION: u64 = 100; // Milliseconds  TODO use fugit?
+// [ ] Set the LED to show that a statipon has been tuned. Requires a new task.
+// [ ]  Change the name of this back to tuner (not tuner2)
+// [ ] Extract TiningScale into a different file. This means that tuner becomes a module
 
 use esp_hal::gpio::Input;
 
 use embassy_time::{Duration, Timer};
+
+use periodic_map::PeriodicMap;
+
+const VALID_WINDOW: usize = 5;
+const INVALID_WINDOW: usize = 10;
 
 //use stations::Stations;
 
@@ -12,6 +19,44 @@ use embassy_time::{Duration, Timer};
 //     Mutex<CriticalSectionRawMutex, Option<FrontPanelDriverType<'static>>>;
 
 // TODO Currently using the global static MULTIPLEXER_DRIVER. Change this later to a parameter
+
+// TODO Do we ned this as a structure? Reason agaisnt is that it needs to be placed in a mutex.
+//      If I  just use a usize then it can be placed in an atomic.
+struct TuningScale {
+    value: usize,
+    max: usize,
+}
+
+impl TuningScale {
+    pub fn new(max: usize) -> TuningScale {
+        TuningScale { value: 0, max }
+    }
+
+    pub fn set(&mut self, value: usize) -> usize {
+        if value <= self.max {
+            self.value = value;
+        } else {
+            self.value = self.max;
+        }
+        self.value
+    }
+
+    pub fn get(&self) -> usize {
+        self.value
+    }
+
+    pub fn increment(&mut self) -> usize {
+        let mut value = self.get();
+        value += 1;
+        self.set(value)
+    }
+
+    pub fn decrement(&mut self) -> usize {
+        let mut value = self.get();
+        value -= 1;
+        self.set(value)
+    }
+}
 
 // DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
 #[embassy_executor::task]
@@ -29,34 +74,25 @@ pub async fn tuner2(
     // 1. The last set station - TODO
     // 2. The first preset stations if set
     // 3. The first station in the station list
-    let initial_station = stations
-        .preset(0)
-        .ok()
-        .flatten()
-        .or_else(|| stations.get_station(0).expect("No initial station found"))
-        .expect("No initial station found");
+    let initial_station = stations.preset(0).or_else(|| stations.get_station(0)); //.expect("No initial station found");
 
     esp_println::println!("DEBUG: Initial station {:?}", initial_station);
 
     // Send the inital station
-    // let initial_station = stations
-    //     .get_station(0)
-    //     .expect("ERROR: Could not set intial station (0)");
     station_change_sender.send(initial_station);
 
-    // TODO
-    // Initially just try the press buttons. Set up the rotary encoder later.
-
     let mut last_button_pressed = Buttons::None;
-    //let mut rotary_encoder_transition = false;
-    let mut rotary_encoder_movement: i32 = 0;
+
+    let mut last_station_id = None;
+
+    // Intrepretating rotary encoder movement to as a tuning scale as used in an old analog radio
+    let mut tuning_scale =
+        TuningScale::new(stations.number_stations() * (VALID_WINDOW + INVALID_WINDOW));
+    // Used for mapping the rotary encoder to stations. Is safe as long as VALID_WINDOW and
+    // INVALID_WINDOW are more than 0.
+    let periodic_map = PeriodicMap::new(VALID_WINDOW, INVALID_WINDOW).unwrap();
 
     loop {
-        // Default configuration is active low
-        //interrupt_pin.wait_for_falling_edge().await;
-        //interrupt_pin.wait_for_rising_edge().await;
-        //esp_println::println!("DEBUG: Interrupt detected");
-
         let button_pressed = front_panel.button_pressed().await.unwrap();
         if button_pressed != last_button_pressed {
             esp_println::println!("DEBUG: Button pressed = {:?}", button_pressed);
@@ -65,121 +101,71 @@ pub async fn tuner2(
             let selected_station = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
                     esp_println::println!("INFO: Rotary Switch pressed");
-                    Ok(None)
+                    None
                 }
                 Buttons::Button1 => stations.preset(0),
                 Buttons::Button2 => stations.preset(1),
                 Buttons::Button3 => stations.preset(2),
                 Buttons::Button4 => stations.preset(3),
-                Buttons::None => Ok(None), // No button pressed so keep waiting
+                Buttons::None => None, // No button pressed so keep waiting
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };
 
             match selected_station {
-                Ok(Some(station)) => {
-                    esp_println::println!("\n\nINFO: Playing: {}\n\n", station.name());
+                Some(ref station) => {
+                    esp_println::println!(
+                        "\n\nINFO: Playing preset station: {}\n\n",
+                        station.name()
+                    );
 
-                    station_change_sender.send(station.clone());
+                    station_change_sender.send(selected_station);
                 }
-                Ok(None) => {
+                None => {
                     esp_println::println!("INFO: No preset for button {:?}", button_pressed)
                 }
-                Err(err) => panic!("ERROR: cannot select station ({:?})", err),
             }
         }
 
-        // Now read the rotary controller.
+        // Now read the rotary encoder.
+        let mut rotary_encoder_movement = false;
         let direction = front_panel.decode_rotary_encoder().await.unwrap();
         match direction {
             crate::front_panel::Direction::Clockwise => {
-                rotary_encoder_movement += 1;
+                rotary_encoder_movement = true;
+                tuning_scale.increment();
             }
             crate::front_panel::Direction::CounterClockwise => {
-                rotary_encoder_movement -= 1;
+                rotary_encoder_movement = true;
+                tuning_scale.decrement();
             }
             crate::front_panel::Direction::None => (),
         }
 
-        // // Now read the rotary controller. Using this approach means that there can be some spurious
-        // // direction changes, but the trend is correct.
-        // let rotary_encoder_state = front_panel.read_rotary_encoder().await.unwrap();
+        if rotary_encoder_movement {
+            esp_println::println!("DEBUG tuning scale = {:?}", tuning_scale.get());
+            let station_id = periodic_map.map(tuning_scale.get());
 
-        // match rotary_encoder_state {
-        //     (true, true) => (),
-        //     (true, false) => {
-        //         if !rotary_encoder_transition {
-        //             rotary_encoder_movement += 1;
-        //             rotary_encoder_transition = true;
-
-        //             esp_println::println!("DEBUG Increment");
-        //         }
-        //     }
-        //     (false, true) => {
-        //         if !rotary_encoder_transition {
-        //             rotary_encoder_movement -= 1;
-
-        //             rotary_encoder_transition = true;
-        //             esp_println::println!("DEBUG Decrement");
-        //         }
-        //     }
-        //     (false, false) => {
-        //         //rotary_encoder_movement = 0;
-        //         rotary_encoder_transition = false;
-        //     }
-        // }
-
-        // esp_println::println!(
-        //     "DEBUG rotary_encoder_movement = {}",
-        //     rotary_encoder_movement
-        // );
-
-        // TODO make the rotary encoder more robust againt noise
-        // Use the idea in this https://www.best-microcontroller-projects.com/rotary-encoder.html#Digital_Debounce_Filter
-        // and the code from https://docs.rs/rotary-encoder-hal/0.6.0/src/rotary_encoder_hal/lib.rs.html#111-127
-        // (the update method). Cannot directly use the crate as it wants InputPins which we dos not have.
-        // Maybe place the code in front_panel.rs
-
-        esp_println::println!("DEBUG: rotary_encoder_movement = {rotary_encoder_movement} ");
-
-        if rotary_encoder_movement >= 4 {
-            stations.increment_current_station();
-            let station = stations.current_station().unwrap(); //TODO Error handling
-
-            esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station); // TODO unwrap?
-
-            station_change_sender.send(station.unwrap().clone());
-            rotary_encoder_movement = 0;
-        } else if rotary_encoder_movement <= -4 {
-            stations.decrement_current_station();
-
-            let station = stations.current_station().unwrap(); //TODO Error handling
-            esp_println::println!("\n\nDEBUG: Playing: {:?}\n\n", station);
-
-            station_change_sender.send(station.unwrap().clone());
-
-            rotary_encoder_movement = 0;
+            if station_id != last_station_id {
+                match station_id {
+                    Some(id) => {
+                        let station = stations.get_station(id);
+                        esp_println::println!("\n\nINFO: Playing tuned station: {:?}\n\n", station);
+                        // TODO assuming that the following will work.
+                        esp_println::println!("DEBUG: station id = {:?}", station_id);
+                        stations.set_current_station(id).unwrap();
+                        last_station_id = station_id;
+                        station_change_sender.send(station);
+                    }
+                    None => {
+                        // TODO should the current stations be set to None?
+                        //stations.set_current_station(None);
+                        last_station_id = station_id;
+                        station_change_sender.send(None);
+                    }
+                }
+            }
         }
-
-        // Debounce
-        // TODO see also https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/debounce.rs
-        //Timer::after(Duration::from_millis(DEBOUNCE_DURATION)).await;
-
-        //let button_pressed = front_panel.button_pressed().await.unwrap();
 
         Timer::after(Duration::from_millis(10)).await;
     }
 }
-
-// // Helper function to lock  the front panel driver mutex and get the button pressed
-// async fn get_button_pressed(front_panel_driver: &'static FrontPanelDriverMutextType) -> Buttons {
-//     let mut button_pressed = Buttons::Unknown;
-
-//     {
-//         let mut front_panel_driver_unlocked = front_panel_driver.lock().await;
-//         if let Some(front_panel_driver) = front_panel_driver_unlocked.as_mut() {
-//             button_pressed = front_panel_driver.button_pressed().await.unwrap();
-//         }
-//     }
-
-//     button_pressed
-// }

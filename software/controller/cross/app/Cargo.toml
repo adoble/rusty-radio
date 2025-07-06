@@ -89,6 +89,7 @@ m3u = {path = "../../m3u"}
 #mcp23s17-async = "0.1.0"
 mcp23s17-async =  { path = "../../mcp23s17-async" }
 periodic-map = {path = "../../periodic-map"}
+#nutype = { version = "0.6.1", default-features = false }
 
 
 [dev-dependencies]
