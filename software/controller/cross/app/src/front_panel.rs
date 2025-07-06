@@ -182,8 +182,8 @@ impl FrontPanel {
     ///
     /// The crate could not directly be used as:
     ///  - it expects the rotary encoder to be connected directly to pins on the MCU and accessed
-    ///over `embedded_hal::digital::InputPin`. These are not available here as the rotary encoder is
-    ///connected to the multiplexer (MCP23S17) over SPI to the MCU.
+    ///    over `embedded_hal::digital::InputPin`. These are not available here as the rotary encoder is
+    ///    connected to the multiplexer (MCP23S17) over SPI to the MCU.
     ///  - How it can handle multiple threads is not clear
     #[allow(dead_code)]
     pub async fn decode_rotary_encoder(&self) -> Result<Direction, FrontPanelError> {
