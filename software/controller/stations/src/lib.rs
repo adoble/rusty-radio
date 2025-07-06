@@ -638,11 +638,10 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
         let too_long_name = b"This is a station that has a name much too long!";
         let url = b"http://musak.com/stream.mp3";
 
-        if let Err(err) = stations.add_station(too_long_name, url) {
-            assert_eq!(err, StationError::NameTooLong);
-        } else {
-            panic!("No error when station name too long");
-        }
+        assert_eq!(
+            stations.add_station(too_long_name, url),
+            Err(StationError::NameTooLong)
+        );
 
         // Add a station with an URL too long
         let name = b"Big URL";
@@ -656,11 +655,10 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1"
             too_long_url[i] = 88 as u8; //'x'
         }
 
-        if let Err(err) = stations.add_station(name, &too_long_url) {
-            assert_eq!(err, StationError::UrlTooLong);
-        } else {
-            panic!("No error when station URL too long");
-        }
+        assert_eq!(
+            stations.add_station(name, &too_long_url),
+            Err(StationError::UrlTooLong)
+        );
     }
 
     #[test]
@@ -734,14 +732,9 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop
 
         let stations = stations.unwrap();
 
-        let station = stations.get_station(2);
-
-        if let Some(station) = station {
-            assert_eq!(station.name(), "SWR3");
-            assert_eq!(station.url(), "https://liveradio.swr.de/sw331ch/swr3");
-        } else {
-            panic!("Station not found");
-        }
+        let station = stations.get_station(2).unwrap();
+        assert_eq!(station.name(), "SWR3");
+        assert_eq!(station.url(), "https://liveradio.swr.de/sw331ch/swr3");
     }
 
     #[test]
@@ -760,28 +753,16 @@ BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
 
         let stations = stations.unwrap();
 
-        //let station = stations.get_station(2).unwrap();
+        let station = stations.preset(0).unwrap();
+        assert_eq!(station.name(), "Absolute Oldies- Best of the 80s");
+        assert_eq!(station.url(), "http://streams.rpr1.de/rpr-80er-128-mp3");
 
-        let station = stations.preset(0);
-
-        if let Some(station) = station {
-            assert_eq!(station.name(), "Absolute Oldies- Best of the 80s");
-            assert_eq!(station.url(), "http://streams.rpr1.de/rpr-80er-128-mp3");
-        } else {
-            panic!("Station not found");
-        }
-
-        let station = stations.preset(1);
-
-        if let Some(station) = station {
-            assert_eq!(station.name(), "BBC Radio 1");
-            assert_eq!(
-                station.url(),
-                "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one"
-            );
-        } else {
-            panic!("Station not found");
-        }
+        let station = stations.preset(1).unwrap();
+        assert_eq!(station.name(), "BBC Radio 1");
+        assert_eq!(
+            station.url(),
+            "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one"
+        );
 
         let station = stations.preset(2);
         assert!(station.is_none());

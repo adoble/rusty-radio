@@ -1,4 +1,5 @@
 // [ ] (Finally) set up a config so that the streaming statistics are not printed.
+// [ ]  Maybe the code will be simplified if Stations used nourl::Url instead of Strings for URLS.
 
 use crate::RadioStation;
 
@@ -131,7 +132,7 @@ const TOKEN_LEN: usize = 7;
 pub async fn stream(stack: Stack<'static>) {
     // Set up the receiver for changes in the station
     let Some(mut station_change_receiver) = STATION_CHANGE_WATCH.receiver() else {
-        panic!("Cannot get station change receiver");
+        panic!("Cannot get station change watch receiver in task:stream");
     };
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
@@ -140,9 +141,6 @@ pub async fn stream(stack: Stack<'static>) {
         match stream_station(stack, &mut station_change_receiver).await {
             Ok(_) => (), //  stream_station will only return if there is an error
 
-            // Err(StreamError::StringAllocationTooSmall) => {
-            //     panic!("Unrecoverable error in stream: String allocation too small")
-            // }
             Err(e) => {
                 esp_println::println!("ERROR: {:?}", e);
                 // Wait until the station changes
