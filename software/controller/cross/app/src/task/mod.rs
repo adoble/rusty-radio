@@ -12,5 +12,7 @@ pub mod wifi_tasks;
 pub mod stream;
 //pub mod stream2;
 
+pub mod station_indicator;
+
 // TEST
 pub mod test_button_board;

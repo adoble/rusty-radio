@@ -24,6 +24,7 @@ use hardware::Hardware;
 mod task;
 use task::{
     play_music::play_music,
+    station_indicator::station_indicator,
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
@@ -217,6 +218,10 @@ async fn main(spawner: Spawner) {
     spawner.spawn(stream(hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
+
+    // Showing on from panel when a station has been tuned in
+    // TODO This is a temporary solution until the display is ready.
+    spawner.spawn(station_indicator(front_panel)).ok();
 
     // spawner
     //     .spawn(test_button_board(front_panel, &hardware.intr))

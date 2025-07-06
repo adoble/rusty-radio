@@ -3,6 +3,8 @@ use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel, 
 // [ ] Set the LED to show that a statipon has been tuned. Requires a new task.
 // [ ]  Change the name of this back to tuner (not tuner2)
 // [ ] Extract TiningScale into a different file. This means that tuner becomes a module
+// [ ]  Seem to have to move the rotary encoder many turns before a new station is selected.
+//      See if this makes sense when the display is there.
 
 use esp_hal::gpio::Input;
 
