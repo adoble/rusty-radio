@@ -32,7 +32,7 @@ use task::{
     sync::MULTIPLEXER_DRIVER,
 
     //access_radio_stations::access_radio_stations,
-    tuner2::tuner2,
+    tuner::tuner,
     //wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
@@ -210,7 +210,7 @@ async fn main(spawner: Spawner) {
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
     spawner
-        .spawn(tuner2(stations, front_panel, hardware.intr))
+        .spawn(tuner(stations, front_panel, hardware.intr))
         .ok();
     //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
