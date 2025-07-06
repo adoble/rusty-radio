@@ -11,53 +11,14 @@ use embassy_time::{Duration, Timer};
 
 use periodic_map::PeriodicMap;
 
+mod tuning_scale;
+
+use tuning_scale::TuningScale;
+
 const VALID_WINDOW: usize = 5;
 const INVALID_WINDOW: usize = 10;
 
-//use stations::Stations;
-
-// type FrontPanelDriverMutextType =
-//     Mutex<CriticalSectionRawMutex, Option<FrontPanelDriverType<'static>>>;
-
 // TODO Currently using the global static MULTIPLEXER_DRIVER. Change this later to a parameter
-
-// TODO Do we ned this as a structure? Reason agaisnt is that it needs to be placed in a mutex.
-//      If I  just use a usize then it can be placed in an atomic.
-struct TuningScale {
-    value: usize,
-    max: usize,
-}
-
-impl TuningScale {
-    pub fn new(max: usize) -> TuningScale {
-        TuningScale { value: 0, max }
-    }
-
-    pub fn set(&mut self, value: usize) -> usize {
-        if value <= self.max {
-            self.value = value;
-        } else {
-            self.value = self.max;
-        }
-        self.value
-    }
-
-    pub fn get(&self) -> usize {
-        self.value
-    }
-
-    pub fn increment(&mut self) -> usize {
-        let mut value = self.get();
-        value += 1;
-        self.set(value)
-    }
-
-    pub fn decrement(&mut self) -> usize {
-        let mut value = self.get();
-        value -= 1;
-        self.set(value)
-    }
-}
 
 // DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
 #[embassy_executor::task]
