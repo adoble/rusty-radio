@@ -112,7 +112,7 @@ pub async fn tuner(
                 match station_id {
                     Some(id) => {
                         let station = stations.get_station(id);
-                        esp_println::println!("\n\nINFO: Playing tuned station: {:?}\n\n", station);
+                        esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", station);
                         // TODO assuming that the following will work.
                         stations.set_current_station(id).unwrap();
                         last_station_id = station_id;

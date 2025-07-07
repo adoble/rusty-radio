@@ -9,7 +9,6 @@ pub async fn station_indicator(front_panel: &'static FrontPanel) {
     loop {
         let station = station_change_watch_rcx.changed().await;
 
-        esp_println::println!("DEBUG: station_indicator task - station = {:?}", station);
         match station {
             Some(_) => front_panel.set_led_high().await.unwrap(),
             None => front_panel.set_led_low().await.unwrap(),
