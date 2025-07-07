@@ -5,14 +5,17 @@ pub struct TuningScale {
 
 impl TuningScale {
     pub fn new(max: usize) -> TuningScale {
-        TuningScale { value: 0, max }
+        TuningScale {
+            value: 0,
+            max: max - 1,
+        }
     }
 
     pub fn set(&mut self, value: usize) -> usize {
         if value <= self.max {
             self.value = value;
         } else {
-            self.value = self.max - 1;
+            self.value = self.max;
         }
         self.value
     }
