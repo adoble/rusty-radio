@@ -91,6 +91,10 @@ mcp23s17-async =  { path = "../../mcp23s17-async" }
 periodic-map = {path = "../../periodic-map"}
 #nutype = { version = "0.6.1", default-features = false }
 
+[features]
+# Turning on this feature shows the statitics on reading a stream of data.
+stats = []
+
 
 [dev-dependencies]
 embedded-hal-mock = { version = "0.11.1", features = [

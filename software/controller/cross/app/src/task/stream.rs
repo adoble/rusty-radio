@@ -389,20 +389,27 @@ async fn stream_audio(
     let mut read_state = StreamingState::FillingPipe;
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
+    //#[cfg(feature = "stats")]
     let (mut total_bytes, mut last_stats) = (0u32, Instant::now());
 
     loop {
+        //#[cfg(feature = "stats")]
         let read_start = Instant::now();
+
         match socket.read(audio_buffer).await {
             Ok(0) => {
                 return Err(StreamError::ConnectionPrematurelyClosed);
             }
             Ok(n) => {
-                let read_time = read_start.elapsed().as_micros();
-                total_bytes += n as u32;
+                //#[cfg(feature = "stats")]
+                let (read_time, write_start) = {
+                    let read_time = read_start.elapsed().as_micros();
+                    total_bytes += n as u32;
+                    let write_start = Instant::now();
+                    (read_time, write_start)
+                };
 
                 // Write immediately without trying to read more
-                let write_start = Instant::now();
                 MUSIC_PIPE.write_all(&audio_buffer[..n]).await;
 
                 if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
@@ -412,7 +419,8 @@ async fn stream_audio(
                     read_state = StreamingState::Playing;
                 };
 
-                // Add network statistics
+                // Display network statistics if required
+                //#[cfg(feature = "stats")]
                 if last_stats.elapsed().as_millis() >= 1000 {
                     let pipe_usage =
                         (MUSIC_PIPE.len() as f32 / MUSIC_PIPE.capacity() as f32) * 100.0;
