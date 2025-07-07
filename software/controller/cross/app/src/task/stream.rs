@@ -4,7 +4,9 @@
 use crate::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
-use embassy_time::{Duration, Instant, Timer};
+#[cfg(feature = "stats")]
+use embassy_time::Instant;
+use embassy_time::{Duration, Timer};
 
 use embedded_io_async::Write;
 
@@ -389,11 +391,11 @@ async fn stream_audio(
     let mut read_state = StreamingState::FillingPipe;
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
-    //#[cfg(feature = "stats")]
+    #[cfg(feature = "stats")]
     let (mut total_bytes, mut last_stats) = (0u32, Instant::now());
 
     loop {
-        //#[cfg(feature = "stats")]
+        #[cfg(feature = "stats")]
         let read_start = Instant::now();
 
         match socket.read(audio_buffer).await {
@@ -401,7 +403,7 @@ async fn stream_audio(
                 return Err(StreamError::ConnectionPrematurelyClosed);
             }
             Ok(n) => {
-                //#[cfg(feature = "stats")]
+                #[cfg(feature = "stats")]
                 let (read_time, write_start) = {
                     let read_time = read_start.elapsed().as_micros();
                     total_bytes += n as u32;
@@ -420,7 +422,7 @@ async fn stream_audio(
                 };
 
                 // Display network statistics if required
-                //#[cfg(feature = "stats")]
+                #[cfg(feature = "stats")]
                 if last_stats.elapsed().as_millis() >= 1000 {
                     let pipe_usage =
                         (MUSIC_PIPE.len() as f32 / MUSIC_PIPE.capacity() as f32) * 100.0;
