@@ -107,13 +107,13 @@ const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    esp_println::println!("Rusty Radio started");
+    esp_println::println!("INFO: Rusty Radio started");
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
-    // Size has been emprically determined.
+    // Size has been empirically determined.
     esp_alloc::heap_allocator!(76 * 1024);
 
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
@@ -226,7 +226,6 @@ async fn main(spawner: Spawner) {
     // spawner
     //     .spawn(test_button_board(front_panel, &hardware.intr))
     //     .ok();
-    esp_println::println!("DEBUG: All tasks spawned");
 }
 
 // async fn print_registers() {
