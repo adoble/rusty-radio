@@ -38,8 +38,6 @@ pub async fn tuner(
     // 3. The first station in the station list
     let initial_station = stations.preset(0).or_else(|| stations.get_station(0)); //.expect("No initial station found");
 
-    esp_println::println!("DEBUG: Initial station {:?}", initial_station);
-
     // Send the inital station
     station_change_sender.send(initial_station);
 
@@ -62,7 +60,6 @@ pub async fn tuner(
         };
 
         if button_pressed != last_button_pressed {
-            esp_println::println!("DEBUG: Button pressed = {:?}", button_pressed);
             last_button_pressed = button_pressed.clone();
 
             let selected_station = match button_pressed {
@@ -109,7 +106,6 @@ pub async fn tuner(
         }
 
         if rotary_encoder_movement {
-            esp_println::println!("DEBUG tuning scale = {:?}", tuning_scale.get());
             let station_id = periodic_map.map(tuning_scale.get());
 
             if station_id != last_station_id {
@@ -118,7 +114,6 @@ pub async fn tuner(
                         let station = stations.get_station(id);
                         esp_println::println!("\n\nINFO: Playing tuned station: {:?}\n\n", station);
                         // TODO assuming that the following will work.
-                        esp_println::println!("DEBUG: station id = {:?}", station_id);
                         stations.set_current_station(id).unwrap();
                         last_station_id = station_id;
                         station_change_sender.send(station);

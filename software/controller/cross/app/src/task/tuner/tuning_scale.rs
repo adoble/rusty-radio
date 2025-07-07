@@ -12,7 +12,7 @@ impl TuningScale {
         if value <= self.max {
             self.value = value;
         } else {
-            self.value = self.max;
+            self.value = self.max - 1;
         }
         self.value
     }

@@ -7,7 +7,6 @@ use crate::task::sync::WIFI_CONNECTED_SIGNAL;
 
 #[embassy_executor::task]
 pub async fn wifi_connected_indicator(mut led: Output<'static>) {
-    esp_println::println!("DEBUG: task wifi_connected_indicator started");
     loop {
         let connected = WIFI_CONNECTED_SIGNAL.wait().await;
         if connected {
