@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 
-//! Based on the Adafruit driver  https://github.com/adafruit/Adafruit_VS1053_Library/tree/master
+//! Inspired by the [Adafruit C++ driver](https://github.com/adafruit/Adafruit_VS1053_Library/tree/master)
 
 //! This driver uses no chip select (xdcs or xcs) pins as this is managed by `SpiDevice`s.
 //! If the hal only provides an `SpiBus` then see [this](https://github.com/rust-embedded/embedded-hal/blob/master/docs/migrating-from-0.2-to-1.0.md#for-end-users) on how to convert a `SpiBus`
@@ -85,6 +85,9 @@ where
     /// has come up.
     pub async fn begin(&mut self) -> Result<(), DriverError> {
         self.reset.set_high().map_err(|_| DriverError::Reset)?;
+
+        // Ensure that that the reset is stabile before asserting low
+        self.delay.delay_ms(100).await;
 
         self.reset_device().await?;
 
