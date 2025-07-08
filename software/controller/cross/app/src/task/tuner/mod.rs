@@ -96,8 +96,7 @@ pub async fn tuner(
                     station_change_sender.send(Some(station));
                 }
                 None => {
-                    // TODO we need to signal that no station has been selected
-                    esp_println::println!("INFO: No preset for button {:?}", button_pressed)
+                    () //esp_println::println!("INFO: No preset for button {:?}", button_pressed)
                 }
             }
         }
