@@ -347,18 +347,10 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         Ok(station.unwrap())
     }
 
-    /// Retrieves the station assigned to the specified preset index.
-    ///
-    /// # Arguments
-    ///
-    /// * `preset_id` - The preset slot to retrieve.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Some(Station)` if a station is assigned to the preset.
-    /// Returns `None` if the preset is empty or the preset index is out of bounds.
-    ///
-    pub fn preset(&self, preset_id: usize) -> Option<Station<NAME_LEN, URL_LEN>> {
+    /// Returns a tuple with the id and the station assigned to the specified preset index
+    /// or `None` if the preset is empty, the preset index is out of bounds. or, for some reason,
+    /// the station itself does not exist
+    pub fn preset(&self, preset_id: usize) -> Option<(usize, Station<NAME_LEN, URL_LEN>)> {
         // Check bounds
         if preset_id >= NUM_PRESETS {
             return None;
@@ -367,16 +359,25 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         // Get the station preset
         if let Some(station_id) = self.preset_slots[preset_id] {
             self.get_station(station_id)
+                .map(|station| (station_id, station))
         } else {
             None
         }
     }
 
-    /// Returns the number of stations that have been added.
-    ///
-    /// # Returns
-    ///
-    /// The total number of stations currently stored in the list.
+    // /// Retrieves the id of the  station assigned to the specified preset index
+    // /// or `None` if the preset is empty or the preset index is out of bounds.
+    // pub fn preset_station_id(&self, preset_id: usize) -> Option<usize> {
+    //     // Check bounds
+    //     if preset_id >= NUM_PRESETS {
+    //         return None;
+    //     }
+
+    //     // Get the station id p of the  preset
+    //     self.preset_slots[preset_id]
+    // }
+
+    /// Returns the number of stations that have been added to the station list
     pub fn number_stations(&self) -> usize {
         self.positions.len()
     }

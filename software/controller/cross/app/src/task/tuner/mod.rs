@@ -36,7 +36,10 @@ pub async fn tuner(
     // 1. The last set station - TODO
     // 2. The first preset stations if set
     // 3. The first station in the station list
-    let initial_station = stations.preset(0).or_else(|| stations.get_station(0)); //.expect("No initial station found");
+    let initial_station = stations
+        .preset(0)
+        .map(|s| s.1) // Get the preset station from the tuple
+        .or_else(|| stations.get_station(0)); //.expect("No initial station found");
 
     // Send the inital station
     station_change_sender.send(initial_station);
@@ -62,7 +65,7 @@ pub async fn tuner(
         if button_pressed != last_button_pressed {
             last_button_pressed = button_pressed.clone();
 
-            let selected_station = match button_pressed {
+            let selection = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
                     esp_println::println!("INFO: Rotary Switch pressed");
                     None
@@ -75,16 +78,25 @@ pub async fn tuner(
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };
 
-            match selected_station {
-                Some(ref station) => {
+            // TODO should the station_id be in Station?
+            // [ ] test what happens when no preset is set!
+
+            match selection {
+                Some((station_id, station)) => {
                     esp_println::println!(
                         "\n\nINFO: Playing preset station: {}\n\n",
                         station.name()
                     );
 
-                    station_change_sender.send(selected_station);
+                    // Adjust the tuner scale so that any later movement is from the selected preset station
+                    let scale_value = periodic_map.inverse_map(station_id);
+                    tuning_scale.set(scale_value);
+
+                    // Signal that the station has changed
+                    station_change_sender.send(Some(station));
                 }
                 None => {
+                    // TODO we need to signal that no station has been selected
                     esp_println::println!("INFO: No preset for button {:?}", button_pressed)
                 }
             }
