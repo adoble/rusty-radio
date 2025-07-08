@@ -3,7 +3,7 @@ RPR1 Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies
 SWR1,http://liveradio.swr.de/sw282p3/swr1rp/play.mp3,Info
 SWR3,http://liveradio.swr.de/sw282p3/swr3/play.mp3,Favorites,Pop,PRESET:0
 SWR4,http://liveradio.swr.de/sw282p3/swr4bw/,Culture
-181 FM Classic,http://listen.181fm.com/181-classical_128k.mp3,Classical,PRESET:3
+181 FM Classic,http://listen.181fm.com/181-classical_128k.mp3,Classical
 Antenne,http://mp3channels.webradio.antenne.de/antenne,Pop
 WDR3,http://wdr-wdr3-live.icecast.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3,Culture
 Hit Radio FFH,http://streams.ffh.de/radioffh/mp3/hqlivestream.m3u,Pop,PRESET:1
