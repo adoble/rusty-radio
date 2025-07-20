@@ -1,0 +1,21 @@
+RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
+RPR1 Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies
+SWR1,http://liveradio.swr.de/sw282p3/swr1rp/play.mp3,Info
+SWR3,http://liveradio.swr.de/sw282p3/swr3/play.mp3,Favorites,Pop,PRESET:0
+SWR4,http://liveradio.swr.de/sw282p3/swr4bw/,Culture
+181 FM Classic,http://listen.181fm.com/181-classical_128k.mp3,Classical,PRESET:3
+Antenne,http://mp3channels.webradio.antenne.de/antenne,Pop
+WDR3,http://wdr-wdr3-live.icecast.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3,Culture
+Hit Radio FFH,http://streams.ffh.de/radioffh/mp3/hqlivestream.m3u,Pop,PRESET:1
+FFH+ 80er,http://mp3.ffh.de/ffhplus/hq80er.mp3,Oldies
+FFH+ Charts,http://mp3.ffh.de/ffhplus/hqcharts.mp3,Pop
+FFH Workout,http://mp3.ffh.de/ffhchannels/hqworkout.mp3,Pop
+FFH Lounge,http://mp3.ffh.de/ffhchannels/hqlounge.mp3,Lounge
+Ambient Radio,http://uk2.internet-radio.com/proxy/ambientradio?mp=/;,UK,Lounge
+Antenne Bayern,http://s5-webradio.antenne.de/antenne,Pop
+WDR2,http://wdr-wdr2-rheinland.icecast.wdr.de/wdr/wdr2/rheinland/mp3/128/stream.mp3,Pop
+Big FM,http://streams.bigfm.de/bigfm-deutschland-128-aac?usid=0-0-H-A-D-30,Pop,PRESET:2
+WDR5,http://wdr-wdr5-live.icecast.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3,Culture
+Deutschland Funk,http://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3?aggregator=web,Info
+Absolut Oldie Classics,http://absolut-oldieclassics.live-sm.absolutradio.de/absolut-oldieclassics/stream/mp3,Oldies,Favorites
+ABC Classic,http://live-radio02.mediahubaustralia.com/2FMW/mp3/,Classic
