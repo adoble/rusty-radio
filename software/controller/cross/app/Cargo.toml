@@ -1,6 +1,6 @@
 [package]
 name    = "rusty-radio"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Andrew Doble"]
 edition = "2021"
 license = "MIT OR Apache-2.0" 
@@ -16,7 +16,7 @@ embassy-executor = { version = "0.7.0", features = [
 ] }
 embassy-time = "0.4.0"
 embedded-hal-async = "1.0.0"
-embassy-net = { version = "0.6.0", features = [
+embassy-net = { version = "0.7.0", features = [
     "tcp",
     "udp",
     "dhcpv4",
@@ -26,8 +26,8 @@ embassy-net = { version = "0.6.0", features = [
     "proto-ipv4",
 ] }
 embedded-io = { version = "0.6.1", default-features = false }
-#esp-alloc = "0.6.0"
-esp-alloc = {git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1"}
+esp-alloc = "0.8.0"
+#esp-alloc = {git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1"}
 # esp-backtrace = { version = "0.15.0", features = [
 #     "esp32c3",
 #     "exception-handler",
@@ -35,31 +35,59 @@ esp-alloc = {git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1"}
 #     "println",
 # ] }
 
-esp-backtrace = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = [
-    "esp32c3",
-    "exception-handler",
-    "panic-handler",
-    "println",
-] }
+# esp-backtrace = { version = "0.13.1", features = [
+#     "esp32c3",
+#     "exception-handler",
+#     "panic-handler",
+#     "println",
+# ] }
+
+# esp-backtrace = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = [
+#     "esp32c3",
+#     "exception-handler",
+#     "panic-handler",
+#     "println",
+# ] }.git
 #esp-hal = { version = "0.23.1", features = ["esp32c3", "unstable", "critical-section-single-core"] }
 # Unstable feature is required for esp-wifi
 # esp-hal = { version = "0.23.1", features = ["esp32c3", "unstable"] }
 #esp-hal = { version = "1.0.0-beta.0", features = ["esp32c3", "unstable"] }
-esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "unstable"] }
-esp-hal-embassy = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = [
-    "esp32c3",
-    "log",
-    #"integrated-timers",
-] }
-#esp-println = { version = "0.13.0", features = ["esp32c3"] }
-esp-println = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = ["esp32c3"] }
+#esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "unstable"] }
+
+# esp-hal = { version = "=1.0.0-beta.1", features = ["esp32c3", "unstable"] }
+esp-hal = { version = "=1.0.0-rc.0", features = ["esp32c3", "unstable"] }
+
+# esp-hal-embassy = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = [
+#     "esp32c3",
+#     "log",
+#     #"integrated-timers",
+# ] }
+esp-hal-embassy = { version = "0.8.1", features = ["esp32c3"] }
+esp-println = { version = "0.15.0", features = ["esp32c3"] }
+#esp-println = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = ["esp32c3"] }
 # esp-wifi    = { version = "0.12.0", features = ["esp32c3", "wifi"] }
 #esp-wifi    = { version = "0.13.0", features = ["esp32c3", "wifi"] }
-esp-wifi    = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "wifi"] }
+#esp-wifi    = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "wifi"] }
+# esp-wifi = { version = "0.14.1", features = [
+#   "builtin-scheduler",
+#   "esp-alloc",
+#   "esp32c3",
+#   "smoltcp",
+#   "wifi",
+# ] }
+esp-wifi = { version = "0.15.0", features = [
+  "builtin-scheduler",
+  "esp-alloc",
+  "esp32c3",
+  "smoltcp",
+  "wifi",
+] }
 
+
+# static_cell        = {version = "2.1.0", features = ["nightly"]}
 static_cell        = "2.1.0"
 embassy-net-driver = "0.2.0"
-embassy-sync       = "0.6.1"
+embassy-sync       = "0.7.0"
 #embedded-hal-bus = { version = "0.2.0", features = ["async"] }
 embassy-embedded-hal = "0.3.0"
 
@@ -72,6 +100,8 @@ embassy-embedded-hal = "0.3.0"
 embedded-nal-async = "0.8.0"
 static_assertions  = "1.1.0"
 embedded-io-async  = "0.6.1"
+
+critical-section = "1.2.0"
 
 vs1053-driver = { path = "../../vs1053-driver" }
 embedded-hal  = "1.0.0"# http-builder = { path = "../../http-builder" }

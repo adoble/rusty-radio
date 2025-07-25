@@ -2,9 +2,7 @@
 const SSID: &str = env!("WLAN_SSID");
 const PASSWORD: &str = env!("WLAN_PASSWORD");
 
-use esp_wifi::wifi::{
-    AuthMethod, ClientConfiguration, Configuration, WifiController, WifiDevice, WifiStaDevice,
-};
+use esp_wifi::wifi::{AuthMethod, ClientConfiguration, Configuration, WifiController, WifiDevice};
 
 use embassy_net::Runner;
 
@@ -54,6 +52,6 @@ pub async fn wifi_connect(mut controller: WifiController<'static>) {
 // Run the network stack.
 // This must be called in a background task, to process network events.
 #[embassy_executor::task]
-pub async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static, WifiStaDevice>>) {
+pub async fn run_network_stack(mut runner: Runner<'static, WifiDevice<'static>>) {
     runner.run().await
 }
