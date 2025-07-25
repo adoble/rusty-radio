@@ -43,12 +43,13 @@ use front_panel::FrontPanel;
 use stations::{Station, Stations};
 
 // External crates
-use esp_backtrace as _;
+//use esp_backtrace as _;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Input, Output},
     spi::master::{Config as SpiConfig, Spi},
-    time::RateExtU32,
+    //time::RateExtU32,
+    time::Rate,
 };
 
 use embassy_executor::Spawner;
@@ -118,7 +119,8 @@ async fn main(spawner: Spawner) {
 
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
-    // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct.
+    // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
+    // and are given symbolic names.
     let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
@@ -137,11 +139,11 @@ async fn main(spawner: Spawner) {
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
 
     // Init the vs1053 spi speeds
-    let mut spi_sci_config = SpiConfig::default();
-    spi_sci_config.frequency = 250.kHz();
+    // spi_sci_config.frequency = Rate::from_khz(250); //250.kHz();
+    let mut spi_sci_config = SpiConfig::default().with_frequency(Rate::from_khz(250));
 
-    let mut spi_sdi_config = SpiConfig::default();
-    spi_sdi_config.frequency = 8000.kHz();
+    // spi_sdi_config.frequency = Rate::from_khz(8000); //  8000.kHz();
+    let mut spi_sdi_config = SpiConfig::default().with_frequency(Rate::from_khz(8000));
 
     let spi_sci_device: SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>> =
         SpiDeviceWithConfig::new(spi_bus, hardware.xcs, spi_sci_config);
@@ -165,8 +167,8 @@ async fn main(spawner: Spawner) {
         }
     }
     // Setup spi for the front panel controller
-    let mut spi_multiplexer_config = SpiConfig::default();
-    spi_multiplexer_config.frequency = 10.MHz();
+    // spi_multiplexer_config.frequency = 10.MHz();
+    let mut spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(10));
 
     let spi_multiplexer_device: SpiDeviceWithConfig<
         '_,

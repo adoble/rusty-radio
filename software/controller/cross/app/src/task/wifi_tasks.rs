@@ -11,7 +11,7 @@ use embassy_time::{Duration, Timer};
 use crate::task::sync::WIFI_CONNECTED_SIGNAL;
 
 #[embassy_executor::task]
-pub async fn wifi_connect(mut controller: WifiController<'static>) {
+pub async fn wifi_connect(controller: &'static mut WifiController<'static>) {
     esp_println::println!("Wait to get wifi connected");
 
     loop {
