@@ -119,8 +119,10 @@ http = { path = "../../http" }
 stations = {path = "../../stations"}
 m3u = {path = "../../m3u"}
 #mcp23s17-async = "0.1.0"
-mcp23s17-async =  { path = "../../mcp23s17-async" }
-#mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
+#mcp23s17-async =  { path = "../../mcp23s17-async" }
+
+# See [issue 2](https://github.com/Fundevoge/mcp23s17-async/issues/2)
+mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
 
 periodic-map = {path = "../../periodic-map"}
 #nutype = { version = "0.6.1", default-features = false }

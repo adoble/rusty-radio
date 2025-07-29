@@ -7,7 +7,9 @@ use embassy_sync::{
     watch::{Receiver, Watch},
 };
 
-use crate::{MultiplexerDriverType, RadioStation, Vs1053DriverType};
+use crate::{RadioStation, Vs1053DriverType};
+
+use crate::sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 // Signal that the web should be accessed
 //pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
@@ -50,10 +52,13 @@ type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'s
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // We need to share the front panel driver between tasks so put it in a static mutex
-pub static MULTIPLEXER_DRIVER: Mutex<
-    CriticalSectionRawMutex,
-    Option<MultiplexerDriverType<'static>>,
-> = Mutex::new(None);
+// pub static MULTIPLEXER_DRIVER: Mutex<
+//     CriticalSectionRawMutex,
+//     Option<MultiplexerDriverType<'static>>,
+// > = Mutex::new(None);
+
+pub static MULTIPLEXER_DRIVER: Mutex<CriticalSectionRawMutex, Option<SendableMultiplexerDriver>> =
+    Mutex::new(None);
 
 // This signal is used to indicate the current station
 

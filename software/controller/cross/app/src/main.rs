@@ -41,6 +41,9 @@ use task::{
 mod front_panel;
 use front_panel::FrontPanel;
 
+mod sendable_multiplexer_driver;
+use sendable_multiplexer_driver::SendableMultiplexerDriver;
+
 use stations::{Station, Stations};
 
 // External crates
@@ -185,15 +188,25 @@ async fn main(spawner: Spawner) {
         Output<'_>,
     > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
 
-    // Set up the mutiplexer driver and provide a mutex for it.
-    let multiplexer_driver: Mcp23s17<
-        SpiDeviceWithConfig<'_, CriticalSectionRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
-    > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
-        .await
-        .unwrap();
+    // Set up the mutiplexer driver and provide a mutex for it. Using the sendable version.
+    let multiplexer_driver: SendableMultiplexerDriver = SendableMultiplexerDriver(
+        Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
+            .await
+            .unwrap(),
+    );
     {
         *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
     }
+
+    // Set up the mutiplexer driver and provide a mutex for it.
+    // let multiplexer_driver: Mcp23s17<
+    //     SpiDeviceWithConfig<'_, CriticalSectionRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+    // > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
+    //     .await
+    //     .unwrap();
+    // {
+    //     *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
+    // }
 
     let front_panel = FrontPanel::new()
         .await
