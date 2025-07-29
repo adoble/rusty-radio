@@ -1,4 +1,4 @@
-use embassy_time::Timer;
+//use embassy_time::Timer;
 /// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 use esp_hal::{
@@ -11,7 +11,8 @@ use esp_hal::{
 };
 
 use esp_wifi::wifi::{WifiController, WifiDevice};
-use esp_wifi::{init, EspWifiController};
+// use esp_wifi::{init, EspWifiController};
+use esp_wifi::EspWifiController;
 
 use embassy_net::{Runner, Stack};
 
@@ -32,6 +33,8 @@ pub struct Hardware {
     pub reset: Output<'static>,
     pub mux_cs: Output<'static>,
     //pub led: Output<'static>,
+
+    // TODO we don't need this interrupt pin
     pub intr: Input<'static>,
     // pub rng: Rng,
     pub system_timer: SystemTimer<'static>,

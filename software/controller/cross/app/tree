@@ -1,8 +1,12 @@
 rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross/app)
 ├── critical-section v1.2.0
-├── embassy-embedded-hal v0.3.0
+├── embassy-embedded-hal v0.3.1
 │   ├── embassy-futures v0.1.1
-│   ├── embassy-sync v0.6.2
+│   ├── embassy-hal-internal v0.3.0
+│   │   └── num-traits v0.2.19
+│   │       [build-dependencies]
+│   │       └── autocfg v1.5.0
+│   ├── embassy-sync v0.7.0
 │   │   ├── cfg-if v1.0.1
 │   │   ├── critical-section v1.2.0
 │   │   ├── embedded-io-async v0.6.1
@@ -21,7 +25,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │   ├── cfg-if v1.0.1
 │   │   ├── critical-section v1.2.0
 │   │   ├── document-features v0.2.11 (proc-macro)
-│   │   │   └── litrs v0.4.1
+│   │   │   └── litrs v0.4.2
 │   │   │       └── proc-macro2 v1.0.95
 │   │   │           └── unicode-ident v1.0.18
 │   │   ├── embassy-time-driver v0.2.0
@@ -67,7 +71,13 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 ├── embassy-net v0.7.0
 │   ├── document-features v0.2.11 (proc-macro) (*)
 │   ├── embassy-net-driver v0.2.0
-│   ├── embassy-sync v0.6.2 (*)
+│   ├── embassy-sync v0.6.2
+│   │   ├── cfg-if v1.0.1
+│   │   ├── critical-section v1.2.0
+│   │   ├── embedded-io-async v0.6.1 (*)
+│   │   ├── futures-sink v0.3.31
+│   │   ├── futures-util v0.3.31 (*)
+│   │   └── heapless v0.8.0 (*)
 │   ├── embassy-time v0.4.0 (*)
 │   ├── embedded-io-async v0.6.1 (*)
 │   ├── embedded-nal-async v0.8.0
@@ -83,6 +93,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │       ├── heapless v0.8.0 (*)
 │       └── managed v0.8.0
 ├── embassy-net-driver v0.2.0
+├── embassy-sync v0.7.0 (*)
 ├── embassy-time v0.4.0 (*)
 ├── embedded-hal v1.0.0
 ├── embedded-hal-async v1.0.0 (*)
@@ -95,8 +106,8 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   ├── cfg-if v1.0.1
 │   ├── critical-section v1.2.0
 │   ├── document-features v0.2.11 (proc-macro) (*)
-│   ├── enumset v1.1.6
-│   │   └── enumset_derive v0.11.0 (proc-macro)
+│   ├── enumset v1.1.7
+│   │   └── enumset_derive v0.12.0 (proc-macro)
 │   │       ├── darling v0.20.11 (*)
 │   │       ├── proc-macro2 v1.0.95 (*)
 │   │       ├── quote v1.0.40 (*)
@@ -112,7 +123,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   ├── bytemuck v1.23.1
 │   ├── cfg-if v1.0.1
 │   ├── critical-section v1.2.0
-│   ├── delegate v0.13.3 (proc-macro)
+│   ├── delegate v0.13.4 (proc-macro)
 │   │   ├── proc-macro2 v1.0.95 (*)
 │   │   ├── quote v1.0.40 (*)
 │   │   └── syn v2.0.104 (*)
@@ -124,7 +135,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │       │   └── version_check v0.9.5
 │   │       └── typenum v1.18.0
 │   ├── document-features v0.2.11 (proc-macro) (*)
-│   ├── embassy-embedded-hal v0.3.0 (*)
+│   ├── embassy-embedded-hal v0.3.1 (*)
 │   ├── embassy-futures v0.1.1
 │   ├── embassy-sync v0.6.2 (*)
 │   ├── embedded-can v0.4.1
@@ -133,12 +144,12 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   ├── embedded-hal-async v1.0.0 (*)
 │   ├── embedded-io v0.6.1
 │   ├── embedded-io-async v0.6.1 (*)
-│   ├── enumset v1.1.6 (*)
+│   ├── enumset v1.1.7 (*)
 │   ├── esp-config v0.5.0
 │   │   └── document-features v0.2.11 (proc-macro) (*)
 │   ├── esp-hal-procmacros v0.19.0 (proc-macro)
 │   │   ├── document-features v0.2.11 (proc-macro) (*)
-│   │   ├── litrs v0.4.1 (*)
+│   │   ├── litrs v0.4.2 (*)
 │   │   ├── proc-macro-crate v3.3.0
 │   │   │   └── toml_edit v0.22.27
 │   │   │       ├── indexmap v2.10.0
@@ -150,7 +161,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │   │       │           ├── quote v1.0.40 (*)
 │   │   │       │           └── syn v2.0.104 (*)
 │   │   │       ├── toml_datetime v0.6.11
-│   │   │       └── winnow v0.7.11
+│   │   │       └── winnow v0.7.12
 │   │   ├── proc-macro2 v1.0.95 (*)
 │   │   ├── quote v1.0.40 (*)
 │   │   ├── syn v2.0.104 (*)
@@ -198,7 +209,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │   └── vcell v0.1.3
 │   ├── fugit v0.3.7
 │   │   └── gcd v2.3.0
-│   ├── instability v0.3.7 (proc-macro)
+│   ├── instability v0.3.9 (proc-macro)
 │   │   ├── darling v0.20.11 (*)
 │   │   ├── indoc v2.0.6 (proc-macro)
 │   │   ├── proc-macro2 v1.0.95 (*)
@@ -245,7 +256,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   ├── esp-hal-procmacros v0.18.0 (proc-macro)
 │   │   ├── darling v0.20.11 (*)
 │   │   ├── document-features v0.2.11 (proc-macro) (*)
-│   │   ├── litrs v0.4.1 (*)
+│   │   ├── litrs v0.4.2 (*)
 │   │   ├── proc-macro-crate v3.3.0 (*)
 │   │   ├── proc-macro-error2 v2.0.1
 │   │   │   ├── proc-macro-error-attr2 v2.0.0 (proc-macro)
@@ -293,7 +304,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   ├── embassy-net-driver v0.2.0
 │   ├── embedded-io v0.6.1
 │   ├── embedded-io-async v0.6.1 (*)
-│   ├── enumset v1.1.6 (*)
+│   ├── enumset v1.1.7 (*)
 │   ├── esp-alloc v0.8.0 (*)
 │   ├── esp-config v0.5.0 (*)
 │   ├── esp-hal v1.0.0-rc.0 (*)
@@ -305,9 +316,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │   ├── proc-macro2 v1.0.95 (*)
 │   │   ├── quote v1.0.40 (*)
 │   │   └── syn v2.0.104 (*)
-│   ├── num-traits v0.2.19
-│   │   [build-dependencies]
-│   │   └── autocfg v1.5.0
+│   ├── num-traits v0.2.19 (*)
 │   ├── portable-atomic v1.11.1
 │   ├── portable_atomic_enum v0.3.1
 │   │   ├── portable-atomic v1.11.1
@@ -328,7 +337,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 ├── httparse v1.10.1
 ├── m3u v0.1.0 (/home/andrew/Documents/rusty-radio/software/controller/m3u)
 │   └── heapless v0.8.0 (*)
-├── mcp23s17-async v0.1.0 (https://github.com/Fundevoge/mcp23s17-async.git#13535f01)
+├── mcp23s17-async v0.1.1 (/home/andrew/Documents/rusty-radio/software/controller/mcp23s17-async)
 │   ├── bitflags v2.9.1
 │   └── embedded-hal-async v1.0.0 (*)
 ├── nourl v0.1.4
@@ -340,7 +349,7 @@ rusty-radio v0.0.6 (/home/andrew/Documents/rusty-radio/software/controller/cross
 │   │   └── memchr v2.7.5
 │   └── heapless v0.8.0 (*)
 └── vs1053-driver v0.1.0 (/home/andrew/Documents/rusty-radio/software/controller/vs1053-driver)
-    ├── embassy-embedded-hal v0.3.0 (*)
+    ├── embassy-embedded-hal v0.3.1 (*)
     ├── embassy-sync v0.6.2 (*)
     ├── embedded-hal v1.0.0
     └── embedded-hal-async v1.0.0 (*)

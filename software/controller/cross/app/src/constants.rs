@@ -16,3 +16,6 @@ pub const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 pub const MAX_STATION_NAME_LEN: usize = 40;
 pub const MAX_STATION_URL_LEN: usize = 256;
 pub const NUMBER_PRESETS: usize = 4;
+
+// The address of the mcp23s17 device. This is hardwared on the front panel.
+pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;

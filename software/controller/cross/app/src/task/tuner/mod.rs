@@ -20,7 +20,8 @@ const INVALID_WINDOW: usize = 10;
 
 // TODO Currently using the global static MULTIPLEXER_DRIVER. Change this later to a parameter
 
-// DESIGN NOTE: This does not debouce the buttons in the tradtional way, but this seems to work just fine.
+// DESIGN NOTE: This does not debouce the buttons in the traditional way, 
+// but this polling technique  seems to work just fine.
 #[embassy_executor::task]
 pub async fn tuner(
     stations: &'static mut RadioStations,

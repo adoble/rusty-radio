@@ -15,7 +15,8 @@
 mod async_delay;
 mod constants;
 use constants::{
-    MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS, NUMBER_SOCKETS_STACK_RESOURCES,
+    MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, MULTIPLEXER_DEVICE_ADDR, NUMBER_PRESETS,
+    NUMBER_SOCKETS_STACK_RESOURCES,
 };
 
 mod hardware;
@@ -56,7 +57,7 @@ use embassy_executor::Spawner;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 use static_cell::StaticCell;
 
@@ -72,24 +73,27 @@ static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
 static FRONT_PANEL: StaticCell<FrontPanel> = StaticCell::new();
 
-type SharedSpiBus = Mutex<NoopRawMutex, Spi<'static, esp_hal::Async>>;
+type SharedSpiBus = Mutex<CriticalSectionRawMutex, Spi<'static, esp_hal::Async>>;
+
+// type MultiplexerDriverType<'a> =
+//     SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>;
 
 type Vs1053DriverType<'a> = Vs1053Driver<
-    SpiDeviceWithConfig<'a, NoopRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>,
+    SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>,
     Input<'a>,
     Output<'a>,
     AsyncDelay,
 >;
 
-type MultiplexerDriverType<'a> =
-    Mcp23s17<SpiDeviceWithConfig<'a, NoopRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
+pub type MultiplexerDriverType<'a> =
+    Mcp23s17<SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
 
 type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
 type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
 
 static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
 
-const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
+//const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
 // INFO: Notes on stations
 // NOTE: This station does a number of redirects by setting the response header "location". Note that it does
@@ -105,6 +109,11 @@ const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 //const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
 
 //const STATION: (&str, &str) = ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
+
+#[panic_handler]
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -140,13 +149,12 @@ async fn main(spawner: Spawner) {
 
     // Init the vs1053 spi speeds
     // spi_sci_config.frequency = Rate::from_khz(250); //250.kHz();
-    let mut spi_sci_config = SpiConfig::default().with_frequency(Rate::from_khz(250));
+    let spi_sci_config = SpiConfig::default().with_frequency(Rate::from_khz(250));
 
     // spi_sdi_config.frequency = Rate::from_khz(8000); //  8000.kHz();
-    let mut spi_sdi_config = SpiConfig::default().with_frequency(Rate::from_khz(8000));
+    let spi_sdi_config = SpiConfig::default().with_frequency(Rate::from_khz(8000));
 
-    let spi_sci_device: SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>> =
-        SpiDeviceWithConfig::new(spi_bus, hardware.xcs, spi_sci_config);
+    let spi_sci_device = SpiDeviceWithConfig::new(spi_bus, hardware.xcs, spi_sci_config);
     let spi_sdi_device = SpiDeviceWithConfig::new(spi_bus, hardware.xdcs, spi_sdi_config);
 
     let vs1053_driver: Vs1053DriverType = Vs1053Driver::new(
@@ -168,18 +176,18 @@ async fn main(spawner: Spawner) {
     }
     // Setup spi for the front panel controller
     // spi_multiplexer_config.frequency = 10.MHz();
-    let mut spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(10));
+    let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(10));
 
     let spi_multiplexer_device: SpiDeviceWithConfig<
         '_,
-        NoopRawMutex,
+        CriticalSectionRawMutex,
         Spi<'_, esp_hal::Async>,
         Output<'_>,
     > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
 
     // Set up the mutiplexer driver and provide a mutex for it.
     let multiplexer_driver: Mcp23s17<
-        SpiDeviceWithConfig<'_, NoopRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
+        SpiDeviceWithConfig<'_, CriticalSectionRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
     > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
         .await
         .unwrap();
@@ -211,6 +219,9 @@ async fn main(spawner: Spawner) {
 
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
+    // spawner
+    //     .spawn(tuner(stations, front_panel, hardware.intr))
+    //     .ok();
     spawner
         .spawn(tuner(stations, front_panel, hardware.intr))
         .ok();
@@ -221,12 +232,11 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(play_music()).ok();
 
-    // Showing on from panel when a station has been tuned in
+    // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
     spawner.spawn(station_indicator(front_panel)).ok();
-
     // spawner
-    //     .spawn(test_button_board(front_panel, &hardware.intr))
+    //     .spawn(station_indicator(spi_bus, hardware.mux_cs))
     //     .ok();
 }
 
