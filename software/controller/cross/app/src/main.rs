@@ -230,6 +230,11 @@ async fn main(spawner: Spawner) {
     spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
     spawner.spawn(run_network_stack(hardware.runner)).ok();
 
+    // Check that the link signal is present and the stack has a valid IP config
+    // before continuing.
+    hardware.sta_stack.wait_link_up().await;
+    hardware.sta_stack.wait_config_up().await;
+
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
     // spawner

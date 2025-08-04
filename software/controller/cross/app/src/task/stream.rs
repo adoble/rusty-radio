@@ -130,6 +130,8 @@ const TOKEN_LEN: usize = 7;
 
 /// This task is the core of the rusty-radio project.
 /// It accesses an internet radio station and sends the data to MUSIC_CHANNEL.
+///
+/// It assumes that the network runner is running and the the stack IP config has been setup.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
     // Set up the receiver for changes in the station
@@ -167,20 +169,20 @@ async fn stream_station(
     let mut rx_buffer = [0; TCP_BUFFER_SIZE];
     let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
-    // This is important. Need to make sure the DHCP is up so
-    // that the ip address can be found from the host name
-    while !stack.is_config_up() {
-        Timer::after_millis(100).await;
-    }
+    // // This is important. Need to make sure the DHCP is up so
+    // // that the ip address can be found from the host name
+    // while !stack.is_config_up() {
+    //     Timer::after_millis(100).await;
+    // }
 
-    stack.wait_config_up().await;
+    // stack.wait_config_up().await;
 
-    loop {
-        if stack.is_link_up() {
-            break;
-        }
-        Timer::after(Duration::from_millis(500)).await;
-    }
+    // loop {
+    //     if stack.is_link_up() {
+    //         break;
+    //     }
+    //     Timer::after(Duration::from_millis(500)).await;
+    // }
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
