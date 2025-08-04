@@ -2,6 +2,9 @@
 
 //use static_assertions::{self, const_assert};
 
+// URL where the list of stations are for rusty-radio
+pub const STATIONS_URL: &str = "https://andrew-doble.hier-im-netz.de/ir/rr-stations.txt";
+
 pub const NUMBER_SOCKETS_STACK_RESOURCES: usize = 3;
 //pub const NUMBER_SOCKETS_TCP_CLIENT_STATE: usize = 3;
 

@@ -1,10 +1,5 @@
 use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel, RadioStations};
 
-// [ ] Set the LED to show that a statipon has been tuned. Requires a new task.
-// [ ] Extract TiningScale into a different file. This means that tuner becomes a module
-// [ ]  Seem to have to move the rotary encoder many turns before a new station is selected.
-//      See if this makes sense when the display is there.
-
 use esp_hal::gpio::Input;
 
 use embassy_time::{Duration, Timer};
@@ -20,7 +15,7 @@ const INVALID_WINDOW: usize = 10;
 
 // TODO Currently using the global static MULTIPLEXER_DRIVER. Change this later to a parameter
 
-// DESIGN NOTE: This does not debouce the buttons in the traditional way, 
+// DESIGN NOTE: This does not debouce the buttons in the traditional way,
 // but this polling technique  seems to work just fine.
 #[embassy_executor::task]
 pub async fn tuner(
@@ -124,6 +119,7 @@ pub async fn tuner(
                 match station_id {
                     Some(id) => {
                         let station = stations.get_station(id);
+                        // TODO change this so that we only print out the station name.
                         esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", station);
                         // TODO assuming that the following will work.
                         stations.set_current_station(id).unwrap();

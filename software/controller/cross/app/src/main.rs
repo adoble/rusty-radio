@@ -38,6 +38,9 @@ use task::{
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
+mod read_stations;
+use read_stations::read_stations;
+
 mod front_panel;
 use front_panel::FrontPanel;
 
@@ -94,7 +97,7 @@ pub type MultiplexerDriverType<'a> =
 type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
 type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
 
-static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
+// static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
 
 //const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
@@ -216,10 +219,10 @@ async fn main(spawner: Spawner) {
 
     // set up the stations
 
-    let stations_data = include_bytes!("../../../resources/stations.txt");
+    // let stations_data = include_bytes!("../../../resources/stations.txt");
 
-    let stations = RadioStations::load(stations_data).expect("ERROR: Cannot load stations");
-    let stations = RADIO_STATIONS.init(stations);
+    // let stations = RadioStations::load(stations_data).expect("ERROR: Cannot load stations");
+    // let stations = RADIO_STATIONS.init(stations);
 
     // Print the registers using the shared driver for the vs1053
     //print_registers().await;
@@ -234,6 +237,11 @@ async fn main(spawner: Spawner) {
     // before continuing.
     hardware.sta_stack.wait_link_up().await;
     hardware.sta_stack.wait_config_up().await;
+
+    // Read the stations from the internet
+    let stations = read_stations(hardware.sta_stack, constants::STATIONS_URL)
+        .await
+        .expect("ERROR: Unable to read stations list");
 
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
