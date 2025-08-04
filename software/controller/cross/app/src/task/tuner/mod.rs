@@ -1,4 +1,7 @@
-use crate::{front_panel::Buttons, task::sync::STATION_CHANGE_WATCH, FrontPanel, RadioStations};
+use crate::{
+    front_panel::Buttons, radio_stations::RadioStations, task::sync::STATION_CHANGE_WATCH,
+    FrontPanel,
+};
 
 use esp_hal::gpio::Input;
 

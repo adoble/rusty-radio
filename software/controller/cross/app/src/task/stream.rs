@@ -1,7 +1,7 @@
 // [ ] (Finally) set up a config so that the streaming statistics are not printed.
 // [ ]  Maybe the code will be simplified if Stations used nourl::Url instead of Strings for URLS.
 
-use crate::RadioStation;
+use crate::radio_stations::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 #[cfg(feature = "stats")]

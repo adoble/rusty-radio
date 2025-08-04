@@ -14,10 +14,8 @@
 
 mod async_delay;
 mod constants;
-use constants::{
-    MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, MULTIPLEXER_DEVICE_ADDR, NUMBER_PRESETS,
-    NUMBER_SOCKETS_STACK_RESOURCES,
-};
+
+use constants::{MULTIPLEXER_DEVICE_ADDR, NUMBER_SOCKETS_STACK_RESOURCES};
 
 mod hardware;
 use hardware::Hardware;
@@ -38,8 +36,8 @@ use task::{
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
-mod read_stations;
-use read_stations::read_stations;
+mod radio_stations;
+use radio_stations::read_stations;
 
 mod front_panel;
 use front_panel::FrontPanel;
@@ -47,7 +45,7 @@ use front_panel::FrontPanel;
 mod sendable_multiplexer_driver;
 use sendable_multiplexer_driver::SendableMultiplexerDriver;
 
-use stations::{Station, Stations};
+//use stations::{Station, Stations};
 
 // External crates
 //use esp_backtrace as _;
@@ -94,8 +92,8 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 pub type MultiplexerDriverType<'a> =
     Mcp23s17<SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
 
-type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
-type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
+// type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
+// type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
 
 // static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
 
