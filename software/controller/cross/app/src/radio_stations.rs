@@ -26,10 +26,17 @@ static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
 pub async fn read_stations(
     _stack: Stack<'static>,
     _stations_url: &str,
-) -> Result<&'static mut RadioStations, StationError> {
+) -> Result<&'static mut RadioStations, RadioStationError> {
     let stations_data = include_bytes!("../../../resources/rr-stations.txt");
 
-    let stations = RadioStations::load(stations_data).expect("ERROR: Cannot load stations");
+    let stations =
+        RadioStations::load(stations_data).map_err(RadioStationError::StationConstruction)?;
 
     Ok(RADIO_STATIONS.init(stations))
+}
+
+#[derive(Debug)]
+pub enum RadioStationError {
+    StationConstruction(StationError),
+    Connection,
 }
