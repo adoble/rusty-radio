@@ -99,7 +99,7 @@ embassy-embedded-hal = "0.3.0"
 # reqwless = "0.12.1"
 #reqwless = "0.13.0"
 
-embedded-nal-async = "0.8.0"
+#embedded-nal-async = "0.8.0"
 static_assertions  = "1.1.0"
 embedded-io-async  = "0.6.1"
 
@@ -125,6 +125,9 @@ m3u = {path = "../../m3u"}
 mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
 
 periodic-map = {path = "../../periodic-map"}
+#reqwless = "0.13.0"
+reqwless = "0.13.0"
+
 #nutype = { version = "0.6.1", default-features = false }
 
 [features]
