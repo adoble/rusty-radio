@@ -7,7 +7,7 @@ use embassy_sync::{
     watch::{Receiver, Watch},
 };
 
-use crate::radio_stations::RadioStation;
+use crate::task::radio_stations::RadioStation;
 use crate::Vs1053DriverType;
 
 use crate::sendable_multiplexer_driver::SendableMultiplexerDriver;

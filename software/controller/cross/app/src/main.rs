@@ -23,6 +23,7 @@ use hardware::Hardware;
 mod task;
 use task::{
     play_music::play_music,
+    radio_stations::radio_stations_reqwless,
     station_indicator::station_indicator,
     //read_test_music::read_test_music,
     stream::stream,
@@ -31,13 +32,13 @@ use task::{
     sync::MULTIPLEXER_DRIVER,
 
     //access_radio_stations::access_radio_stations,
-    tuner::tuner,
+    //tuner::tuner,
     //wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
-mod radio_stations;
-use radio_stations::read_stations;
+// mod radio_stations;
+// use radio_stations::radio_stations;
 
 mod front_panel;
 use front_panel::FrontPanel;
@@ -53,7 +54,6 @@ use esp_hal::{
     clock::CpuClock,
     gpio::{Input, Output},
     spi::master::{Config as SpiConfig, Spi},
-    //time::RateExtU32,
     time::Rate,
 };
 
@@ -72,6 +72,10 @@ static_assertions::const_assert!(true);
 use vs1053_driver::Vs1053Driver;
 
 use mcp23s17_async::Mcp23s17;
+
+use esp_println::dbg;
+
+use crate::constants::STATIONS_URL;
 
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -236,19 +240,35 @@ async fn main(spawner: Spawner) {
     hardware.sta_stack.wait_link_up().await;
     hardware.sta_stack.wait_config_up().await;
 
-    // Read the stations from the internet
-    let stations = read_stations(hardware.sta_stack, constants::STATIONS_URL)
-        .await
-        .expect("ERROR: Unable to read stations list");
+    esp_println::println!("DEBUG: link and config up");
+    // // Read the stations from the internet
+    // let stations = read_stations(hardware.sta_stack, constants::STATIONS_URL)
+    //     .await
+    //     .expect("ERROR: Unable to read stations list");
 
+    // Read the stations from the stations list in the internet and set up the tuner task
+    let r = spawner.spawn(radio_stations_reqwless(
+        spawner,
+        hardware.sta_stack,
+        front_panel,
+        STATIONS_URL,
+    ));
+    match r {
+        Ok(_) => esp_println::println!("DEBUG: radio_stations spawn successful"),
+        Err(e) => esp_println::println!("DEBUG: radio spawn error:{:?}", e),
+    }
+
+    esp_println::println!("DEBUG: Station read");
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
     // spawner
     //     .spawn(tuner(stations, front_panel, hardware.intr))
     //     .ok();
-    spawner
-        .spawn(tuner(stations, front_panel, hardware.intr))
-        .ok();
+
+    // spawner
+    //     .spawn(tuner(stations, front_panel, hardware.intr))
+    //     .ok();
+
     //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Streaming and playing music
@@ -259,9 +279,6 @@ async fn main(spawner: Spawner) {
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
     spawner.spawn(station_indicator(front_panel)).ok();
-    // spawner
-    //     .spawn(station_indicator(spi_bus, hardware.mux_cs))
-    //     .ok();
 }
 
 // async fn print_registers() {

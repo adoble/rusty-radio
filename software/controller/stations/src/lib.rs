@@ -136,9 +136,8 @@ pub struct Stations<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESE
 
     // The preset stations
     preset_slots: [Option<usize>; NUM_PRESETS],
-
-    // The current station
-    current_station: Option<usize>,
+    // // The current station
+    // current_station: Option<usize>,
 }
 
 impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
@@ -154,7 +153,7 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
             pool: String::new(),
             positions: Vec::new(),
             preset_slots: [None; NUM_PRESETS],
-            current_station: None,
+            // current_station: None,
         }
     }
 
@@ -243,7 +242,7 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
             in_bytes = &in_bytes[nin..];
         }
 
-        stations.set_current_station(0)?;
+        //stations.set_current_station(0)?;
         Ok(stations)
     }
 
@@ -415,62 +414,62 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize>
         }
     }
 
-    /// Sets the current station by index.
-    ///
-    /// # Arguments
-    ///
-    /// * `station_index` - The index of the station to set as the current station.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if the station index is valid and the current station is set.
-    /// Returns `Err(StationError::StationNonExistent)` if the index is out of bounds.
-    ///
-    /// # Errors
-    ///
-    /// * [`StationError::StationNonExistent`] - If the specified station index does not exist.
-    pub fn set_current_station(&mut self, station_index: usize) -> Result<(), StationError> {
-        if station_index < self.positions.len() {
-            self.current_station = Some(station_index);
-            Ok(())
-        } else {
-            Err(StationError::StationNonExistent)
-        }
-    }
+    // / Sets the current station by index.
+    // /
+    // / # Arguments
+    // /
+    // / * `station_index` - The index of the station to set as the current station.
+    // /
+    // / # Returns
+    // /
+    // / Returns `Ok(())` if the station index is valid and the current station is set.
+    // / Returns `Err(StationError::StationNonExistent)` if the index is out of bounds.
+    // /
+    // / # Errors
+    // /
+    // / * [`StationError::StationNonExistent`] - If the specified station index does not exist.
+    // pub fn set_current_station(&mut self, station_index: usize) -> Result<(), StationError> {
+    //     if station_index < self.positions.len() {
+    //         self.current_station = Some(station_index);
+    //         Ok(())
+    //     } else {
+    //         Err(StationError::StationNonExistent)
+    //     }
+    // }
 
-    pub fn current_station(&self) -> Option<Station<NAME_LEN, URL_LEN>> {
-        match self.current_station {
-            Some(station_index) => self.get_station(station_index),
-            None => None,
-        }
-    }
+    // pub fn current_station(&self) -> Option<Station<NAME_LEN, URL_LEN>> {
+    //     match self.current_station {
+    //         Some(station_index) => self.get_station(station_index),
+    //         None => None,
+    //     }
+    // }
 
     /// Set the current station to the next one in the stations list. If the range is exceeded
     /// the current stations is clamped to the last one in the list.
-    pub fn increment_current_station(&mut self) {
-        if let Some(station_id) = self.current_station {
-            let inc_station_id = (station_id + 1).clamp(0, self.positions.len() - 1);
+    // pub fn increment_current_station(&mut self) {
+    //     if let Some(station_id) = self.current_station {
+    //         let inc_station_id = (station_id + 1).clamp(0, self.positions.len() - 1);
 
-            self.current_station = Some(inc_station_id);
-        }
-    }
+    //         self.current_station = Some(inc_station_id);
+    //     }
+    // }
     /// Set the current station to the previous one in the stations list. If the range is exceeded
     /// the current stations is clamped to the first one in the list.
-    pub fn decrement_current_station(&mut self) {
-        if let Some(station_id) = self.current_station {
-            let dec_station_id = station_id.saturating_sub(1);
-            //let dec_station_id = (station_id - 1).clamp(0, self.positions.len() - 1);
+    // pub fn decrement_current_station(&mut self) {
+    //     if let Some(station_id) = self.current_station {
+    //         let dec_station_id = station_id.saturating_sub(1);
+    //         //let dec_station_id = (station_id - 1).clamp(0, self.positions.len() - 1);
 
-            self.current_station = Some(dec_station_id);
-        }
-    }
+    //         self.current_station = Some(dec_station_id);
+    //     }
+    // }
 
     /// Reset the current station to 0.
     ///
     /// Equivalent to `set_current_station(0)`
-    pub fn reset_current_station(&mut self) {
-        self.current_station = Some(0);
-    }
+    // pub fn reset_current_station(&mut self) {
+    //     self.current_station = Some(0);
+    // }
 
     // Helper function to extact the prefix slot number from the CSV field
     fn extract_prefix_slot(field_value: &str) -> Result<usize, StationError> {
@@ -495,6 +494,26 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize> Defa
 {
     fn default() -> Stations<NAME_LEN, URL_LEN, NUM_PRESETS> {
         Self::new()
+    }
+}
+
+impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize> core::fmt::Display
+    for Stations<NAME_LEN, URL_LEN, NUM_PRESETS>
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut display_string = String::<POOL_SIZE>::new();
+
+        for i in 0..self.number_stations() {
+            let station = self.get_station(i);
+            if let Some(station) = station {
+                display_string.push_str(station.name()).unwrap();
+                display_string.push_str(", ").unwrap();
+                display_string.push_str(station.url()).unwrap();
+                display_string.push_str("\n").unwrap();
+            }
+        }
+
+        write!(f, "{display_string}")
     }
 }
 

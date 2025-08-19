@@ -1,9 +1,7 @@
 use crate::{
-    front_panel::Buttons, radio_stations::RadioStations, task::sync::STATION_CHANGE_WATCH,
+    front_panel::Buttons, task::radio_stations::RadioStations, task::sync::STATION_CHANGE_WATCH,
     FrontPanel,
 };
-
-use esp_hal::gpio::Input;
 
 use embassy_time::{Duration, Timer};
 
@@ -16,25 +14,20 @@ use tuning_scale::TuningScale;
 const VALID_WINDOW: usize = 5;
 const INVALID_WINDOW: usize = 10;
 
-// TODO Currently using the global static MULTIPLEXER_DRIVER. Change this later to a parameter
-
 // DESIGN NOTE: This does not debouce the buttons in the traditional way,
 // but this polling technique  seems to work just fine.
 #[embassy_executor::task]
-pub async fn tuner(
-    stations: &'static mut RadioStations,
-    front_panel: &'static FrontPanel,
-    mut _interrupt_pin: Input<'static>,
-) {
+pub async fn tuner(stations: &'static mut RadioStations, front_panel: &'static FrontPanel) {
+    esp_println::println!("DEBUG: tuner task entered");
     //Set up the list of stations
     //let mut stations = Stations::new();
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
-    // Determine the initial station from:
     // 1. The last set station - TODO
     // 2. The first preset stations if set
     // 3. The first station in the station list
+
     let initial_station = stations
         .preset(0)
         .map(|s| s.1) // Get the preset station from the tuple
@@ -125,7 +118,7 @@ pub async fn tuner(
                         // TODO change this so that we only print out the station name.
                         esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", station);
                         // TODO assuming that the following will work.
-                        stations.set_current_station(id).unwrap();
+                        //stations.set_current_station(id).unwrap();
                         last_station_id = station_id;
                         station_change_sender.send(station);
                     }

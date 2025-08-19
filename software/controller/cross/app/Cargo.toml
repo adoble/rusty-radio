@@ -8,8 +8,10 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 embassy-executor = { version = "0.7.0", features = [
     #"task-arena-size-24576",
-    "task-arena-size-49152",  
-    #"task-arena-size-65536",
+    # Old
+    # "task-arena-size-49152",  
+    # This value is required with the number of tasks spawned.
+    "task-arena-size-65536",
     #"task-arena-size-81920",
     "arch-riscv32",
 
@@ -125,8 +127,10 @@ m3u = {path = "../../m3u"}
 mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
 
 periodic-map = {path = "../../periodic-map"}
-#reqwless = "0.13.0"
+
+# Abandoning reqwless as incompatable with embassy version
 reqwless = "0.13.0"
+#reqwless = "0.12.1"
 
 #nutype = { version = "0.6.1", default-features = false }
 

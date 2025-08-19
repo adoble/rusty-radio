@@ -34,8 +34,6 @@ pub struct Hardware {
     pub mux_cs: Output<'static>,
     //pub led: Output<'static>,
 
-    // TODO we don't need this interrupt pin
-    pub intr: Input<'static>,
     // pub rng: Rng,
     pub system_timer: SystemTimer<'static>,
 
@@ -86,11 +84,10 @@ impl Hardware {
             //led: Output::new(peripherals.GPIO3, Level::Low),
 
             // Assuming that the interrupt signal is actively driven and not open drain.
-            intr: Input::new(
-                peripherals.GPIO3,
-                InputConfig::default().with_pull(Pull::None),
-            ),
-
+            // intr: Input::new(
+            //     peripherals.GPIO3,
+            //     InputConfig::default().with_pull(Pull::None),
+            // ),
             system_timer: SystemTimer::new(systimer),
             // SPI
             spi_bus,

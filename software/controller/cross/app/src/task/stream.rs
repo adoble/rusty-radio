@@ -1,7 +1,7 @@
 // [ ] (Finally) set up a config so that the streaming statistics are not printed.
 // [ ]  Maybe the code will be simplified if Stations used nourl::Url instead of Strings for URLS.
 
-use crate::radio_stations::RadioStation;
+use crate::task::radio_stations::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 #[cfg(feature = "stats")]
@@ -136,6 +136,7 @@ const TOKEN_LEN: usize = 7;
 /// It assumes that the network runner is running and the the stack IP config has been setup.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
+    esp_println::println!("DEBUG: Entered stream task");
     // Set up the receiver for changes in the station
     let Some(mut station_change_receiver) = STATION_CHANGE_WATCH.receiver() else {
         panic!("Cannot get station change watch receiver in task:stream");
@@ -168,6 +169,7 @@ async fn stream_station(
     stack: Stack<'static>,
     station_change_receiver: &mut StationChangeReceiver,
 ) -> Result<(), StreamError> {
+    esp_println::println!("DEBUG: Entered stream_station");
     let mut rx_buffer = [0; TCP_BUFFER_SIZE];
     let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
