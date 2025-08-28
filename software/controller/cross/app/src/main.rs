@@ -169,7 +169,7 @@ async fn main(spawner: Spawner) {
         spi_sci_device,
         spi_sdi_device,
         hardware.dreq,
-        hardware.reset,
+        hardware.reset_codec,
         delay,
     )
     .unwrap();

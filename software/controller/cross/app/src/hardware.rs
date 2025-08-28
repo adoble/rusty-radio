@@ -30,7 +30,7 @@ pub struct Hardware {
     pub xcs: Output<'static>,
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
-    pub reset: Output<'static>,
+    pub reset_codec: Output<'static>,
     pub mux_cs: Output<'static>,
     //pub led: Output<'static>,
 
@@ -80,7 +80,9 @@ impl Hardware {
                 peripherals.GPIO8,
                 InputConfig::default().with_pull(Pull::None),
             ),
-            reset: Output::new(peripherals.GPIO20, Level::High, output_config),
+            //reset: Output::new(peripherals.GPIO20, Level::High, output_config),
+            reset_codec: Output::new(peripherals.GPIO21, Level::High, output_config),
+
             //led: Output::new(peripherals.GPIO3, Level::Low),
 
             // Assuming that the interrupt signal is actively driven and not open drain.
