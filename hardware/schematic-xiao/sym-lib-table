@@ -3,4 +3,5 @@
   (lib (name "Adafruit-music-maker")(type "KiCad")(uri "${KIPRJMOD}/Adafruit-music-maker.kicad_sym")(options "")(descr ""))
   (lib (name "Espressif")(type "KiCad")(uri "${KIPRJMOD}/Espressif.kicad_sym")(options "")(descr ""))
   (lib (name "xiao_esp32c3")(type "KiCad")(uri "${KIPRJMOD}/xiao_esp32c3.kicad_sym")(options "")(descr ""))
+  (lib (name "project")(type "KiCad")(uri "${KIPRJMOD}/project.kicad_sym")(options "")(descr ""))
 )
