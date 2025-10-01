@@ -32,17 +32,14 @@ pub struct Hardware {
     pub dreq: Input<'static>,
     pub reset_codec: Output<'static>,
     pub mux_cs: Output<'static>,
-    //pub led: Output<'static>,
+    pub disp_cs: Output<'static>,
 
-    // pub rng: Rng,
     pub system_timer: SystemTimer<'static>,
 
-    //pub spi2: SPI2,
     pub spi_bus: Spi<'static, esp_hal::Async>,
 
     pub sta_stack: Stack<'static>,
     pub runner: Runner<'static, WifiDevice<'static>>,
-    // pub wifi_controller: WifiController<'static>,
     pub wifi_controller: &'static mut WifiController<'static>,
 }
 
@@ -83,7 +80,8 @@ impl Hardware {
             //reset: Output::new(peripherals.GPIO20, Level::High, output_config),
             reset_codec: Output::new(peripherals.GPIO21, Level::High, output_config),
 
-            //led: Output::new(peripherals.GPIO3, Level::Low),
+            // Intially set high to display the diplay.
+            disp_cs: Output::new(peripherals.GPIO9, Level::High, output_config),
 
             // Assuming that the interrupt signal is actively driven and not open drain.
             // intr: Input::new(
