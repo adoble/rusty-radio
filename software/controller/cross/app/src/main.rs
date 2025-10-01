@@ -183,8 +183,9 @@ async fn main(spawner: Spawner) {
         }
     }
     // Setup spi for the front panel controller
-    // spi_multiplexer_config.frequency = 10.MHz();
-    let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(10));
+    // Altough the mutiplexer SPI speed can go up to 10MHz, using a lower frequency works just fine
+    // (and gives less problems with transmission lines effects on the breadboard).
+    let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(1));
 
     let spi_multiplexer_device: SpiDeviceWithConfig<
         '_,
