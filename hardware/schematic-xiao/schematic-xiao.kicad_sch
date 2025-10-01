@@ -4327,29 +4327,6 @@
 		)
 		(uuid "88b0a178-dde8-4e4c-b96c-77a855d9b482")
 	)
-	(text_box "Disconnecting display MISO DID NOT work !"
-		(exclude_from_sim no)
-		(at 224.155 119.38 0)
-		(size 19.05 7.62)
-		(margins 0.9525 0.9525 0.9525 0.9525)
-		(stroke
-			(width 0)
-			(type dash)
-		)
-		(fill
-			(type none)
-		)
-		(effects
-			(font
-				(size 1.27 1.27)
-				(thickness 0.254)
-				(bold yes)
-				(color 255 0 0 1)
-			)
-			(justify left top)
-		)
-		(uuid "a7c9be27-5af6-4ca3-a58b-bf625e4360c1")
-	)
 	(text_box "Initial output HIGH"
 		(exclude_from_sim no)
 		(at 95.25 90.17 0)
@@ -4954,16 +4931,6 @@
 		)
 		(uuid "864d1bef-07b1-47d1-94be-0df451352d4c")
 	)
-	(polyline
-		(pts
-			(xy 222.25 132.715) (xy 222.25 135.89)
-		)
-		(stroke
-			(width 0)
-			(type dash)
-		)
-		(uuid "88371dbb-8790-464b-ba01-ba4d42fffbc4")
-	)
 	(wire
 		(pts
 			(xy 116.84 172.72) (xy 123.19 172.72)
@@ -5216,16 +5183,6 @@
 		)
 		(uuid "c01ff3fc-c6d5-4263-b08a-ff311c5ebf34")
 	)
-	(polyline
-		(pts
-			(xy 222.25 132.715) (xy 219.71 127)
-		)
-		(stroke
-			(width 0)
-			(type dash)
-		)
-		(uuid "c1aed79e-1d22-41e5-ac77-ba01fa373671")
-	)
 	(wire
 		(pts
 			(xy 163.83 152.4) (xy 168.91 152.4)
@@ -5243,7 +5200,6 @@
 		(stroke
 			(width 0)
 			(type default)
-			(color 0 0 255 1)
 		)
 		(uuid "c5e838d3-0c09-4809-9fa8-ed9f8f3d1b8d")
 	)
@@ -5427,16 +5383,6 @@
 			(type default)
 		)
 		(uuid "fd3431d5-ac56-4d8a-aef4-5d688fd3a662")
-	)
-	(polyline
-		(pts
-			(xy 224.155 122.555) (xy 219.71 127)
-		)
-		(stroke
-			(width 0)
-			(type dash)
-		)
-		(uuid "fd6c9160-4de3-40fe-b577-a0d8a8f52cd8")
 	)
 	(table
 		(column_count 2)
