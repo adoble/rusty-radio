@@ -120,6 +120,8 @@ heapless = "0.8.0"
 http = { path = "../../http" }
 stations = {path = "../../stations"}
 m3u = {path = "../../m3u"}
+ra8875 = {path = "../../ra8875"}
+
 #mcp23s17-async = "0.1.0"
 #mcp23s17-async =  { path = "../../mcp23s17-async" }
 

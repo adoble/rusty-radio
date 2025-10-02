@@ -1,0 +1,12 @@
+[package]
+name = "ra8875"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embedded-graphics = "0.8.1"
+embedded-hal = "1.0.0"
+#embedded-hal-async = "1.0.0"
+
+
+esp-println = { version = "0.15.0", features = ["esp32c3"] }
