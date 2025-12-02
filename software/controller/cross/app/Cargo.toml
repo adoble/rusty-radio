@@ -132,6 +132,8 @@ periodic-map = {path = "../../periodic-map"}
 
 # Abandoning reqwless as incompatable with embassy version
 reqwless = "0.13.0"
+embedded-graphics-core = "0.4.0"
+embedded-graphics = "0.8.1"
 #reqwless = "0.12.1"
 
 #nutype = { version = "0.6.1", default-features = false }

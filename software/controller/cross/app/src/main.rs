@@ -52,6 +52,7 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 //use esp_backtrace as _;
 use esp_hal::{
     clock::CpuClock,
+    delay::Delay,
     gpio::{Input, Output},
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
@@ -60,6 +61,7 @@ use esp_hal::{
 use embassy_executor::Spawner;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
+use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig as BlockingSpiDeviceWithConfig;
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
@@ -73,7 +75,23 @@ use vs1053_driver::Vs1053Driver;
 
 use mcp23s17_async::Mcp23s17;
 
+use ra8875::RA8875;
+
 use esp_println::dbg;
+
+// --- Embedded graphics crates. TODO theese need to be moved
+// use embedded_graphics::prelude::RgbColor;
+use embedded_graphics_core::geometry::OriginDimensions;
+use embedded_graphics_core::prelude::Size;
+
+use embedded_graphics::{
+    mono_font::{ascii::FONT_6X10, MonoTextStyle},
+    pixelcolor::Rgb565,
+    prelude::*,
+    primitives::{Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, Triangle},
+    text::{Baseline, Text},
+};
+// ------------------
 
 use crate::constants::STATIONS_URL;
 
@@ -155,6 +173,56 @@ async fn main(spawner: Spawner) {
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
 
+    /*
+       --------------------------
+       Setup the display device
+       --------------------------
+    */
+
+    // Init the display spi speeds. From spec: The maximum clock rate of 4-Wire SPI
+    // write SCL is system clock / 3(i.e. SPI clock high duty must large than 1.5 system clock) and the
+    // maximum clock rate of 4-Wire SPI read SCL is system clock / 6. As we are only dealing with write and
+    //  assuming the display board oscillator = system clock =  20 MHz (source: board documentation) means spi clock is
+    // 20 MHz / 3 = 6.6 MHz
+    //let spi_display_config = SpiConfig::default().with_frequency(Rate::from_khz(6600));
+    // TODO
+    // let spi_display_config = SpiConfig::default().with_frequency(Rate::from_mhz(2));
+
+    // let spi_display_device = BlockingSpiDeviceWithConfig::new(
+    //     spi_bus.into_blocking(),
+    //     hardware.disp_cs,
+    //     spi_display_config,
+    // );
+
+    // let display_delay = Delay::new();
+
+    // let mut display_driver = RA8875::new(spi_display_device, display_delay, (800, 480));
+    // display_driver.init().unwrap();
+    // esp_println::println!(
+    //     "DEBUG: Driver initialised. Screen dimensions are {:?}.",
+    //     display_driver.size()
+    // );
+    // display_driver.display_on(true).unwrap();
+    // display_driver
+    //     .pwm1_config(true, 0x1A) // RA8875_PWM_CLK_DIV1024
+    //     .unwrap();
+    // display_driver.pwm1_out(255).unwrap();
+
+    // esp_println::println!("DEBUG: Display On.");
+
+    // const BLACK: u16 = 0x0000;
+
+    // display_driver.fill_screen(BLACK).unwrap();
+
+    // draw_shapes(&mut display_driver).unwrap();
+
+    // esp_println::println!("DEBUG: Screen filled.");
+
+    /*
+       ---------------------------
+       Setup the VS1053 MP3 codec
+       ---------------------------
+    */
     // Init the vs1053 spi speeds
     // spi_sci_config.frequency = Rate::from_khz(250); //250.kHz();
     let spi_sci_config = SpiConfig::default().with_frequency(Rate::from_khz(250));
@@ -303,3 +371,71 @@ async fn main(spawner: Spawner) {
 //         esp_println::println!("ERROR: Could not print registers");
 //     }
 // }
+
+fn draw_shapes(display: &mut impl DrawTarget<Color = Rgb565>) -> Result<(), DisplayError> {
+    // Define some styles
+    let thin_stroke = PrimitiveStyle::with_stroke(Rgb565::WHITE, 1);
+    let thick_stroke = PrimitiveStyle::with_stroke(Rgb565::RED, 3);
+    let filled_style = PrimitiveStyle::with_fill(Rgb565::BLUE);
+    let filled_with_stroke = PrimitiveStyleBuilder::new()
+        .stroke_color(Rgb565::YELLOW)
+        .stroke_width(2)
+        .fill_color(Rgb565::GREEN)
+        .build();
+
+    // Draw a rectangle outline
+    Rectangle::new(Point::new(10, 10), Size::new(50, 30))
+        .into_styled(thin_stroke)
+        .draw(display)
+        .map_err(|_| DisplayError::Other)?;
+
+    // Draw a filled circle
+    Circle::new(Point::new(80, 20), 25)
+        .into_styled(filled_style)
+        .draw(display)
+        .map_err(|_| DisplayError::Other)?;
+
+    // Draw a triangle with fill and stroke
+    Triangle::new(
+        Point::new(120, 10),
+        Point::new(140, 40),
+        Point::new(100, 40),
+    )
+    //.into_styled(filled_with_stroke)
+    .into_styled(filled_style)
+    .draw(display)
+    .map_err(|_| DisplayError::Other)?;
+
+    // Draw some lines
+    Line::new(Point::new(10, 60), Point::new(150, 80))
+        .into_styled(thick_stroke)
+        .draw(display)
+        .map_err(|_| DisplayError::Other)?;
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DisplayError {
+    /// Error from the display driver itself
+    DriverError,
+    /// Drawing operation failed
+    DrawingError,
+    /// Display initialization failed
+    InitializationError,
+    /// Display communication error (I2C, SPI, etc.)
+    CommunicationError,
+    /// Display is not ready or in wrong state
+    NotReady,
+    /// Invalid coordinates or size
+    InvalidDimensions {
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    },
+    /// Color conversion error
+    ColorError,
+    /// Generic error with message
+    Other,
+}
