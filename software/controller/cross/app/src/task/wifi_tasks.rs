@@ -2,7 +2,7 @@
 const SSID: &str = env!("WLAN_SSID");
 const PASSWORD: &str = env!("WLAN_PASSWORD");
 
-use esp_wifi::wifi::{AuthMethod, ClientConfiguration, Configuration, WifiController, WifiDevice};
+use esp_radio::wifi::{AuthMethod, ClientConfig, ModeConfig, WifiController, WifiDevice};
 
 use embassy_net::Runner;
 
@@ -16,19 +16,29 @@ pub async fn wifi_connect(controller: &'static mut WifiController<'static>) {
 
     loop {
         if !matches!(controller.is_started(), Ok(true)) {
-            let mut auth_method = AuthMethod::WPA2Personal;
+            let mut auth_method = AuthMethod::Wpa2Personal;
             #[allow(clippy::const_is_empty)]
             if PASSWORD.is_empty() {
                 auth_method = AuthMethod::None;
             }
 
-            let wifi_config = Configuration::Client(ClientConfiguration {
-                ssid: SSID.try_into().unwrap(),
-                password: PASSWORD.try_into().unwrap(),
-                auth_method, // TODO: Is AuthMethod::WPA2Personal the default?
-                ..Default::default()
-            });
-            let res = controller.set_configuration(&wifi_config);
+            // let wifi_config = Configuration::Client(ClientConfig {
+            //     ssid: SSID.try_into().unwrap(),
+            //     password: PASSWORD.try_into().unwrap(),
+            //     auth_method, // TODO: Is AuthMethod::WPA2Personal the default?
+            //     ..Default::default()
+            // });
+
+            // For esp_radio
+            let wifi_config = ModeConfig::Client(
+                ClientConfig::default()
+                    .with_ssid(SSID.into())
+                    .with_password(PASSWORD.into())
+                    .with_auth_method(auth_method),
+            );
+
+            // let res = controller.set_configuration(&wifi_config);
+            let res = controller.set_config(&wifi_config);
             esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
 
             controller.start_async().await.unwrap();

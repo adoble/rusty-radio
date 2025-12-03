@@ -54,6 +54,7 @@ use esp_hal::{
     clock::CpuClock,
     delay::Delay,
     gpio::{Input, Output},
+    interrupt::software::SoftwareInterruptControl,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
 };
@@ -77,7 +78,7 @@ use mcp23s17_async::Mcp23s17;
 
 use ra8875::RA8875;
 
-use esp_println::dbg;
+use esp_println::{dbg, println};
 
 // --- Embedded graphics crates. TODO theese need to be moved
 // use embedded_graphics::prelude::RgbColor;
@@ -141,7 +142,8 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[esp_hal_embassy::main]
+// #[esp_hal_embassy::main]
+#[esp_rtos::main]
 async fn main(spawner: Spawner) {
     esp_println::println!("INFO: Rusty Radio started");
 
@@ -151,6 +153,8 @@ async fn main(spawner: Spawner) {
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
     esp_alloc::heap_allocator!(size: 76 * 1024);
+
+    println!("DEBUG: heap allocated");
 
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
@@ -163,10 +167,15 @@ async fn main(spawner: Spawner) {
     // The stack needs to be static so that it can be used in tasks.
     STACK.init(hardware.sta_stack);
 
+    println!("DEBUG: hardware initialised");
+
     // This is the way to initialize esp hal embassy for the the esp32c3
     // according to the example
     // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    esp_hal_embassy::init(hardware.system_timer.alarm0);
+    // esp_hal_embassy::init(hardware.system_timer.alarm0);
+    esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
+
+    println!("DEBUG: esp_rtos initiialized");
 
     // Need to convert the spi driver into an static blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)

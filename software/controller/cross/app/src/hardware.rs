@@ -3,16 +3,21 @@
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 use esp_hal::{
     gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
-    // peripherals::{Peripherals, RADIO_CLK, TIMG1, WIFI},
+    interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},
     peripherals::{Peripherals, TIMG1, WIFI},
     rng::Rng,
     spi::master::{Config as SpiConfig, Spi},
     timer::{systimer::SystemTimer, timg::TimerGroup},
 };
 
-use esp_wifi::wifi::{WifiController, WifiDevice};
-// use esp_wifi::{init, EspWifiController};
-use esp_wifi::EspWifiController;
+//use esp_wifi::wifi::{WifiController, WifiDevice};
+use esp_radio::{
+    wifi::{WifiController, WifiDevice},
+    Controller,
+};
+// use esp_wifi::EspWifiController;
+
+use esp_println::println;
 
 use embassy_net::{Runner, Stack};
 
@@ -20,7 +25,8 @@ use static_cell::StaticCell;
 
 use crate::constants::NUMBER_SOCKETS_STACK_RESOURCES;
 
-static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
+//static ESP_WIFI_CONTROLLER: StaticCell<EspWifiController<'static>> = StaticCell::new();
+static ESP_WIFI_CONTROLLER: StaticCell<Controller<'static>> = StaticCell::new();
 
 static RESOURCES: StaticCell<embassy_net::StackResources<NUMBER_SOCKETS_STACK_RESOURCES>> =
     StaticCell::new();
@@ -41,11 +47,13 @@ pub struct Hardware {
     pub sta_stack: Stack<'static>,
     pub runner: Runner<'static, WifiDevice<'static>>,
     pub wifi_controller: &'static mut WifiController<'static>,
+    pub software_interrupt0: SoftwareInterrupt<'static, 0>,
 }
 
 impl Hardware {
     pub fn init<const NUMBER_SOCKETS_STACK_RESOURCES: usize>(peripherals: Peripherals) -> Hardware {
-        let rng = Rng::new(peripherals.RNG);
+        // let rng = Rng::new(peripherals.RNG);
+        let rng = Rng::new();
 
         let wifi = peripherals.WIFI;
         //let radio_clk = peripherals.RADIO_CLK;
@@ -62,11 +70,16 @@ impl Hardware {
             .with_miso(peripherals.GPIO7)
             .into_async();
 
+        println!("DEBUG: SPI initialised");
+
         let output_config = OutputConfig::default();
         // let input_config = InputConfig::default();
+        println!("DEBUG: output configured");
 
         let wifi_peripherals =
             WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, timg1, rng);
+        println!("DEBUG: wifi initialised");
+
         Hardware {
             //button_pin: Input::new(peripherals.GPIO9, Pull::Up),
             mux_cs: Output::new(peripherals.GPIO2, Level::High, output_config),
@@ -96,6 +109,8 @@ impl Hardware {
             sta_stack: wifi_peripherals.sta_stack,
             runner: wifi_peripherals.runner,
             wifi_controller: wifi_peripherals.wifi_controller,
+            software_interrupt0: SoftwareInterruptControl::new(peripherals.SW_INTERRUPT)
+                .software_interrupt0,
         }
     }
 }
@@ -124,10 +139,28 @@ impl WifiHardware {
         //     .unwrap(),
         // );
 
-        let esp_wifi_ctrl =
-            ESP_WIFI_CONTROLLER.init(esp_wifi::init(timg.timer0, rng.clone()).unwrap());
+        // let esp_wifi_ctrl =
+        //     ESP_WIFI_CONTROLLER.init(esp_radio::init(timg.timer0, rng.clone()).unwrap());
 
-        let (controller, interfaces) = esp_wifi::wifi::new(esp_wifi_ctrl, wifi).unwrap();
+        println!("DEBUG: enter init_wifi");
+
+        let res = esp_radio::init();
+
+        let esp_wifi_ctrl = match res {
+            Ok(controller) => ESP_WIFI_CONTROLLER.init(controller),
+            Err(e) => panic!("ERROR: wifi controller not initialised: {:?}", e),
+        };
+
+        // TODO reinstate
+        //let esp_wifi_ctrl = ESP_WIFI_CONTROLLER.init(esp_radio::init().unwrap());
+
+        println!("DEBUG: esp_wifi_ctrl initialised");
+
+        let (controller, interfaces) =
+            esp_radio::wifi::new(esp_wifi_ctrl, wifi, Default::default()).unwrap();
+
+        println!("DEBUG: controller initialised");
+
         let wifi_device = interfaces.sta;
 
         // let (wifi_device, controller) =
@@ -146,6 +179,8 @@ impl WifiHardware {
             RESOURCES.init(embassy_net::StackResources::new()),
             seed,
         );
+
+        println!("DEBUG: stack initialised");
 
         // Make the controller static
         static CONTROLLER: StaticCell<WifiController> = StaticCell::new();
