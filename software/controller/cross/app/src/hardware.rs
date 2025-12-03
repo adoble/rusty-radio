@@ -41,13 +41,16 @@ pub struct Hardware {
     pub disp_cs: Output<'static>,
 
     pub system_timer: SystemTimer<'static>,
+    pub timer_group: TimerGroup<'static, TIMG1<'static>>,
+    pub rng: Rng,
 
     pub spi_bus: Spi<'static, esp_hal::Async>,
 
-    pub sta_stack: Stack<'static>,
-    pub runner: Runner<'static, WifiDevice<'static>>,
-    pub wifi_controller: &'static mut WifiController<'static>,
     pub software_interrupt0: SoftwareInterrupt<'static, 0>,
+    // pub sta_stack: Stack<'static>,
+    // pub runner: Runner<'static, WifiDevice<'static>>,
+    // pub wifi_controller: &'static mut WifiController<'static>,
+    pub wifi: WIFI<'static>,
 }
 
 impl Hardware {
@@ -55,11 +58,11 @@ impl Hardware {
         // let rng = Rng::new(peripherals.RNG);
         let rng = Rng::new();
 
-        let wifi = peripherals.WIFI;
+        //let wifi = peripherals.WIFI;
         //let radio_clk = peripherals.RADIO_CLK;
         let systimer = peripherals.SYSTIMER;
 
-        let timg1: TimerGroup<'_, _> = TimerGroup::new(peripherals.TIMG1);
+        let timer_group = TimerGroup::new(peripherals.TIMG1);
 
         // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
         // Only SPI2 is available for the ESP32-C3 - TODO is this true?
@@ -76,9 +79,9 @@ impl Hardware {
         // let input_config = InputConfig::default();
         println!("DEBUG: output configured");
 
-        let wifi_peripherals =
-            WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, timg1, rng);
-        println!("DEBUG: wifi initialised");
+        // let wifi_peripherals =
+        //     WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, timer_group, rng);
+        // println!("DEBUG: wifi initialised");
 
         Hardware {
             //button_pin: Input::new(peripherals.GPIO9, Pull::Up),
@@ -102,20 +105,26 @@ impl Hardware {
             //     InputConfig::default().with_pull(Pull::None),
             // ),
             system_timer: SystemTimer::new(systimer),
+
+            timer_group,
+
+            rng,
             // SPI
             spi_bus,
 
-            // Peripherals required for wifi
-            sta_stack: wifi_peripherals.sta_stack,
-            runner: wifi_peripherals.runner,
-            wifi_controller: wifi_peripherals.wifi_controller,
+            // Required to initialise embassy over esp-rtos
             software_interrupt0: SoftwareInterruptControl::new(peripherals.SW_INTERRUPT)
                 .software_interrupt0,
+            // // Peripherals required for wifi
+            // sta_stack: wifi_peripherals.sta_stack,
+            // runner: wifi_peripherals.runner,
+            // wifi_controller: wifi_peripherals.wifi_controller,
+            wifi: peripherals.WIFI,
         }
     }
 }
 
-struct WifiHardware {
+pub struct WifiHardware {
     pub sta_stack: Stack<'static>,
     pub runner: Runner<'static, WifiDevice<'static>>,
     pub wifi_controller: &'static mut WifiController<'static>,

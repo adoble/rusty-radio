@@ -94,7 +94,7 @@ use embedded_graphics::{
 };
 // ------------------
 
-use crate::constants::STATIONS_URL;
+use crate::{constants::STATIONS_URL, hardware::WifiHardware};
 
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
 
@@ -164,68 +164,23 @@ async fn main(spawner: Spawner) {
 
     let delay = AsyncDelay::new();
 
-    // The stack needs to be static so that it can be used in tasks.
-    STACK.init(hardware.sta_stack);
-
-    println!("DEBUG: hardware initialised");
-
-    // This is the way to initialize esp hal embassy for the the esp32c3
-    // according to the example
-    // https://github.com/esp-rs/esp-hal/blob/main/examples/src/bin/wifi_embassy_access_point_with_sta.rs
-    // esp_hal_embassy::init(hardware.system_timer.alarm0);
+    // Initialise the schedular (in this case embasssy).
+    // This needs to be done before initialiing the wifi
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
-    println!("DEBUG: esp_rtos initiialized");
+    let wifi_hardware = WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(
+        hardware.wifi,
+        hardware.timer_group,
+        hardware.rng,
+    );
+
+    // The stack needs to be static so that it can be used in tasks.
+    STACK.init(wifi_hardware.sta_stack);
 
     // Need to convert the spi driver into an static blocking async version so that if can be accepted
     // by vs1053_driver::Vs1052Driver (which takes embedded_hal_async::spi::SpiDevice)
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus));
-
-    /*
-       --------------------------
-       Setup the display device
-       --------------------------
-    */
-
-    // Init the display spi speeds. From spec: The maximum clock rate of 4-Wire SPI
-    // write SCL is system clock / 3(i.e. SPI clock high duty must large than 1.5 system clock) and the
-    // maximum clock rate of 4-Wire SPI read SCL is system clock / 6. As we are only dealing with write and
-    //  assuming the display board oscillator = system clock =  20 MHz (source: board documentation) means spi clock is
-    // 20 MHz / 3 = 6.6 MHz
-    //let spi_display_config = SpiConfig::default().with_frequency(Rate::from_khz(6600));
-    // TODO
-    // let spi_display_config = SpiConfig::default().with_frequency(Rate::from_mhz(2));
-
-    // let spi_display_device = BlockingSpiDeviceWithConfig::new(
-    //     spi_bus.into_blocking(),
-    //     hardware.disp_cs,
-    //     spi_display_config,
-    // );
-
-    // let display_delay = Delay::new();
-
-    // let mut display_driver = RA8875::new(spi_display_device, display_delay, (800, 480));
-    // display_driver.init().unwrap();
-    // esp_println::println!(
-    //     "DEBUG: Driver initialised. Screen dimensions are {:?}.",
-    //     display_driver.size()
-    // );
-    // display_driver.display_on(true).unwrap();
-    // display_driver
-    //     .pwm1_config(true, 0x1A) // RA8875_PWM_CLK_DIV1024
-    //     .unwrap();
-    // display_driver.pwm1_out(255).unwrap();
-
-    // esp_println::println!("DEBUG: Display On.");
-
-    // const BLACK: u16 = 0x0000;
-
-    // display_driver.fill_screen(BLACK).unwrap();
-
-    // draw_shapes(&mut display_driver).unwrap();
-
-    // esp_println::println!("DEBUG: Screen filled.");
 
     /*
        ---------------------------
@@ -310,15 +265,16 @@ async fn main(spawner: Spawner) {
     // TODO set these to must_spawn
 
     // Setting up the network
-    spawner.spawn(wifi_connect(hardware.wifi_controller)).ok();
-    spawner.spawn(run_network_stack(hardware.runner)).ok();
+    spawner
+        .spawn(wifi_connect(wifi_hardware.wifi_controller))
+        .ok();
+    spawner.spawn(run_network_stack(wifi_hardware.runner)).ok();
 
     // Check that the link signal is present and the stack has a valid IP config
     // before continuing.
-    hardware.sta_stack.wait_link_up().await;
-    hardware.sta_stack.wait_config_up().await;
+    wifi_hardware.sta_stack.wait_link_up().await;
+    wifi_hardware.sta_stack.wait_config_up().await;
 
-    esp_println::println!("DEBUG: link and config up");
     // // Read the stations from the internet
     // let stations = read_stations(hardware.sta_stack, constants::STATIONS_URL)
     //     .await
@@ -327,7 +283,7 @@ async fn main(spawner: Spawner) {
     // Read the stations from the stations list in the internet and set up the tuner task
     let r = spawner.spawn(radio_stations_reqwless(
         spawner,
-        hardware.sta_stack,
+        wifi_hardware.sta_stack,
         front_panel,
         STATIONS_URL,
     ));
@@ -350,7 +306,7 @@ async fn main(spawner: Spawner) {
     //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Streaming and playing music
-    spawner.spawn(stream(hardware.sta_stack)).ok();
+    spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
 
@@ -380,49 +336,6 @@ async fn main(spawner: Spawner) {
 //         esp_println::println!("ERROR: Could not print registers");
 //     }
 // }
-
-fn draw_shapes(display: &mut impl DrawTarget<Color = Rgb565>) -> Result<(), DisplayError> {
-    // Define some styles
-    let thin_stroke = PrimitiveStyle::with_stroke(Rgb565::WHITE, 1);
-    let thick_stroke = PrimitiveStyle::with_stroke(Rgb565::RED, 3);
-    let filled_style = PrimitiveStyle::with_fill(Rgb565::BLUE);
-    let filled_with_stroke = PrimitiveStyleBuilder::new()
-        .stroke_color(Rgb565::YELLOW)
-        .stroke_width(2)
-        .fill_color(Rgb565::GREEN)
-        .build();
-
-    // Draw a rectangle outline
-    Rectangle::new(Point::new(10, 10), Size::new(50, 30))
-        .into_styled(thin_stroke)
-        .draw(display)
-        .map_err(|_| DisplayError::Other)?;
-
-    // Draw a filled circle
-    Circle::new(Point::new(80, 20), 25)
-        .into_styled(filled_style)
-        .draw(display)
-        .map_err(|_| DisplayError::Other)?;
-
-    // Draw a triangle with fill and stroke
-    Triangle::new(
-        Point::new(120, 10),
-        Point::new(140, 40),
-        Point::new(100, 40),
-    )
-    //.into_styled(filled_with_stroke)
-    .into_styled(filled_style)
-    .draw(display)
-    .map_err(|_| DisplayError::Other)?;
-
-    // Draw some lines
-    Line::new(Point::new(10, 60), Point::new(150, 80))
-        .into_styled(thick_stroke)
-        .draw(display)
-        .map_err(|_| DisplayError::Other)?;
-
-    Ok(())
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DisplayError {
