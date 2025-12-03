@@ -23,7 +23,7 @@ use hardware::Hardware;
 mod task;
 use task::{
     play_music::play_music,
-    radio_stations::radio_stations_reqwless,
+    radio_stations::radio_stations,
     station_indicator::station_indicator,
     //read_test_music::read_test_music,
     stream::stream,
@@ -52,9 +52,7 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 //use esp_backtrace as _;
 use esp_hal::{
     clock::CpuClock,
-    delay::Delay,
     gpio::{Input, Output},
-    interrupt::software::SoftwareInterruptControl,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
 };
@@ -62,7 +60,7 @@ use esp_hal::{
 use embassy_executor::Spawner;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
-use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig as BlockingSpiDeviceWithConfig;
+//use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig as BlockingSpiDeviceWithConfig;
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
@@ -76,23 +74,9 @@ use vs1053_driver::Vs1053Driver;
 
 use mcp23s17_async::Mcp23s17;
 
-use ra8875::RA8875;
+// use ra8875::RA8875;
 
-use esp_println::{dbg, println};
-
-// --- Embedded graphics crates. TODO theese need to be moved
-// use embedded_graphics::prelude::RgbColor;
-use embedded_graphics_core::geometry::OriginDimensions;
-use embedded_graphics_core::prelude::Size;
-
-use embedded_graphics::{
-    mono_font::{ascii::FONT_6X10, MonoTextStyle},
-    pixelcolor::Rgb565,
-    prelude::*,
-    primitives::{Circle, Line, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, Triangle},
-    text::{Baseline, Text},
-};
-// ------------------
+use esp_println::println;
 
 use crate::{constants::STATIONS_URL, hardware::WifiHardware};
 
@@ -115,28 +99,6 @@ type Vs1053DriverType<'a> = Vs1053Driver<
 pub type MultiplexerDriverType<'a> =
     Mcp23s17<SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
 
-// type RadioStation = Station<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN>;
-// type RadioStations = Stations<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>;
-
-// static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
-
-//const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
-
-// INFO: Notes on stations
-// NOTE: This station does a number of redirects by setting the response header "location". Note that it does
-// not give a return code 3xx which is strange.
-// Anaylsed with Google HAR analyser https://toolbox.googleapps.com/apps/har_analyzer/
-// For a description of the location field see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location
-//const STATION_URL: &str = "http://liveradio.swr.de/sw282p3/swr3/play.mp3";
-
-// NOTE: This station doesn't seem to have redirects (as of now) so used to test the basic functionality
-//const STATION_URL: &str = "http://listen.181fm.com/181-classical_128k.mp3";
-
-// Local server for testing
-//const STATION_URL: &str = "http://192.168.2.107:8080/music/2"; // Hijo de la Luna. 128 kb/s
-
-//const STATION: (&str, &str) = ("SWR3", "http://liveradio.swr.de/sw282p3/swr3/play.mp3");
-
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
@@ -152,11 +114,10 @@ async fn main(spawner: Spawner) {
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
+    //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
     esp_alloc::heap_allocator!(size: 76 * 1024);
 
     println!("DEBUG: heap allocated");
-
-    //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
@@ -168,11 +129,8 @@ async fn main(spawner: Spawner) {
     // This needs to be done before initialiing the wifi
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
-    let wifi_hardware = WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(
-        hardware.wifi,
-        hardware.timer_group,
-        hardware.rng,
-    );
+    let wifi_hardware =
+        WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(hardware.wifi, hardware.rng);
 
     // The stack needs to be static so that it can be used in tasks.
     STACK.init(wifi_hardware.sta_stack);
@@ -281,7 +239,7 @@ async fn main(spawner: Spawner) {
     //     .expect("ERROR: Unable to read stations list");
 
     // Read the stations from the stations list in the internet and set up the tuner task
-    let r = spawner.spawn(radio_stations_reqwless(
+    let r = spawner.spawn(radio_stations(
         spawner,
         wifi_hardware.sta_stack,
         front_panel,

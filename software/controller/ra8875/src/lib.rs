@@ -392,7 +392,7 @@ where
     }
 
     fn read_data(&mut self) -> Result<u8, <SPI as ErrorType>::Error> {
-        let tx_buf: [u8; 1] = [Command::DataRead as u8; 1];
+        // let tx_buf: [u8; 1] = [Command::DataRead as u8; 1];
         let mut rx_buf: [u8; 1] = [0; 1];
 
         self.spi.transaction(&mut [
@@ -431,7 +431,7 @@ where
     }
 
     fn read_status(&mut self) -> Result<u8, <SPI as ErrorType>::Error> {
-        let tx_buf: [u8; 1] = [Command::CmdRead as u8; 1];
+        // let tx_buf: [u8; 1] = [Command::CmdRead as u8; 1];
         let mut rx_buf: [u8; 1] = [0; 1];
 
         self.spi.transaction(&mut [
@@ -1085,7 +1085,7 @@ where
         );
         for Pixel(coord, color) in pixels.into_iter() {
             if bounding_box.contains(coord) {
-                self.draw_point((coord.x as i16, coord.y as i16), color.into_storage());
+                self.draw_point((coord.x as i16, coord.y as i16), color.into_storage())?;
             }
         }
         Ok(())

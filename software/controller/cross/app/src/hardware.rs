@@ -135,8 +135,8 @@ impl WifiHardware {
     pub fn init_wifi<const NUMBER_SOCKETS_STACK_RESOURCES: usize>(
         wifi: WIFI<'static>,
         //radio_clk: RADIO_CLK,
-        timg: TimerGroup<'static, TIMG1>,
-        mut rng: Rng,
+        //timg: TimerGroup<'static, TIMG1>,
+        rng: Rng,
     ) -> Self {
         // let esp_wifi_ctrl = ESP_WIFI_CONTROLLER.uninit().write(
         //     init(
