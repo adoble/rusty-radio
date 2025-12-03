@@ -205,7 +205,7 @@ async fn stream_station(
     let initial_url = initial_station.url();
     let mut url_str = String::<MAX_URL_LEN>::new();
     url_str
-        .push_str(initial_url)
+        .push_str(&initial_url)
         .map_err(|_| StreamError::StationUrlTooLong)?;
 
     'redirect: loop {
@@ -219,7 +219,7 @@ async fn stream_station(
                     // A new station has been selected
                     url_str.clear();
                     url_str
-                        .push_str(station.url())
+                        .push_str(&station.url())
                         .map_err(|_| StreamError::StationUrlTooLong)?;
 
                     Url::parse(&url_str)?
@@ -337,7 +337,7 @@ async fn stream_station(
                 // A new station has been selected
                 url_str.clear();
                 url_str
-                    .push_str(station.url())
+                    .push_str(&station.url())
                     .map_err(|_| StreamError::RedirectionUrlTooLong)?;
             }
             None => {

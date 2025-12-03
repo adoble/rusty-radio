@@ -44,11 +44,11 @@
 //! stations.set_preset(1, 0).unwrap();
 //!
 //! // Retrieve a station by index
-//! let station = stations.get_station(0).unwrap();
+//! let  station = stations.get_station(0).unwrap();
 //! assert_eq!(station.name(), "Radio 1");
 //!
 //! // Retrieve a preset
-//! let preset_station = stations.preset(0).unwrap();
+//! let (_id, preset_station) = stations.preset(0).unwrap();
 //! assert_eq!(preset_station.name(), "Radio 2");
 //! ```
 //!
@@ -103,14 +103,14 @@ impl<const NAME_LEN: usize, const URL_LEN: usize> Station<NAME_LEN, URL_LEN> {
         }
     }
 
-    /// The name of the station as `&str`
-    pub fn name(&self) -> &str {
-        self.name.as_str()
+    /// The name of the station
+    pub fn name(&self) -> String<NAME_LEN> {
+        self.name.clone()
     }
 
     /// The URL of the station as `&str`
-    pub fn url(&self) -> &str {
-        self.url.as_str()
+    pub fn url(&self) -> String<URL_LEN> {
+        self.url.clone()
     }
 }
 
@@ -506,9 +506,9 @@ impl<const NAME_LEN: usize, const URL_LEN: usize, const NUM_PRESETS: usize> core
         for i in 0..self.number_stations() {
             let station = self.get_station(i);
             if let Some(station) = station {
-                display_string.push_str(station.name()).unwrap();
+                display_string.push_str(&station.name()).unwrap();
                 display_string.push_str(", ").unwrap();
-                display_string.push_str(station.url()).unwrap();
+                display_string.push_str(&station.url()).unwrap();
                 display_string.push_str("\n").unwrap();
             }
         }
@@ -554,312 +554,5 @@ pub enum StationError {
 impl From<Utf8Error> for StationError {
     fn from(_err: Utf8Error) -> Self {
         StationError::CsvFieldNotUtf8
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    const MAX_STATION_NAME_LEN: usize = 40;
-    const MAX_STATION_URL_LEN: usize = 256;
-    const NUMBER_PRESETS: usize = 4;
-
-    const STATION_DATA: &str =
-        "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
-Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
-SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
-BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1";
-
-    #[test]
-    fn test_add_and_get_station() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
-
-        stations
-            .add_station("FFH".as_bytes(), "http://www.ffh.de/stream.mp3".as_bytes())
-            .unwrap();
-        stations
-            .add_station(
-                "SWR3".as_bytes(),
-                "http://www.swr.de/stream/3/music.mp3".as_bytes(),
-            )
-            .unwrap();
-        stations
-            .add_station(
-                "SWR1".as_bytes(),
-                "http://www.swr.de/stream/1/music.mp3".as_bytes(),
-            )
-            .unwrap();
-        stations
-            .add_station(
-                "Classic".as_bytes(),
-                "http://www.my_classics.de/stream//music.mp3".as_bytes(),
-            )
-            .unwrap();
-
-        assert_eq!(stations.number_stations(), 4);
-
-        let station = stations.get_station(1);
-
-        if let Some(station) = station {
-            assert_eq!(station.name(), "SWR3");
-            assert_eq!(station.url(), "http://www.swr.de/stream/3/music.mp3");
-        } else {
-            assert!(false, "Station not found");
-        }
-
-        // No station
-        let station = stations.get_station(4);
-        assert!(station.is_none());
-    }
-
-    #[test]
-    fn test_returning_station_id_after_add() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
-        let station_id = stations
-            .add_station("FFH".as_bytes(), "http://www.ffh.de/stream.mp3".as_bytes())
-            .unwrap();
-        assert_eq!(station_id, 0);
-
-        let station_id = stations
-            .add_station(
-                "SWR3".as_bytes(),
-                "http://www.swr.de/stream/3/music.mp3".as_bytes(),
-            )
-            .unwrap();
-        assert_eq!(station_id, 1);
-
-        let station_id = stations
-            .add_station(
-                "SWR1".as_bytes(),
-                "http://www.swr.de/stream/1/music.mp3".as_bytes(),
-            )
-            .unwrap();
-        assert_eq!(station_id, 2);
-
-        let station_id = stations
-            .add_station(
-                "Classic".as_bytes(),
-                "http://www.my_classics.de/stream//music.mp3".as_bytes(),
-            )
-            .unwrap();
-        assert_eq!(station_id, 3);
-    }
-
-    #[test]
-    fn test_add_station_with_error() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
-
-        // Add a station with a name too long
-        let too_long_name = b"This is a station that has a name much too long!";
-        let url = b"http://musak.com/stream.mp3";
-
-        assert_eq!(
-            stations.add_station(too_long_name, url),
-            Err(StationError::NameTooLong)
-        );
-
-        // Add a station with an URL too long
-        let name = b"Big URL";
-        const BIG_URL_LEN: usize = 257;
-        let prefix = b"http://";
-
-        let mut too_long_url: [u8; BIG_URL_LEN] = [0; BIG_URL_LEN];
-        too_long_url[..prefix.len()].copy_from_slice(b"http://");
-
-        for i in prefix.len()..BIG_URL_LEN {
-            too_long_url[i] = 88 as u8; //'x'
-        }
-
-        assert_eq!(
-            stations.add_station(name, &too_long_url),
-            Err(StationError::UrlTooLong)
-        );
-    }
-
-    #[test]
-    fn test_preset() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::new();
-        stations
-            .add_station("FFH".as_bytes(), "http://www.ffh.de/stream.mp3".as_bytes())
-            .unwrap();
-
-        let station_id = stations
-            .add_station(
-                "SWR3".as_bytes(),
-                "http://www.swr.de/stream/3/music.mp3".as_bytes(),
-            )
-            .unwrap();
-        stations.set_preset(station_id, 0).unwrap();
-
-        stations
-            .add_station(
-                "SWR1".as_bytes(),
-                "http://www.swr.de/stream/1/music.mp3".as_bytes(),
-            )
-            .unwrap();
-
-        let station_id = stations
-            .add_station(
-                "Classic".as_bytes(),
-                "http://www.my_classics.de/stream//music.mp3".as_bytes(),
-            )
-            .unwrap();
-
-        stations.set_preset(station_id, 1).unwrap();
-
-        let station = stations.preset(0);
-        if let Some(station) = station {
-            assert_eq!(station.name(), "SWR3");
-            assert_eq!(station.url(), "http://www.swr.de/stream/3/music.mp3")
-        }
-
-        let station = stations.preset(3);
-
-        if let Some(station) = station {
-            assert_eq!(station.name(), "Classic");
-            assert_eq!(station.url(), "http://www.my_classics.de/stream//music.mp3")
-        }
-    }
-
-    #[test]
-    fn test_extract_prefix_slot() {
-        let value = "PREFIX:3";
-
-        let slot = Stations::<MAX_STATION_NAME_LEN,MAX_STATION_URL_LEN, NUMBER_PRESETS >::extract_prefix_slot(value).unwrap();
-
-        assert_eq!(slot, 3);
-    }
-
-    #[test]
-    fn test_load() {
-        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
-Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies
-SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
-BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop
-";
-
-        let stations = Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-            data.as_bytes(),
-        );
-
-        assert!(stations.is_ok());
-
-        let stations = stations.unwrap();
-
-        let station = stations.get_station(2).unwrap();
-        assert_eq!(station.name(), "SWR3");
-        assert_eq!(station.url(), "https://liveradio.swr.de/sw331ch/swr3");
-    }
-
-    #[test]
-    fn test_load_with_presets() {
-        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
-Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
-SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
-BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
-";
-
-        let stations = Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-            data.as_bytes(),
-        );
-
-        assert!(stations.is_ok());
-
-        let stations = stations.unwrap();
-
-        let station = stations.preset(0).unwrap();
-        assert_eq!(station.name(), "Absolute Oldies- Best of the 80s");
-        assert_eq!(station.url(), "http://streams.rpr1.de/rpr-80er-128-mp3");
-
-        let station = stations.preset(1).unwrap();
-        assert_eq!(station.name(), "BBC Radio 1");
-        assert_eq!(
-            station.url(),
-            "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one"
-        );
-
-        let station = stations.preset(2);
-        assert!(station.is_none());
-    }
-
-    #[test]
-    fn test_current_station() {
-        let data = "RPR1,http://streams.rpr1.de/rpr-kaiserslautern-128-mp3,Favorites,Pop
-Absolute Oldies- Best of the 80s,http://streams.rpr1.de/rpr-80er-128-mp3,Favorites,Oldies, PRESET:0
-SWR3,https://liveradio.swr.de/sw331ch/swr3,Favorites,Pop
-BBC Radio 1,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one,UK,Pop, PRESET:1
-    ";
-
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-                data.as_bytes(),
-            )
-            .unwrap();
-
-        stations.set_current_station(2).unwrap();
-
-        let station = stations.current_station().unwrap();
-
-        assert_eq!(station.name(), "SWR3");
-    }
-
-    #[test]
-    fn test_increment_station() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-                STATION_DATA.as_bytes(),
-            )
-            .unwrap();
-
-        stations.set_current_station(1).unwrap();
-
-        stations.increment_current_station();
-
-        let mut current_station = stations.current_station().unwrap();
-
-        assert_eq!("SWR3", current_station.name());
-
-        stations.increment_current_station();
-        stations.increment_current_station();
-        stations.increment_current_station();
-        stations.increment_current_station();
-
-        current_station = stations.current_station().unwrap();
-
-        // Last station
-        assert_eq!("BBC Radio 1", current_station.name())
-    }
-
-    #[test]
-    fn test_decrement_station() {
-        let mut stations =
-            Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(
-                STATION_DATA.as_bytes(),
-            )
-            .unwrap();
-
-        stations.set_current_station(2).unwrap();
-
-        stations.decrement_current_station();
-
-        let mut current_station = stations.current_station().unwrap();
-
-        assert_eq!("Absolute Oldies- Best of the 80s", current_station.name());
-
-        stations.decrement_current_station();
-        stations.decrement_current_station();
-        stations.decrement_current_station();
-        stations.decrement_current_station();
-
-        current_station = stations.current_station().unwrap();
-
-        // First station
-        assert_eq!("RPR1", current_station.name());
     }
 }

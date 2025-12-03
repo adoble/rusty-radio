@@ -49,3 +49,31 @@ fn test_url_error() {
 
     assert!(stations.is_ok());
 }
+
+#[test]
+fn test_load_with_presets() {
+    let data = include_bytes!("resources/stations_with_presets.txt");
+
+    let stations =
+        Stations::<MAX_STATION_NAME_LEN, MAX_STATION_URL_LEN, NUMBER_PRESETS>::load(data).unwrap();
+    let station = stations.get_station(5).unwrap();
+
+    // BBC Radio 3,http://stream.live.vc.bbcmedia.co.uk/bbc_radio_three,UK,Classical
+    assert_eq!("BBC Radio 3", station.name());
+    assert_eq!(
+        "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_three",
+        station.url()
+    );
+
+    let station = stations.preset(0);
+    assert!(station.is_some());
+    let (id, station) = station.unwrap();
+    assert_eq!(station.name(), "RPR1");
+    assert_eq!(id, 0);
+
+    let (id, station) = stations.preset(2).unwrap();
+    assert_eq!(station.name(), "Rockland");
+    assert_eq!(id, 10);
+
+    assert!(stations.preset(3).is_none());
+}
