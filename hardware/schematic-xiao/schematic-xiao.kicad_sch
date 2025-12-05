@@ -4111,6 +4111,18 @@
 		(uuid 3d2cdfac-799c-4c42-a35a-7fec66364d9d)
 	)
 	(rectangle
+		(start 37.465 95.885)
+		(end 77.47 107.315)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid d5dc8872-aec0-4299-90ef-882c41b47a4e)
+	)
+	(rectangle
 		(start 114.935 39.37)
 		(end 175.26 53.34)
 		(stroke
@@ -4189,6 +4201,29 @@
 			(justify left bottom)
 		)
 		(uuid "7cf1752f-ce74-4a46-a38f-81d36999c7da")
+	)
+	(text "See this link."
+		(exclude_from_sim no)
+		(at 47.244 102.616 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(href "https://forum.kicad.info/t/how-to-collapse-long-bus-name-with-bus-aliases/35682")
+		)
+		(uuid "97bfcdf7-1c9c-4f23-a98f-c93df7a586fb")
+	)
+	(text "TODO Merge SPI signals into a bus.\n"
+		(exclude_from_sim no)
+		(at 57.912 99.822 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+				(bold yes)
+			)
+		)
+		(uuid "98a51ccb-a73e-4e03-bdbd-871ff9cdbdbf")
 	)
 	(text "This diode allows the XIAO to be \npowered from USB or PSU.\n\nSee attached link.\n"
 		(exclude_from_sim no)
