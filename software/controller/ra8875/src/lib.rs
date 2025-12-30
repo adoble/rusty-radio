@@ -27,8 +27,6 @@ use embedded_hal::spi::{ErrorType, Operation, SpiDevice};
 
 use embedded_hal::delay::DelayNs;
 
-use esp_println::println;
-
 //type SpiError<SPI> = <SPI as FullDuplex<u8>>::Error;
 
 #[derive(Copy, Clone)]
@@ -480,7 +478,6 @@ where
             }
 
             (800, 480) => {
-                println!("DEBUG: Setting up PLL");
                 self.write_register(Register::PllC1, cmds::PllC1::Div1 as u8 + 11)?;
             }
             _ => panic!("Unsupported display size"),

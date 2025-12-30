@@ -53,6 +53,7 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Input, Output},
+    ram,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
 };
@@ -77,6 +78,8 @@ use mcp23s17_async::Mcp23s17;
 // use ra8875::RA8875;
 
 use esp_println::println;
+
+use esp_alloc as _;
 
 use crate::{constants::STATIONS_URL, hardware::WifiHardware};
 
@@ -104,6 +107,8 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+esp_bootloader_esp_idf::esp_app_desc!();
+
 // #[esp_hal_embassy::main]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
@@ -115,8 +120,10 @@ async fn main(spawner: Spawner) {
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
     //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
-    esp_alloc::heap_allocator!(size: 76 * 1024);
-
+    //esp_alloc::heap_allocator!(size: 76 * 1024);
+    //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
+    //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
+    esp_alloc::heap_allocator!(size: 64 * 1024);
     println!("DEBUG: heap allocated");
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct

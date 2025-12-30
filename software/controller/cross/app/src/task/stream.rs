@@ -144,6 +144,8 @@ pub async fn stream(stack: Stack<'static>) {
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
 
+    esp_println::println!("DEBUG: station change sender initialized");
+
     loop {
         match stream_station(stack, &mut station_change_receiver).await {
             Ok(_) => (), //  stream_station will only return if there is an error
@@ -398,6 +400,8 @@ async fn stream_audio(
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
     #[cfg(feature = "stats")]
+    esp_println::println!("DEBUG: Feature stats selected");
+    #[cfg(feature = "stats")]
     let (mut total_bytes, mut last_stats) = (0u32, Instant::now());
 
     loop {
@@ -423,6 +427,7 @@ async fn stream_audio(
                 if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
                 {
                     // If the pipe is more than 75% full, start playing (and emptying the pipe)
+                    esp_println::println!("DEBUG: set START_PLAYING signal");
                     START_PLAYING.signal(true);
                     read_state = StreamingState::Playing;
                 };
