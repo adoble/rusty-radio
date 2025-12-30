@@ -1,0 +1,41 @@
+command ::= tune | station | preset | wifi | battery | error
+
+command_seperator ::= ':'
+parameter_seperator ::= ','
+terminator ::= ';'
+
+tune ::= 'TUN' command_seperator delta parameter_seperator range terminator
+delta ::= numerical_parameter
+range ::= numerical_parameter
+
+station ::= "STN" command_seperator station_name terminator
+station_name ::= string_parameter
+
+preset ::= 'PRE' command_seperator preset_number parameter_seperator station_name terminator
+preset_number ::= numerical_parameter
+
+wifi ::= 'WFI' command_seperator connected terminator
+connected ::= '0' | '1'
+
+battery ::= 'BAT' command_seperator level terminator
+level ::= '0' | '1'
+
+error ::=  'ERR' command_seperator severity parameter_seperator error_message terminator
+severity ::= warning_level | error_level
+warning_level ::= '0'
+error_level ::= '1'
+
+numerical_parameter ::= digit+
+
+string_parameter ::= character+
+
+
+
+
+
+
+
+
+
+
+
