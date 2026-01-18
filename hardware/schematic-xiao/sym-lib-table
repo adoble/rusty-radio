@@ -4,4 +4,5 @@
   (lib (name "Espressif")(type "KiCad")(uri "${KIPRJMOD}/Espressif.kicad_sym")(options "")(descr ""))
   (lib (name "xiao_esp32c3")(type "KiCad")(uri "${KIPRJMOD}/xiao_esp32c3.kicad_sym")(options "")(descr ""))
   (lib (name "project")(type "KiCad")(uri "${KIPRJMOD}/project.kicad_sym")(options "")(descr ""))
+  (lib (name "xiao-series-library")(type "KiCad")(uri "${KIPRJMOD}/Seeed-Studio-XIAO-Series-Library/Seeed_Studio_XIAO_Series.kicad_sym")(options "")(descr ""))
 )
