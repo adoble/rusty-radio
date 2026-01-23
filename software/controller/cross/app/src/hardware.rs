@@ -68,9 +68,9 @@ impl Hardware {
         // Only SPI2 is available for the ESP32-C3 - TODO is this true?
         let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
             .expect("PANIC: Could not initialize SPI")
-            .with_sck(peripherals.GPIO5)
-            .with_mosi(peripherals.GPIO6)
-            .with_miso(peripherals.GPIO7)
+            .with_sck(peripherals.GPIO4)
+            .with_mosi(peripherals.GPIO5)
+            .with_miso(peripherals.GPIO6)
             .into_async();
 
         println!("DEBUG: SPI initialised");
@@ -84,20 +84,20 @@ impl Hardware {
         // println!("DEBUG: wifi initialised");
 
         Hardware {
-            //button_pin: Input::new(peripherals.GPIO9, Pull::Up),
-            mux_cs: Output::new(peripherals.GPIO2, Level::High, output_config),
+            // Pins for ESP32-S6
+            mux_cs: Output::new(peripherals.GPIO1, Level::High, output_config),
 
-            xcs: Output::new(peripherals.GPIO4, Level::High, output_config),
-            xdcs: Output::new(peripherals.GPIO10, Level::High, output_config),
+            xcs: Output::new(peripherals.GPIO3, Level::High, output_config),
+            xdcs: Output::new(peripherals.GPIO9, Level::High, output_config),
             dreq: Input::new(
-                peripherals.GPIO8,
+                peripherals.GPIO7,
                 InputConfig::default().with_pull(Pull::None),
             ),
             //reset: Output::new(peripherals.GPIO20, Level::High, output_config),
-            reset_codec: Output::new(peripherals.GPIO21, Level::High, output_config),
+            reset_codec: Output::new(peripherals.GPIO2, Level::High, output_config),
 
             // Intially set high to display the diplay.
-            disp_cs: Output::new(peripherals.GPIO9, Level::High, output_config),
+            disp_cs: Output::new(peripherals.GPIO8, Level::High, output_config),
 
             // Assuming that the interrupt signal is actively driven and not open drain.
             // intr: Input::new(

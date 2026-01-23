@@ -1,6 +1,6 @@
 [package]
 name    = "rusty-radio"
-version = "0.0.7"
+version = "0.0.8-s3"
 authors = ["Andrew Doble"]
 edition = "2021"
 license = "MIT OR Apache-2.0" 
@@ -42,71 +42,26 @@ embassy-net = { version = "0.7.0", features = [
 ] }
 
 embedded-io = { version = "0.6.1", default-features = false }
-#esp-alloc = {git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1"}
-# esp-backtrace = { version = "0.15.0", features = [
-#     "esp32c3",
-#     "exception-handler",
-#     "panic-handler",
-#     "println",
-# ] }
 
 esp-backtrace = { version = "0.18.0", features = [
-    "esp32c3",
+    "esp32s3",
     "panic-handler",
     "println",
 ] }
 
-# esp-backtrace = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = [
-#     "esp32c3",
-#     "exception-handler",
-#     "panic-handler",
-#     "println",
-# ] }.git
-#esp-hal = { version = "0.23.1", features = ["esp32c3", "unstable", "critical-section-single-core"] }
-# Unstable feature is required for esp-wifi
-# esp-hal = { version = "0.23.1", features = ["esp32c3", "unstable"] }
-#esp-hal = { version = "1.0.0-beta.0", features = ["esp32c3", "unstable"] }
-#esp-hal = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "unstable"] }
 
-# esp-hal = { version = "=1.0.0-beta.1", features = ["esp32c3", "unstable"] }
-# esp-hal = { version = "=1.0.0-rc.0", features = ["esp32c3", "unstable"] }
-# esp-hal = { version = "=1.0.0-rc.1", features = ["esp32c3", "unstable"] }
-esp-hal = { version = "=1.0.0", features = ["esp32c3", "unstable"] }
+#esp-hal = { version = "=1.0.0", features = ["esp32s3", "unstable"] }
+esp-hal = { version = "1.0.0", features = ["esp32s3", "unstable"] }
 
-# esp-hal-embassy = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = [
-#     "esp32c3",
-#     "log",
-#     #"integrated-timers",
-# ] }
-#esp-hal-embassy = { version = "0.8.1", features = ["esp32c3"] }
-# esp-rtos = { version = "0.1.0", features = ["esp32c3", "embassy", "esp-radio", "esp-alloc"] }
-#esp-rtos = { version = "0.2.0", features = ["esp32c3", "embassy", "esp-radio", "esp-alloc"] }
-esp-rtos = { version = "0.2.0", features = ["esp32c3", "embassy", "esp-radio"] }
 
-#esp-alloc = "0.8.0"
-esp-alloc = {version = "0.9.0", features = ["esp32c3"]}
+esp-rtos = { version = "0.2.0", features = ["esp32s3", "embassy", "esp-radio"] }
 
-esp-println = { version = "0.16.0", features = ["esp32c3"] }
-#esp-println = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1",features = ["esp32c3"] }
-# esp-wifi    = { version = "0.12.0", features = ["esp32c3", "wifi"] }
-#esp-wifi    = { version = "0.13.0", features = ["esp32c3", "wifi"] }
-#esp-wifi    = { git = "https://github.com/esp-rs/esp-hal.git", tag = "v0.23.1", features = ["esp32c3", "wifi"] }
-# esp-wifi = { version = "0.14.1", features = [
-#   "builtin-scheduler",
-#   "esp-alloc",
-#   "esp32c3",
-#   "smoltcp",
-#   "wifi",
-# ] }
-# esp-wifi = { version = "0.15.0", features = [
-#   "builtin-scheduler",
-#   "esp-alloc",
-#   "esp32c3",
-#   "smoltcp",
-#   "wifi",
-# ] }
+esp-alloc = {version = "0.9.0", features = ["esp32s3"]}
+
+esp-println = { version = "0.16.0", features = ["esp32s3"] }
+
 esp-radio = {version = "0.17.0", features = [
-  "esp32c3",
+  "esp32s3",
   "wifi",
   #"esp-alloc",
  # "builtin-scheduler",
@@ -114,14 +69,11 @@ esp-radio = {version = "0.17.0", features = [
 ] }
 
 
-# static_cell        = {version = "2.1.0", features = ["nightly"]}
 static_cell        = "2.1.0"
 embassy-net-driver = "0.2.0"#
-# Using version 0.6.2 of embassy_sync as this matches with the other dependencies
-#  embassy-sync       = "0.6.2"
- embassy-sync       = "0.7.0"
-#embedded-hal-bus = { version = "0.2.0", features = ["async"] }
-#embassy-embedded-hal = "0.3.0"
+
+embassy-sync       = "0.7.0"
+
 embassy-embedded-hal = "0.5.0"
 
 
@@ -162,7 +114,7 @@ periodic-map = {path = "../../periodic-map"}
 reqwless = "0.13.0"
 embedded-graphics-core = "0.4.0"
 embedded-graphics = "0.8.1"
-esp-bootloader-esp-idf = {version = "0.4.0", features = ["esp32c3"]}
+esp-bootloader-esp-idf = {version = "0.4.0", features = ["esp32s3"]}
 #reqwless = "0.12.1"
 
 #nutype = { version = "0.6.1", default-features = false }
