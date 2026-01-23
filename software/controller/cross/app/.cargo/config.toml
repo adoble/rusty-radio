@@ -1,8 +1,9 @@
-# Taerget for esp32c3
+# Target for esp32c3
 # [target.riscv32imc-unknown-none-elf]
 # runner = "espflash flash --monitor"
 
 [target.xtensa-esp32s3-none-elf]
+#runner = "espflash flash --monitor -chip esp32s3"
 runner = "espflash flash --monitor"
 
 [env]
@@ -35,7 +36,8 @@ rustflags = [
 
 ]
 
-target = "riscv32imc-unknown-none-elf"
+#target = "riscv32imc-unknown-none-elf"
+target = "xtensa-esp32s3-none-elf"
 
 [unstable]
 build-std = ["core", "alloc"]

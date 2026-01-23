@@ -134,7 +134,8 @@ async fn main(spawner: Spawner) {
 
     // Initialise the schedular (in this case embasssy).
     // This needs to be done before initialiing the wifi
-    esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
+    // esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
+    esp_rtos::start(hardware.system_timer.alarm0);
 
     let wifi_hardware =
         WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(hardware.wifi, hardware.rng);
