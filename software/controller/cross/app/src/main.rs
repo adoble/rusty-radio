@@ -124,7 +124,6 @@ async fn main(spawner: Spawner) {
     //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     esp_alloc::heap_allocator!(size: 64 * 1024);
-    println!("DEBUG: heap allocated");
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
@@ -247,18 +246,25 @@ async fn main(spawner: Spawner) {
     //     .expect("ERROR: Unable to read stations list");
 
     // Read the stations from the stations list in the internet and set up the tuner task
-    let r = spawner.spawn(radio_stations(
-        spawner,
-        wifi_hardware.sta_stack,
-        front_panel,
-        STATIONS_URL,
-    ));
-    match r {
-        Ok(_) => esp_println::println!("DEBUG: radio_stations spawn successful"),
-        Err(e) => esp_println::println!("DEBUG: radio spawn error:{:?}", e),
-    }
+    // let r = spawner.spawn(radio_stations(
+    //     spawner,
+    //     wifi_hardware.sta_stack,
+    //     front_panel,
+    //     STATIONS_URL,
+    // ));
+    // match r {
+    //     Ok(_) => esp_println::println!("DEBUG: radio_stations spawn successful"),
+    //     Err(e) => esp_println::println!("DEBUG: radio spawn error:{:?}", e),
+    // }
+    spawner
+        .spawn(radio_stations(
+            spawner,
+            wifi_hardware.sta_stack,
+            front_panel,
+            STATIONS_URL,
+        ))
+        .ok();
 
-    esp_println::println!("DEBUG: Station read");
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
     // spawner
@@ -278,7 +284,7 @@ async fn main(spawner: Spawner) {
 
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
-    spawner.spawn(station_indicator(front_panel)).ok();
+    //spawner.spawn(station_indicator(front_panel)).ok();
 }
 
 // async fn print_registers() {

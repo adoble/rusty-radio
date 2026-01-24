@@ -2,7 +2,6 @@ use crate::task::sync::{CODEC_DRIVER, MUSIC_PIPE, START_PLAYING};
 
 #[embassy_executor::task]
 pub async fn play_music() {
-    esp_println::println!("DEBUG: Entered play_music task");
     loop {
         let start_playing = START_PLAYING.wait().await;
         if start_playing {

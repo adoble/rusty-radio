@@ -4,7 +4,6 @@ use crate::{front_panel::FrontPanel, task::sync::STATION_CHANGE_WATCH};
 
 #[embassy_executor::task]
 pub async fn station_indicator(front_panel: &'static FrontPanel) {
-    esp_println::println!("DEBUG: Entered station_indicator task");
     let Some(mut station_change_watch_rcx) = STATION_CHANGE_WATCH.receiver() else {
         panic!("Cannot get station change watch receiver in task:station_indicator")
     };

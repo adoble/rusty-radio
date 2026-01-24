@@ -136,15 +136,12 @@ const TOKEN_LEN: usize = 7;
 /// It assumes that the network runner is running and the the stack IP config has been setup.
 #[embassy_executor::task]
 pub async fn stream(stack: Stack<'static>) {
-    esp_println::println!("DEBUG: Entered stream task");
     // Set up the receiver for changes in the station
     let Some(mut station_change_receiver) = STATION_CHANGE_WATCH.receiver() else {
         panic!("Cannot get station change watch receiver in task:stream");
     };
 
     let station_change_sender = STATION_CHANGE_WATCH.sender();
-
-    esp_println::println!("DEBUG: station change sender initialized");
 
     loop {
         match stream_station(stack, &mut station_change_receiver).await {
@@ -171,7 +168,6 @@ async fn stream_station(
     stack: Stack<'static>,
     station_change_receiver: &mut StationChangeReceiver,
 ) -> Result<(), StreamError> {
-    esp_println::println!("DEBUG: Entered stream_station");
     let mut rx_buffer = [0; TCP_BUFFER_SIZE];
     let mut tx_buffer = [0; TCP_BUFFER_SIZE];
 
@@ -427,7 +423,6 @@ async fn stream_audio(
                 if read_state == StreamingState::FillingPipe && MUSIC_PIPE.len() >= initial_fill_len
                 {
                     // If the pipe is more than 75% full, start playing (and emptying the pipe)
-                    esp_println::println!("DEBUG: set START_PLAYING signal");
                     START_PLAYING.signal(true);
                     read_state = StreamingState::Playing;
                 };
@@ -564,6 +559,8 @@ async fn parse_extended_m3u(socket: &mut TcpSocket<'_>) -> Result<ContentType, S
     }
 }
 
+// TODO Correct these tests so that they compile.
+//      See https://chatgpt.com/c/696fc17c-6a30-832e-a994-78f17cd1f719  for possible solution.
 #[cfg(test)]
 mod tests {
     use super::*;

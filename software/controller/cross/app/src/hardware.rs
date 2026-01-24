@@ -73,15 +73,7 @@ impl Hardware {
             .with_miso(peripherals.GPIO6)
             .into_async();
 
-        println!("DEBUG: SPI initialised");
-
         let output_config = OutputConfig::default();
-        // let input_config = InputConfig::default();
-        println!("DEBUG: output configured");
-
-        // let wifi_peripherals =
-        //     WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(wifi, timer_group, rng);
-        // println!("DEBUG: wifi initialised");
 
         Hardware {
             // Pins for ESP32-S6
@@ -151,8 +143,6 @@ impl WifiHardware {
         // let esp_wifi_ctrl =
         //     ESP_WIFI_CONTROLLER.init(esp_radio::init(timg.timer0, rng.clone()).unwrap());
 
-        println!("DEBUG: enter init_wifi");
-
         let res = esp_radio::init();
 
         let esp_wifi_ctrl = match res {
@@ -163,12 +153,8 @@ impl WifiHardware {
         // TODO reinstate
         //let esp_wifi_ctrl = ESP_WIFI_CONTROLLER.init(esp_radio::init().unwrap());
 
-        println!("DEBUG: esp_wifi_ctrl initialised");
-
         let (controller, interfaces) =
             esp_radio::wifi::new(esp_wifi_ctrl, wifi, Default::default()).unwrap();
-
-        println!("DEBUG: controller initialised");
 
         let wifi_device = interfaces.sta;
 
@@ -188,8 +174,6 @@ impl WifiHardware {
             RESOURCES.init(embassy_net::StackResources::new()),
             seed,
         );
-
-        println!("DEBUG: stack initialised");
 
         // Make the controller static
         static CONTROLLER: StaticCell<WifiController> = StaticCell::new();
