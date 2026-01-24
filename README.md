@@ -18,11 +18,10 @@ Rusty Radio currently supports:
 ![](./hardware/system/System.drawio.svg)
 
 ## Hardware
-
-- Uses the Seeed Studio [XIAO ESP32C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) for its external antenna, making the radio independent of the enclosure.
-    - Initially used the [ESP32-C3-DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c3/esp32-c3-devkitm-1/user_guide.html#) board.
+ - Uses the Seeed Studio [XIAO ESP32S3](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/) for its external antenna, making the radio independent of the enclosure, and also that it has enough RAM for the radio buffers and the embassy tasking requirements (Note previously used the XIAO ESP32C3, but this did not have enough RAM).
 - Uses the VS1053 chip to decode the streamed audio.
 - Schematics are created using KiCad 9.0.
+- *Planned -  Use the Seeed Studio [XIAO ESP32C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) for the display processor.* 
 
 ## Software Architecture
 
