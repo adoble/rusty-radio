@@ -173,18 +173,18 @@ async fn stream_station(
 
     // // This is important. Need to make sure the DHCP is up so
     // // that the ip address can be found from the host name
-    // while !stack.is_config_up() {
-    //     Timer::after_millis(100).await;
-    // }
+    while !stack.is_config_up() {
+        Timer::after_millis(100).await;
+    }
 
-    // stack.wait_config_up().await;
+    stack.wait_config_up().await;
 
-    // loop {
-    //     if stack.is_link_up() {
-    //         break;
-    //     }
-    //     Timer::after(Duration::from_millis(500)).await;
-    // }
+    loop {
+        if stack.is_link_up() {
+            break;
+        }
+        Timer::after(Duration::from_millis(500)).await;
+    }
 
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
 
