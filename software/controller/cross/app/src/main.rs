@@ -284,7 +284,7 @@ async fn main(spawner: Spawner) {
 
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
-    //spawner.spawn(station_indicator(front_panel)).ok();
+    spawner.spawn(station_indicator(front_panel)).ok();
 }
 
 // async fn print_registers() {
