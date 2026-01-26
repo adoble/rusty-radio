@@ -114,12 +114,13 @@ pub async fn tuner(stations: &'static mut RadioStations, front_panel: &'static F
                 match station_id {
                     Some(id) => {
                         let station = stations.get_station(id);
-                        // TODO change this so that we only print out the station name.
-                        esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", station);
+                        if let Some(ref s) = station {
+                            esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", s.name());
+                            last_station_id = station_id;
+                            station_change_sender.send(station);
+                        }
                         // TODO assuming that the following will work.
                         //stations.set_current_station(id).unwrap();
-                        last_station_id = station_id;
-                        station_change_sender.send(station);
                     }
                     None => {
                         // TODO should the current stations be set to None?
