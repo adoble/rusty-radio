@@ -1,6 +1,7 @@
 /// Synchronisation between the different tasks.
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
+    channel::Channel,
     mutex::Mutex,
     pipe::Pipe,
     signal,
@@ -80,3 +81,29 @@ pub type StationChangeReceiver = Receiver<
     Option<RadioStation>,
     STATION_CHANGE_WATCHERS,
 >;
+
+// This channel transports commands to the display.
+const UI_COMMAND_BUFFER_DEPTH: usize = 3;
+pub static UI_COMMANDS_CHANNEL: Channel<
+    CriticalSectionRawMutex,
+    UiCommand,
+    UI_COMMAND_BUFFER_DEPTH,
+> = Channel::new();
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UiCommand {
+    /// Indicates if the wifi is connected
+    WiFiConnected(bool),
+
+    /// The selected station id
+    StationSelect(usize),
+
+    /// If the user has turned the tuner knob
+    TunerMoved(TunerDirection),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TunerDirection {
+    Clockwise,
+    CounterClockwise,
+}

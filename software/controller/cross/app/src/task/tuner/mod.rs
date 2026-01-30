@@ -15,7 +15,7 @@ const VALID_WINDOW: usize = 5;
 const INVALID_WINDOW: usize = 10;
 
 // DESIGN NOTE: This does not debouce the buttons in the traditional way,
-// but this polling technique  seems to work just fine.
+// but this polling technique seems to work just fine.
 #[embassy_executor::task]
 pub async fn tuner(stations: &'static mut RadioStations, front_panel: &'static FrontPanel) {
     //Set up the list of stations
