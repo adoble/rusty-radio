@@ -1,6 +1,17 @@
 {
     "rust-analyzer.check.allTargets": false,
-    "rust-analyzer.cargo.target": "riscv32imc-unknown-none-elf",
+    // "rust-analyzer.cargo.target": "riscv32imc-unknown-none-elf",
+     "rust-analyzer.cargo.target": "xtensa-esp32s3-none-elf",
+
+     "rust-analyzer.check.extraArgs": [
+        "-Zbuild-std=core,alloc"
+    ],
+    "rust-analyzer.cargo.extraArgs": [
+        "-Zbuild-std=core,alloc"
+    ],
+    "rust-analyzer.rustfmt.extraArgs": [
+        "+esp"
+    ], 
 
     "rust-analyzer.checkOnSave.enable": true,
     "rust-analyzer.checkOnSave.command": "clippy",

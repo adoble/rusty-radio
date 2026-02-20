@@ -119,8 +119,8 @@ async fn main(spawner: Spawner) {
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
-    //esp_alloc::heap_allocator!(48 * 1024);   //Recommanded
-    //esp_alloc::heap_allocator!(size: 76 * 1024);
+    //esp_alloc::heap_allocator!(size: 48 * 1024); //Recommanded
+    // esp_alloc::heap_allocator!(size: 76 * 1024);
     //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     esp_alloc::heap_allocator!(size: 64 * 1024);

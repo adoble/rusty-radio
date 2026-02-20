@@ -114,7 +114,7 @@ mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
 
 periodic-map = {path = "../../periodic-map"}
 
-reqwless = "0.13.0"
+reqwless = {version = "0.13.0", default-features = false}
 embedded-graphics-core = "0.4.0"
 embedded-graphics = "0.8.1"
 esp-bootloader-esp-idf = {version = "0.4.0", features = ["esp32s3"]}
