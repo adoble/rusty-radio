@@ -6,11 +6,12 @@
 	(paper "A3")
 	(title_block
 		(title "Rusty Radio")
-		(date "2025-06-07")
-		(rev "0.5.0")
+		(date "2026-03-20")
+		(rev "0.6.0")
 		(company "Doble Audio")
-		(comment 1 "Using a XIAO ESP32C3  board")
+		(comment 1 "Using a XIAO ESP32C3  board for UI and XIAO ESP32S3 for radio")
 		(comment 2 "See https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/")
+		(comment 3 "Two processor solution")
 	)
 	(lib_symbols
 		(symbol "74xx:74HC244"
