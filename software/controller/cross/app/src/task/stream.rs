@@ -194,7 +194,9 @@ async fn stream_station(
     socket.set_timeout(Some(embassy_time::Duration::from_secs(15)));
     socket.set_keep_alive(Some(embassy_time::Duration::from_secs(10)));
 
-    let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
+    //let mut body_buffer = [0u8; AUDIO_BUFFER_SIZE];
+    // This can be quite small and still work, i.e. it can be significantly smaller than the audio buffer
+    let mut body_buffer = [0u8; 16];
 
     // Get the initial station.
     // TODO assuming that this is always Some(station)
