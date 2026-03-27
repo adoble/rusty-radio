@@ -1,9 +1,12 @@
 [package]
 name    = "rusty-radio"
-version = "0.0.8-s3"
+version = "0.0.9-s3"
 authors = ["Andrew Doble"]
 edition = "2021"
 license = "MIT OR Apache-2.0" 
+description = """An internet radio. This uses an ESP32-S3 (instead of the ESP32-C3) to solve memory problems. 
+Some optimisation of the buffer sizes has been done. 
+"""
 
 [dependencies]
 # embassy-executor = { version = "0.7.0", features = [
