@@ -18,10 +18,11 @@ Rusty Radio currently supports:
 ![](./hardware/system/System.drawio.svg)
 
 ## Hardware
- - Uses the Seeed Studio [XIAO ESP32S3](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/) for its external antenna, making the radio independent of the enclosure, and also that it has enough RAM for the radio buffers and the embassy tasking requirements (Note previously used the XIAO ESP32C3, but this did not have enough RAM).
+ - For the radio uses the Seeed Studio [XIAO ESP32C-C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) for its external antenna, making the radio independent of the enclosure.
+ - For the user interface (display, tuning knob and preset buttons) uses another XIAO ESP32-C3 which communicates over an UART interface with the radio processor. 
+   This approach was chosen as using C3 (or for that matter, a S3) for both the radio and the display led to memory issues.  
 - Uses the VS1053 chip to decode the streamed audio.
 - Schematics are created using KiCad 9.0.
-- *Planned -  Use the Seeed Studio [XIAO ESP32C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) for the display processor.* 
 
 ## Software Architecture
 
@@ -30,7 +31,6 @@ Rusty Radio currently supports:
 
 ## Development Notes
 
-- ESP Rust installation requires setting up environment variables. Example: `C:\Users\T440s\export-esp.ps1` contains the injected environment variables.
 - Embassy code examples are referenced from [esp-hal examples](https://github.com/esp-rs/esp-hal/tree/main/examples/src/bin).
 - For more on Embassy, see the [Embassy Book](https://embassy.dev/book/).
 

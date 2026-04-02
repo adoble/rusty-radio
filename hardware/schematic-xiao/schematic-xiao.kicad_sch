@@ -4484,6 +4484,10 @@
 		(uuid "100e140d-2270-4756-8956-524162d2fb04")
 	)
 	(no_connect
+		(at 86.36 63.5)
+		(uuid "10697f80-1065-465d-9db9-704dc9e6d4da")
+	)
+	(no_connect
 		(at 339.09 207.01)
 		(uuid "14f28b81-b492-45eb-8307-4651cd3edba7")
 	)
@@ -4752,15 +4756,6 @@
 			(type default)
 		)
 		(uuid "87043a63-8b7f-474c-87ad-396ce0d5e6c9")
-	)
-	(bus_entry
-		(at 50.8 128.27)
-		(size -2.54 -2.54)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9f85bf8b-9789-47fb-afe6-02d0a8c34d06")
 	)
 	(bus_entry
 		(at 68.58 236.22)
@@ -5088,16 +5083,6 @@
 		)
 		(uuid "37feffe8-6cb4-482b-8267-59270e843eb4")
 	)
-	(bus
-		(pts
-			(xy 50.8 128.27) (xy 54.61 128.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "385c22d6-2ad2-49a4-a780-18fe9a22e9f0")
-	)
 	(wire
 		(pts
 			(xy 226.06 205.74) (xy 218.44 205.74)
@@ -5160,7 +5145,7 @@
 	)
 	(bus
 		(pts
-			(xy 48.26 128.27) (xy 50.8 128.27)
+			(xy 48.26 128.27) (xy 54.61 128.27)
 		)
 		(stroke
 			(width 0)
@@ -5408,16 +5393,6 @@
 			(type default)
 		)
 		(uuid "69a6fb57-6bad-4b0a-8514-3217587a0b5f")
-	)
-	(wire
-		(pts
-			(xy 48.26 63.5) (xy 48.26 125.73)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6ae71a82-3766-4b07-b402-1c18f71a26e3")
 	)
 	(bus
 		(pts
@@ -5798,16 +5773,6 @@
 			(type default)
 		)
 		(uuid "aeafe407-aeeb-432b-b165-0cae4a38d619")
-	)
-	(wire
-		(pts
-			(xy 48.26 63.5) (xy 86.36 63.5)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "aeb01dc1-b7cf-4f11-bdee-f8da5d49fcbd")
 	)
 	(wire
 		(pts
@@ -6972,16 +6937,6 @@
 			(justify left bottom)
 		)
 		(uuid "e1763ad3-7d0d-4c06-93cf-8e6474921ac6")
-	)
-	(label "~{MUX_CS}"
-		(at 67.31 63.5 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "e17a33db-5dad-4a68-8e73-c8c2b528bfbb")
 	)
 	(label "RADIO-MOSI"
 		(at 198.12 78.74 0)

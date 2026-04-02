@@ -24,12 +24,13 @@ mod task;
 use task::{
     play_music::play_music,
     radio_stations::radio_stations,
-    station_indicator::station_indicator,
+    //station_indicator::station_indicator,
     //read_test_music::read_test_music,
     stream::stream,
     //stream2::stream2,
     sync::CODEC_DRIVER,
     sync::MULTIPLEXER_DRIVER,
+    sync::STATION_CHANGE_WATCH,
 
     //access_radio_stations::access_radio_stations,
     //tuner::tuner,
@@ -119,11 +120,12 @@ async fn main(spawner: Spawner) {
 
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
-    //esp_alloc::heap_allocator!(size: 48 * 1024); //Recommanded
-    // esp_alloc::heap_allocator!(size: 76 * 1024);
+    // esp_alloc::heap_allocator!(size: 48 * 1024); //Recommended
+    esp_alloc::heap_allocator!(size: 76 * 1024);
+    //    esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
     //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
-    //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
-    esp_alloc::heap_allocator!(size: 64 * 1024);
+    // For the S3
+    // esp_alloc::heap_allocator!(size: 64 * 1024);
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
@@ -133,8 +135,8 @@ async fn main(spawner: Spawner) {
 
     // Initialise the schedular (in this case embasssy).
     // This needs to be done before initialiing the wifi
-    // esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
-    esp_rtos::start(hardware.system_timer.alarm0);
+    esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
+    //esp_rtos::start(hardware.system_timer.alarm0);
 
     let wifi_hardware =
         WifiHardware::init_wifi::<NUMBER_SOCKETS_STACK_RESOURCES>(hardware.wifi, hardware.rng);
@@ -179,27 +181,28 @@ async fn main(spawner: Spawner) {
             driver.begin().await.unwrap();
         }
     }
+
     // Setup spi for the front panel controller
     // Altough the mutiplexer SPI speed can go up to 10MHz, using a lower frequency works just fine
     // (and gives less problems with transmission lines effects on the breadboard).
-    let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(1));
+    // let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(1));
 
-    let spi_multiplexer_device: SpiDeviceWithConfig<
-        '_,
-        CriticalSectionRawMutex,
-        Spi<'_, esp_hal::Async>,
-        Output<'_>,
-    > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
+    // let spi_multiplexer_device: SpiDeviceWithConfig<
+    //     '_,
+    //     CriticalSectionRawMutex,
+    //     Spi<'_, esp_hal::Async>,
+    //     Output<'_>,
+    // > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
 
     // Set up the mutiplexer driver and provide a mutex for it. Using the sendable version.
-    let multiplexer_driver: SendableMultiplexerDriver = SendableMultiplexerDriver(
-        Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
-            .await
-            .unwrap(),
-    );
-    {
-        *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
-    }
+    // let multiplexer_driver: SendableMultiplexerDriver = SendableMultiplexerDriver(
+    //     Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
+    //         .await
+    //         .unwrap(),
+    // );
+    // {
+    //     *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
+    // }
 
     // Set up the mutiplexer driver and provide a mutex for it.
     // let multiplexer_driver: Mcp23s17<
@@ -211,11 +214,12 @@ async fn main(spawner: Spawner) {
     //     *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
     // }
 
-    let front_panel = FrontPanel::new()
-        .await
-        .expect("ERROR: Cannot initialise front panel");
+    // Initalise the front panel containing the controls
+    // let front_panel = FrontPanel::new()
+    //     .await
+    //     .expect("ERROR: Cannot initialise front panel");
 
-    let front_panel = FRONT_PANEL.init(front_panel);
+    // let front_panel = FRONT_PANEL.init(front_panel);
 
     // set up the stations
 
@@ -256,11 +260,20 @@ async fn main(spawner: Spawner) {
     //     Ok(_) => esp_println::println!("DEBUG: radio_stations spawn successful"),
     //     Err(e) => esp_println::println!("DEBUG: radio spawn error:{:?}", e),
     // }
+    // spawner
+    //     .spawn(radio_stations(
+    //         spawner,
+    //         wifi_hardware.sta_stack,
+    //         front_panel,
+    //         STATIONS_URL,
+    //     ))
+    //     .ok();
+
+    // Note that this also signals the initial station to other tasks.
     spawner
         .spawn(radio_stations(
             spawner,
             wifi_hardware.sta_stack,
-            front_panel,
             STATIONS_URL,
         ))
         .ok();
@@ -278,13 +291,14 @@ async fn main(spawner: Spawner) {
     //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
 
     // Streaming and playing music
+    // spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
     spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
 
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
-    spawner.spawn(station_indicator(front_panel)).ok();
+    //spawner.spawn(station_indicator(front_panel)).ok();
 }
 
 // async fn print_registers() {

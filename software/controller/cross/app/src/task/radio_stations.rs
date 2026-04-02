@@ -1,3 +1,5 @@
+use crate::STATION_CHANGE_WATCH;
+
 use embassy_executor::Spawner;
 use embassy_net::{
     dns::DnsSocket,
@@ -40,12 +42,7 @@ static RADIO_STATIONS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 // Development note: This version uses reqwless. A  previous version used TCP sockets directly.
 // This can be found at https://gist.github.com/adoble/6ae04bff12d76949743be39f9222f06d
 #[embassy_executor::task]
-pub async fn radio_stations(
-    spawner: Spawner,
-    stack: Stack<'static>,
-    front_panel: &'static FrontPanel,
-    stations_url: &'static str,
-) {
+pub async fn radio_stations(spawner: Spawner, stack: Stack<'static>, stations_url: &'static str) {
     let mut rx_buffer = [0; 16000];
     let client_state = TcpClientState::<1, 1024, 1024>::new();
     let tcp_client = TcpClient::new(stack, &client_state);
@@ -69,7 +66,22 @@ pub async fn radio_stations(
                             let stations = RADIO_STATIONS.init(stations);
                             RADIO_STATIONS_INITIALIZED.store(true, Ordering::Release);
 
-                            spawner.must_spawn(tuner(stations, front_panel));
+                            // Signal the initial station
+                            let station_change_sender = STATION_CHANGE_WATCH.sender();
+
+                            // 1. The last set station - TODO
+                            // 2. The first preset stations if set
+                            // 3. The first station in the station list
+
+                            let initial_station = stations
+                                .preset(0)
+                                .map(|s| s.1) // Get the preset station from the tuple
+                                .or_else(|| stations.get_station(0)); //.expect("No initial station found");
+
+                            // Send the inital station
+                            station_change_sender.send(initial_station);
+
+                            //spawner.must_spawn(tuner(stations, front_panel));
                         }
                     }
                 }

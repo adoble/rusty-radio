@@ -1,12 +1,7 @@
 # Toolchain for esp32-c3
-# '[toolchain]
-# channel = "stable"
-# components = ["rust-src"]
-# targets = ["riscv32imc-unknown-none-elf"]
-
-# Toolchain for esp32-s3
 [toolchain]
-channel = "esp"
-#channel = "nightly"
+channel = "stable"
 components = ["rust-src"]
-targets = ["xtensa-esp32s3--none-elf"]
+targets = ["riscv32imc-unknown-none-elf"]
+
+

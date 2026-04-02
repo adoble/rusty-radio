@@ -37,8 +37,6 @@ pub struct Hardware {
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
     pub reset_codec: Output<'static>,
-    pub mux_cs: Output<'static>,
-    pub disp_cs: Output<'static>,
 
     pub system_timer: SystemTimer<'static>,
     pub timer_group: TimerGroup<'static, TIMG1<'static>>,
@@ -68,28 +66,26 @@ impl Hardware {
         // Only SPI2 is available for the ESP32-C3 - TODO is this true?
         let spi_bus: Spi<'_, esp_hal::Async> = Spi::new(peripherals.SPI2, SpiConfig::default())
             .expect("PANIC: Could not initialize SPI")
-            .with_sck(peripherals.GPIO4)
-            .with_mosi(peripherals.GPIO5)
-            .with_miso(peripherals.GPIO6)
+            .with_sck(peripherals.GPIO5)
+            .with_mosi(peripherals.GPIO6)
+            .with_miso(peripherals.GPIO7)
             .into_async();
 
         let output_config = OutputConfig::default();
 
         Hardware {
-            // Pins for ESP32-S6
-            mux_cs: Output::new(peripherals.GPIO1, Level::High, output_config),
-
-            xcs: Output::new(peripherals.GPIO3, Level::High, output_config),
-            xdcs: Output::new(peripherals.GPIO9, Level::High, output_config),
+            // Pins for ESP32-C3
+            xcs: Output::new(peripherals.GPIO4, Level::High, output_config),
+            xdcs: Output::new(peripherals.GPIO10, Level::High, output_config),
             dreq: Input::new(
-                peripherals.GPIO7,
+                peripherals.GPIO8,
                 InputConfig::default().with_pull(Pull::None),
             ),
             //reset: Output::new(peripherals.GPIO20, Level::High, output_config),
-            reset_codec: Output::new(peripherals.GPIO2, Level::High, output_config),
+            reset_codec: Output::new(peripherals.GPIO3, Level::High, output_config),
 
             // Intially set high to display the diplay.
-            disp_cs: Output::new(peripherals.GPIO8, Level::High, output_config),
+            //disp_cs: Output::new(peripherals.GPIO8, Level::High, output_config),
 
             // Assuming that the interrupt signal is actively driven and not open drain.
             // intr: Input::new(

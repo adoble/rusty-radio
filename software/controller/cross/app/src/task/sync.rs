@@ -54,11 +54,6 @@ type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'s
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
 // We need to share the front panel driver between tasks so put it in a static mutex
-// pub static MULTIPLEXER_DRIVER: Mutex<
-//     CriticalSectionRawMutex,
-//     Option<MultiplexerDriverType<'static>>,
-// > = Mutex::new(None);
-
 pub static MULTIPLEXER_DRIVER: Mutex<CriticalSectionRawMutex, Option<SendableMultiplexerDriver>> =
     Mutex::new(None);
 
