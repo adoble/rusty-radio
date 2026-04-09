@@ -38,15 +38,12 @@ pub type MultiplexerDriverType<'a> =
     Mcp23s17<SpiDeviceWithConfig<'a, CriticalSectionRawMutex, Spi<'a, esp_hal::Async>, Output<'a>>>;
 
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
 
 use esp_hal::{
     clock::CpuClock,
-    gpio::{Input, Output},
-    ram,
+    gpio::Output,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
-    timer::timg::TimerGroup,
 };
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;

@@ -1,38 +1,31 @@
 /// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 use esp_hal::{
-    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    gpio::{Level, Output, OutputConfig},
     interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},
-    peripherals::{Peripherals, TIMG1, WIFI},
-    rng::Rng,
+    peripherals::Peripherals,
     spi::master::{Config as SpiConfig, Spi},
-    timer::{systimer::SystemTimer, timg::TimerGroup},
+    timer::systimer::SystemTimer,
 };
-
-use static_cell::StaticCell;
 
 pub struct Hardware {
     pub mux_cs: Output<'static>,
+
+    #[allow(dead_code)]
     pub disp_cs: Output<'static>,
 
     pub system_timer: SystemTimer<'static>,
-    pub rng: Rng,
-
+    //pub rng: Rng,
     pub spi_bus_ui: Spi<'static, esp_hal::Async>,
 
     // Required to setup embassy/esp-rtos
     pub software_interrupt0: SoftwareInterrupt<'static, 0>,
-    pub timer_group: TimerGroup<'static, TIMG1<'static>>,
+    //pub timer_group: TimerGroup<'static, TIMG1<'static>>,
 }
 
 impl Hardware {
     pub fn init(peripherals: Peripherals) -> Hardware {
-        // let rng = Rng::new(peripherals.RNG);
-        let rng = Rng::new();
-
         let systimer = peripherals.SYSTIMER;
-
-        let timer_group = TimerGroup::new(peripherals.TIMG1);
 
         // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
         // Only SPI2 is available for the ESP32-C3 - TODO is this true?
@@ -60,13 +53,13 @@ impl Hardware {
             // ),
             system_timer: SystemTimer::new(systimer),
 
-            rng,
+            // rng,
 
             // SPI
             spi_bus_ui,
 
             // Required to initialise embassy over esp-rtos
-            timer_group,
+            // timer_group,
             software_interrupt0: SoftwareInterruptControl::new(peripherals.SW_INTERRUPT)
                 .software_interrupt0,
         }

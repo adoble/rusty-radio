@@ -2,13 +2,8 @@
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     channel::Channel,
-    mutex::Mutex,
-    pipe::Pipe,
-    signal,
     watch::{Receiver, Watch},
 };
-
-use crate::sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 use crate::RadioStationId;
 
