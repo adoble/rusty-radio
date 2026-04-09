@@ -83,6 +83,8 @@ async fn main(spawner: Spawner) {
 
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
+    esp_println::println!("INFO: Starting UI");
+
     // Wrap the spi_bus in a Mutex and store statically
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus_ui));
