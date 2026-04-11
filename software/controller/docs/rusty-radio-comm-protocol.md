@@ -39,9 +39,9 @@ This takes the form;
 
 | Command | Parameter-List | Response-List | Example Parameters| Example Response |Notes |
 |---------|------------|----------|-------------|------------------|-------|
-| STA| | n | | 12 | Query the configuration status. Returns the n - the number of stations |
-| PRE| | list of the names of preset stations | | SWR3,RPR1,BBC ONE, RAI1 | Query the presets. Returns a list of preset station names|
-| TUN| station-id |  error-code | 4 | | Command to tune into the station|
+| CFG | | n | | 12 | Query the configuration status. Returns n - the number of stations |
+| PRE | selected preset id |  | 3 |  | Select a preset |
+| STA | station-id |  error-code | 4 | | Command to tune into the station|
 
 
 
