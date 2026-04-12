@@ -7,6 +7,7 @@ use nb::block; // Import the block! macro to wait for operations
 // Assumes 'serial' is a pre-configured UART instance (e.g., from a device HAL)
 // e.g., let mut serial = stm32f4xx_hal::serial::Serial::new(...);
 
+#[deprecated(note = "Only using this as reference code. Remove later")]
 pub fn send_hello<S>(serial: &mut S) -> Result<(), S::Error>
 where
     S: Write<u8>, // S must implement Serial Write trait for u8
@@ -38,12 +39,26 @@ where
 
     block!(serial.flush())?;
 
-    let mut c: u8 = b' ';
+    let mut response = [0; 8];
+    let mut i = 0;
+    loop {
+        let c = block!(serial.read())?;
+        if c == b';' {
+            break;
+        }
+        response[i] = c;
+        i += 1;
 
-    while c != b';' {
-        c = block!(serial.read())?;
+        // Optional: Add a timeout or max length check to prevent infinite loop
         // TODO parse the response
     }
+
+    // let mut c: u8 = b' ';
+
+    // while c != b';' {
+    //     c = block!(serial.read())?;
+    //     // TODO parse the response
+    // }
 
     Ok(())
 }

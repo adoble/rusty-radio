@@ -34,7 +34,7 @@ fn test_set_station() {
 
     let mut serial = SerialMock::new(&expectations);
 
-    let _r = uart_handler::set_station(&mut serial, 5);
+    let _r = set_station(&mut serial, 5);
 
     serial.done();
 }
