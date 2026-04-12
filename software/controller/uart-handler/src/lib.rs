@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 
-use embedded_hal_nb::serial::Write; // Import the Write trait
+use embedded_hal_nb::serial::{Read, Write}; // Import the Write trait
+use itoa::Buffer;
 use nb::block; // Import the block! macro to wait for operations
 
 // Assumes 'serial' is a pre-configured UART instance (e.g., from a device HAL)
@@ -17,5 +18,32 @@ where
     }
     // Optional: wait for transmission to finish
     block!(serial.flush())?;
+    Ok(())
+}
+
+pub fn set_station<S>(serial: &mut S, station_id: u8) -> Result<(), S::Error>
+where
+    S: Write<u8> + Read<u8>, // S must implement Serial Write trait for u8
+{
+    let command = b"STA:";
+    for &byte in command {
+        block!(serial.write(byte))?;
+    }
+    let mut buffer = Buffer::new();
+    let station_id_str = buffer.format(station_id).as_bytes();
+    for &byte in station_id_str {
+        block!(serial.write(byte))?;
+    }
+    block!(serial.write(b';'))?;
+
+    block!(serial.flush())?;
+
+    let mut c: u8 = b' ';
+
+    while c != b';' {
+        c = block!(serial.read())?;
+        // TODO parse the response
+    }
+
     Ok(())
 }

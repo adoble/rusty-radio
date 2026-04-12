@@ -26,7 +26,7 @@ This takes the form;
 
 ## Response
 ```
-<<response-list> ::= ( <parameter> ( "," <parameter> )* )? ";"
+<acknowledge-response> ::= "ACK:" ( <parameter> ( "," <parameter> )* )? ";"
 
 <response> ::= <response_list> | <error-response>
 
