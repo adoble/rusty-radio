@@ -25,7 +25,7 @@ fn test_serial() {
 fn test_set_station() {
     // Configure expectations
     let tx_message = "STA:5;";
-    let rx_message = "ACK:;";
+    let rx_message = "ACK:SWR3;";
     let expectations = [
         SerialTransaction::write_many(tx_message.as_bytes()),
         SerialTransaction::flush(),
@@ -34,7 +34,9 @@ fn test_set_station() {
 
     let mut serial = SerialMock::new(&expectations);
 
-    let _r = set_station(&mut serial, 5);
+    let station_name = set_station(&mut serial, 5).expect("Error in setting station");
+
+    assert_eq!("SWR3", station_name);
 
     serial.done();
 }
