@@ -5,6 +5,9 @@ use heapless::{String, Vec};
 use itoa::Buffer;
 use nb::block; // Import the block! macro to wait for operations
 
+mod error;
+use error::UartHandlerError;
+
 #[deprecated(note = "Make this generic")]
 pub const MAX_STATION_NAME_LEN: usize = 40;
 
@@ -29,29 +32,30 @@ where
 pub fn set_station<S>(
     serial: &mut S,
     station_id: u8,
-) -> Result<String<MAX_STATION_NAME_LEN>, S::Error>
+) -> Result<String<MAX_STATION_NAME_LEN>, UartHandlerError>
 where
     S: Write<u8> + Read<u8>, // S must implement Serial Write trait for u8
 {
+    // TODO differentiate the errors
     let command = b"STA:";
     for &byte in command {
-        block!(serial.write(byte))?;
+        block!(serial.write(byte)).map_err(|e| UartHandlerError::SendCommand)?;
     }
     let mut buffer = Buffer::new();
     let station_id_str = buffer.format(station_id).as_bytes();
     for &byte in station_id_str {
-        block!(serial.write(byte))?;
+        block!(serial.write(byte)).map_err(|e| UartHandlerError::SendCommand)?;
     }
-    block!(serial.write(b';'))?;
+    block!(serial.write(b';')).map_err(|e| UartHandlerError::SendCommand)?;
 
-    block!(serial.flush())?;
+    block!(serial.flush()).map_err(|e| UartHandlerError::SendCommand)?;
 
     // TODO change this into a Vec to save lots of conversions
     const MAX_RESPONSE_LEN: usize = MAX_STATION_NAME_LEN + 5;
     let mut rx_bytes = Vec::<u8, MAX_RESPONSE_LEN>::new();
     loop {
-        let c = block!(serial.read())?;
-        rx_bytes.push(c).expect("TODO: proper error handling");
+        let c = block!(serial.read()).map_err(|e| UartHandlerError::Read)?;
+        rx_bytes.push(c).map_err(|e| UartHandlerError::OutOfRange)?;
         if c == b';' {
             break;
         }
@@ -61,17 +65,19 @@ where
     }
 
     let response =
-        String::<MAX_RESPONSE_LEN>::from_utf8(rx_bytes).expect("TODO: Some propoer error handling");
+        String::<MAX_RESPONSE_LEN>::from_utf8(rx_bytes).map_err(|e| UartHandlerError::NonUTF8)?;
 
     // Parse the response
     let mut station_name = String::<MAX_STATION_NAME_LEN>::new();
     match response[0..4].as_bytes() {
         b"ACK:" => {
-            let terminator_pos = response.find(';').expect("TODO proper error handling");
+            let terminator_pos = response
+                .find(';')
+                .ok_or(UartHandlerError::IllFormedReponse)?;
 
             station_name
                 .push_str(&response[4..terminator_pos])
-                .expect("TODO: Proper error handling");
+                .map_err(|e| UartHandlerError::OutOfRange)?;
         }
         b"ERR:" => {
             todo!("ERR")
