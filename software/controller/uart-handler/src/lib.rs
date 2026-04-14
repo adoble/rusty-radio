@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 
-use embedded_hal_nb::serial::{Read, Write}; // Import the Write trait
+use embedded_hal_nb::serial::{Error, Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 use itoa::Buffer;
 use nb::block; // Import the block! macro to wait for operations
@@ -8,7 +8,7 @@ use nb::block; // Import the block! macro to wait for operations
 mod error;
 use error::UartHandlerError;
 
-#[deprecated(note = "Make this generic")]
+#[deprecated(note = "TODO: Make this generic")]
 pub const MAX_STATION_NAME_LEN: usize = 40;
 
 // Assumes 'serial' is a pre-configured UART instance (e.g., from a device HAL)
@@ -39,23 +39,25 @@ where
     // TODO differentiate the errors
     let command = b"STA:";
     for &byte in command {
-        block!(serial.write(byte)).map_err(|e| UartHandlerError::SendCommand)?;
+        block!(serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
     }
     let mut buffer = Buffer::new();
     let station_id_str = buffer.format(station_id).as_bytes();
     for &byte in station_id_str {
-        block!(serial.write(byte)).map_err(|e| UartHandlerError::SendCommand)?;
+        block!(serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
     }
-    block!(serial.write(b';')).map_err(|e| UartHandlerError::SendCommand)?;
+    block!(serial.write(b';')).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
 
-    block!(serial.flush()).map_err(|e| UartHandlerError::SendCommand)?;
+    block!(serial.flush()).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
 
     // TODO change this into a Vec to save lots of conversions
     const MAX_RESPONSE_LEN: usize = MAX_STATION_NAME_LEN + 5;
     let mut rx_bytes = Vec::<u8, MAX_RESPONSE_LEN>::new();
     loop {
-        let c = block!(serial.read()).map_err(|e| UartHandlerError::Read)?;
-        rx_bytes.push(c).map_err(|e| UartHandlerError::OutOfRange)?;
+        let c = block!(serial.read()).map_err(|e| UartHandlerError::SerialRead(e.kind()))?;
+        rx_bytes
+            .push(c)
+            .map_err(|_| UartHandlerError::ResponseTooLarge)?;
         if c == b';' {
             break;
         }
@@ -65,7 +67,7 @@ where
     }
 
     let response =
-        String::<MAX_RESPONSE_LEN>::from_utf8(rx_bytes).map_err(|e| UartHandlerError::NonUTF8)?;
+        String::<MAX_RESPONSE_LEN>::from_utf8(rx_bytes).map_err(|_| UartHandlerError::NonUTF8)?;
 
     // Parse the response
     let mut station_name = String::<MAX_STATION_NAME_LEN>::new();
@@ -77,7 +79,7 @@ where
 
             station_name
                 .push_str(&response[4..terminator_pos])
-                .map_err(|e| UartHandlerError::OutOfRange)?;
+                .map_err(|_| UartHandlerError::ParameterTooLarge)?;
         }
         b"ERR:" => {
             todo!("ERR")
