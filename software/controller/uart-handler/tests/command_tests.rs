@@ -1,4 +1,4 @@
-use uart_handler::Command;
+use uart_handler::command::Command;
 
 use heapless::String;
 

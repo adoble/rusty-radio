@@ -5,6 +5,9 @@ use heapless::{String, Vec};
 use itoa::Buffer;
 use nb::block; // Import the block! macro to wait for operations
 
+pub mod command;
+use command::Command;
+
 mod error;
 use error::UartHandlerError;
 
@@ -37,8 +40,8 @@ where
     S: Write<u8> + Read<u8>, // S must implement Serial Write trait for u8
 {
     // TODO differentiate the errors
-    let command = b"STA:";
-    for &byte in command {
+    let cmd = b"STA:";
+    for &byte in cmd {
         block!(serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
     }
     let mut buffer = Buffer::new();
@@ -88,24 +91,4 @@ where
     };
 
     Ok(station_name)
-}
-
-#[derive(PartialEq, Debug)]
-pub enum Command {
-    Station,
-    Undefined,
-}
-
-impl Command {
-    pub fn to_string(&self) -> String<3> {
-        let mut command_string = String::<3>::new();
-
-        let s = match self {
-            Self::Station => "STA",
-            Self::Undefined => "",
-        };
-
-        command_string.push_str(s).unwrap();
-        command_string
-    }
 }
