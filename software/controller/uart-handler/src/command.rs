@@ -7,7 +7,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn to_string(&self) -> String<3> {
+    pub fn stringify(&self) -> String<3> {
         let mut command_string = String::<3>::new();
 
         let s = match self {

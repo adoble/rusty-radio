@@ -6,7 +6,7 @@ use heapless::String;
 fn test_conversion_to_str() {
     let cmd = Command::Station;
 
-    let cmd_str: String<3> = cmd.to_string();
+    let cmd_str: String<3> = cmd.stringify();
 
     // let mut s = String::<3>::new();
     // s.push_str("STA");
