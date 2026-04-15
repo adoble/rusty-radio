@@ -11,6 +11,8 @@ use command::Command;
 mod error;
 use error::UartHandlerError;
 
+const MAX_NUMBER_PARAMETERS: usize = 5;
+
 #[deprecated(note = "TODO: Make this generic")]
 pub const MAX_STATION_NAME_LEN: usize = 40;
 
@@ -36,19 +38,30 @@ where
         &mut self,
         station_id: u8,
     ) -> Result<String<MAX_STATION_NAME_LEN>, UartHandlerError> {
-        // TODO differentiate the errors
-        let cmd = b"STA:";
-        for &byte in cmd {
-            block!(self.serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-        }
-        let mut buffer = Buffer::new();
-        let station_id_str = buffer.format(station_id).as_bytes();
-        for &byte in station_id_str {
-            block!(self.serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-        }
-        block!(self.serial.write(b';')).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+        let cmd = Command::Station;
+        let mut parameters = Vec::<&str, 5>::new();
 
-        block!(self.serial.flush()).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+        let mut buffer = Buffer::new();
+        let station_id_str = buffer.format(station_id);
+
+        // SAFETY - Ony ever pushing one parameter.
+        parameters.push(station_id_str).unwrap();
+
+        self.send_command(cmd, parameters)
+            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+
+        // let cmd = b"STA:";
+        // for &byte in cmd {
+        //     block!(self.serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+        // }
+        // let mut buffer = Buffer::new();
+        // let station_id_str = buffer.format(station_id).as_bytes();
+        // for &byte in station_id_str {
+        //     block!(self.serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+        // }
+        // block!(self.serial.write(b';')).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+
+        // block!(self.serial.flush()).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
 
         // TODO change this into a Vec to save lots of conversions
         const MAX_RESPONSE_LEN: usize = MAX_STATION_NAME_LEN + 5;
@@ -90,65 +103,33 @@ where
 
         Ok(station_name)
     }
+
+    fn send_command(
+        &mut self,
+        command: Command,
+        parameters: Vec<&str, MAX_NUMBER_PARAMETERS>,
+    ) -> Result<(), S::Error> {
+        let cmd = command.stringify().into_bytes();
+        for byte in cmd {
+            block!(self.serial.write(byte))?;
+        }
+        block!(self.serial.write(b':'))?;
+
+        for (index, param) in parameters.iter().enumerate() {
+            for &byte in param.as_bytes() {
+                block!(self.serial.write(byte))?;
+            }
+            if index < parameters.len() - 1 {
+                // Not at end so add a comma
+                block!(self.serial.write(b','))?;
+            };
+        }
+
+        // Terminate
+        block!(self.serial.write(b';'))?;
+
+        block!(self.serial.flush())?;
+
+        Ok(())
+    }
 }
-
-// pub fn set_station<S>(
-//     serial: &mut S,
-//     station_id: u8,
-// ) -> Result<String<MAX_STATION_NAME_LEN>, UartHandlerError>
-// where
-//     S: Write<u8> + Read<u8>, // S must implement Serial Write trait for u8
-// {
-//     // TODO differentiate the errors
-//     let cmd = b"STA:";
-//     for &byte in cmd {
-//         block!(serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-//     }
-//     let mut buffer = Buffer::new();
-//     let station_id_str = buffer.format(station_id).as_bytes();
-//     for &byte in station_id_str {
-//         block!(serial.write(byte)).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-//     }
-//     block!(serial.write(b';')).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-
-//     block!(serial.flush()).map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
-
-//     // TODO change this into a Vec to save lots of conversions
-//     const MAX_RESPONSE_LEN: usize = MAX_STATION_NAME_LEN + 5;
-//     let mut rx_bytes = Vec::<u8, MAX_RESPONSE_LEN>::new();
-//     loop {
-//         let c = block!(serial.read()).map_err(|e| UartHandlerError::SerialRead(e.kind()))?;
-//         rx_bytes
-//             .push(c)
-//             .map_err(|_| UartHandlerError::ResponseTooLarge)?;
-//         if c == b';' {
-//             break;
-//         }
-
-//         // Optional: Add a timeout or max length check to prevent infinite loop
-//         // TODO parse the response
-//     }
-
-//     let response =
-//         String::<MAX_RESPONSE_LEN>::from_utf8(rx_bytes).map_err(|_| UartHandlerError::NonUTF8)?;
-
-//     // Parse the response
-//     let mut station_name = String::<MAX_STATION_NAME_LEN>::new();
-//     match response[0..4].as_bytes() {
-//         b"ACK:" => {
-//             let terminator_pos = response
-//                 .find(';')
-//                 .ok_or(UartHandlerError::IllFormedReponse)?;
-
-//             station_name
-//                 .push_str(&response[4..terminator_pos])
-//                 .map_err(|_| UartHandlerError::ParameterTooLarge)?;
-//         }
-//         b"ERR:" => {
-//             todo!("ERR")
-//         }
-//         _ => todo!("proper error handling"),
-//     };
-
-//     Ok(station_name)
-// }
