@@ -2,7 +2,7 @@
 use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
 use embedded_hal_nb::serial::{Read, Write};
 
-use uart_handler::set_station;
+use uart_handler::UartHandler;
 
 #[test]
 fn test_set_station() {
@@ -17,7 +17,11 @@ fn test_set_station() {
 
     let mut serial = SerialMock::new(&expectations);
 
-    let station_name = set_station(&mut serial, 5).expect("Error in setting station");
+    let mut uart_handler = UartHandler::new(&mut serial);
+
+    let station_name = uart_handler
+        .set_station(5)
+        .expect("Error in setting station");
 
     assert_eq!("SWR3", station_name);
 
