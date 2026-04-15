@@ -17,21 +17,6 @@ pub const MAX_STATION_NAME_LEN: usize = 40;
 // Assumes 'serial' is a pre-configured UART instance (e.g., from a device HAL)
 // e.g., let mut serial = stm32f4xx_hal::serial::Serial::new(...);
 
-#[deprecated(note = "Only using this as reference code. Remove later")]
-pub fn send_hello<S>(serial: &mut S) -> Result<(), S::Error>
-where
-    S: Write<u8>, // S must implement Serial Write trait for u8
-{
-    let message = b"Hello";
-    for &byte in message {
-        // block! waits until the UART is ready to send the byte
-        block!(serial.write(byte))?;
-    }
-    // Optional: wait for transmission to finish
-    block!(serial.flush())?;
-    Ok(())
-}
-
 pub fn set_station<S>(
     serial: &mut S,
     station_id: u8,
