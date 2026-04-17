@@ -10,7 +10,7 @@ pub mod command;
 use command::Command;
 
 mod error;
-use error::UartHandlerError;
+pub use error::UartHandlerError;
 
 const MAX_NUMBER_PARAMETERS: usize = 5;
 

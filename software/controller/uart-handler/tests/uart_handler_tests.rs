@@ -2,7 +2,7 @@
 use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
 use embedded_hal_nb::serial::{Read, Write};
 
-use uart_handler::{UartHandler, command::Command};
+use uart_handler::{UartHandler, UartHandlerError, command::Command};
 
 use heapless::{String, Vec};
 
@@ -89,6 +89,72 @@ fn test_receive_response_with_no_parameters() {
     assert!(r.is_ok());
 
     assert_eq!(0, parameters.len());
+
+    serial.done();
+}
+
+#[test]
+fn test_receive_response_with_error() {
+    let rx_message = "ERR:001;";
+    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<40>, 5>::new();
+
+    let r = uart_handler.receive_response(&mut parameters);
+
+    assert!(r.is_err());
+
+    if let Err(error_code) = r {
+        assert_eq!(UartHandlerError::ClientCannotHandleCommand, error_code)
+    };
+
+    serial.done();
+}
+
+#[test]
+fn test_receive_response_with_unknown_error() {
+    let rx_message = "ERR:999;";
+    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<40>, 5>::new();
+
+    let r = uart_handler.receive_response(&mut parameters);
+
+    assert!(r.is_err());
+
+    if let Err(error_code) = r {
+        assert_eq!(UartHandlerError::ClientSentUnknownErrorCode, error_code)
+    };
+
+    serial.done();
+}
+
+#[test]
+fn test_receive_ill_formed_response() {
+    let rx_message = "ACK;";
+    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<40>, 5>::new();
+
+    let r = uart_handler.receive_response(&mut parameters);
+
+    assert!(r.is_err());
+
+    if let Err(error_code) = r {
+        assert_eq!(UartHandlerError::IllFormedReponse, error_code)
+    };
 
     serial.done();
 }

@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 //#[cfg_attr(not(test), derive(defmt::Format))] // Only used when running on target hardware
 pub enum UartHandlerError {
     SerialWrite(embedded_hal_nb::serial::ErrorKind),
