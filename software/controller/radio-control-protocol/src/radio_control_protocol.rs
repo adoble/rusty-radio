@@ -1,7 +1,6 @@
 use embedded_hal_nb::serial::{Error, Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 use itoa::Buffer;
-use nb::block; // Import the block! macro to wait for operations
 use static_assertions::{self, const_assert};
 
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
@@ -63,6 +62,7 @@ where
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub enum RadioControlProtocolError {
     Uart(UartHandlerError),
     StationNameNotReceived,
