@@ -40,9 +40,9 @@ This takes the form;
 | Command | Parameter-List | Response-List | Example Parameters| Example Response |Notes |
 |---------|------------|----------|-------------|------------------|-------|
 | CFG | | n | | 12 | Query the configuration status. Returns n - the number of stations |
-| PRE | selected preset id |  | 3 |  | Select a preset |
-| STA | station-id | The selected station name | 4 | | Command to tune into the station|
-| STA | station-id |  error-code | 4 | | Command to tune into the station|
+| PRE | selected preset id |  The selected station name  | 3 | RPR1 | Select a preset |
+| STA | station-id | The selected station name | 4 | SWR3 | Command to tune into the station|
+| STA | station-id |  error-code | 4 | 101 | Command to tune into the station|
 
 
 
