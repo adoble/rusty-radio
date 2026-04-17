@@ -2,7 +2,7 @@
 use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
 use embedded_hal_nb::serial::{Read, Write};
 
-use uart_handler::{UartHandler, UartHandlerError, command::Command};
+use radio_control_protocol::uart_handler::{Command, UartHandler, UartHandlerError};
 
 use heapless::{String, Vec};
 

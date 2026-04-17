@@ -27,7 +27,7 @@ mcp23s17-async = { git = "https://github.com/Fundevoge/mcp23s17-async.git" }
 periodic-map = {path = "../../periodic-map"}
 
 
-uart-handler = {path = "../../uart-handler"}
+radio-control-protocol = {path = "../../radio-control-protocol"}
 
 # [profile.dev]
 # # Rust debug is too slow.

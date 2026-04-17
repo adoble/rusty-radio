@@ -29,7 +29,7 @@
         "stations/Cargo.toml", 
         "m3u/Cargo.toml",
         "periodic-map/Cargo.toml",
-        "uart-handler/Cargo.toml"
+        "radio-control-protocol/Cargo.toml"
     ],
 
 }

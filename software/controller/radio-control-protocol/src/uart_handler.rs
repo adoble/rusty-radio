@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), no_std)]
-
 use embedded_hal_nb::serial::{Error, Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 use itoa::Buffer;
@@ -7,7 +5,7 @@ use nb::block; // Import the block! macro to wait for operations
 use static_assertions::{self, const_assert};
 
 pub mod command;
-use command::Command;
+pub use command::Command;
 
 mod error;
 pub use error::UartHandlerError;

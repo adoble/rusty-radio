@@ -1,4 +1,4 @@
-use uart_handler::command::Command;
+use radio_control_protocol::uart_handler::command::Command;
 
 use heapless::String;
 
