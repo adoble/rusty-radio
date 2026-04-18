@@ -1,6 +1,5 @@
 /// Note that we're using the non-blocking serial traits
 use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
-//use embedded_hal_nb::serial::{Read, Write};
 
 use radio_control_protocol::uart_handler::{Command, UartHandler, UartHandlerError};
 
@@ -17,7 +16,7 @@ fn test_send_command() {
 
     let mut serial = SerialMock::new(&expectations);
 
-    let mut uart_handler = UartHandler::new(&mut serial);
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
 
     let mut parameters = Vec::<&str, 5>::new();
     parameters.push("5").unwrap();

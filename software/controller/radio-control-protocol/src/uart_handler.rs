@@ -1,7 +1,6 @@
 use embedded_hal_nb::serial::{Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 use nb::block; // Import the block! macro to wait for operations
-use static_assertions::{self, const_assert};
 
 pub mod command;
 pub use command::Command;
@@ -9,26 +8,15 @@ pub use command::Command;
 mod error;
 pub use error::UartHandlerError;
 
-const MAX_NUMBER_PARAMETERS: usize = 5;
-
-#[deprecated(note = "TODO: Make this generic")]
-pub const MAX_STATION_NAME_LEN: usize = 40;
-
-pub const MAX_PARAMETER_LEN: usize = 40;
-
-const_assert!(MAX_PARAMETER_LEN >= MAX_STATION_NAME_LEN);
-
-// Assumes 'serial' is a pre-configured UART instance (e.g., from a device HAL)
-// e.g., let mut serial = stm32f4xx_hal::serial::Serial::new(...);
-
-pub struct UartHandler<'a, S>
+pub struct UartHandler<'a, S, const MAX_PARAMETER_LEN: usize, const MAX_NUMBER_PARAMETERS: usize>
 where
     S: Write<u8> + Read<u8>,
 {
     serial: &'a mut S,
 }
 
-impl<'a, S> UartHandler<'a, S>
+impl<'a, S, const MAX_PARAMETER_LEN: usize, const MAX_NUMBER_PARAMETERS: usize>
+    UartHandler<'a, S, MAX_PARAMETER_LEN, MAX_NUMBER_PARAMETERS>
 where
     S: Write<u8> + Read<u8>,
 {

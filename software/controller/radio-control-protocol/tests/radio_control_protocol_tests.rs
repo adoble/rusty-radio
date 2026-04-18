@@ -18,11 +18,7 @@ fn test_set_station() {
 
     let mut serial = SerialMock::new(&expectations);
 
-    // let uart_handler = UartHandler::new(&mut serial);
-
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
-
-    // let mut uart_handler = UartHandler::new(&mut serial);
 
     let station_name = radio_control_protocol
         .set_station(5)
@@ -45,8 +41,6 @@ fn test_set_station_with_error() {
     ];
 
     let mut serial = SerialMock::new(&expectations);
-
-    //let mut uart_handler = UartHandler::new(&mut serial);
 
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
 
