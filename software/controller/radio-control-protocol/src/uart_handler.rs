@@ -29,7 +29,8 @@ where
         command: Command,
         parameters: Vec<&str, MAX_NUMBER_PARAMETERS>,
     ) -> Result<(), S::Error> {
-        let cmd = command.stringify().into_bytes();
+        //let cmd = command.stringify().into_bytes();
+        let cmd: [u8; 3] = (&command).into();
         for byte in cmd {
             block!(self.serial.write(byte))?;
         }
