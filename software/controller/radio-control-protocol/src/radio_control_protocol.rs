@@ -24,6 +24,7 @@ where
         Self { uart_handler }
     }
 
+    /// Sets a radio station based on it's id. The radio station name is returned.
     pub fn set_station(
         &mut self,
         station_id: u8,
@@ -51,12 +52,73 @@ where
             Err(RadioControlProtocolError::StationNameNotReceived)
         }
     }
+
+    /// Sets a station based its preset id. The station name is returned.
+    pub fn set_preset(
+        &mut self,
+        preset_id: u8,
+    ) -> Result<String<MAX_PARAMETER_LEN>, RadioControlProtocolError> {
+        let cmd = Command::Preset;
+        let mut tx_parameters = Vec::<&str, 5>::new();
+
+        let mut buffer = Buffer::new();
+        let preset_id_str = buffer.format(preset_id);
+
+        // SAFETY - Only ever pushing one parameter.
+        tx_parameters.push(preset_id_str).unwrap();
+
+        self.uart_handler
+            .send_command(cmd, tx_parameters)
+            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+
+        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+
+        self.uart_handler.receive_response(&mut rx_parameters)?;
+
+        if !rx_parameters.is_empty() {
+            Ok(rx_parameters[0].clone())
+        } else {
+            Err(RadioControlProtocolError::StationNameNotReceived)
+        }
+    }
+
+    /// Sets a station based its preset id. The station name is returned.
+    pub fn query_config(&mut self) -> Result<usize, RadioControlProtocolError> {
+        let cmd = Command::Config;
+        let tx_parameters = Vec::<&str, 5>::new();
+
+        // let mut buffer = Buffer::new();
+        // let preset_id_str = buffer.format(preset_id);
+
+        // SAFETY - Only ever pushing one parameter.
+        // tx_parameters.push(preset_id_str).unwrap();
+
+        self.uart_handler
+            .send_command(cmd, tx_parameters)
+            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+
+        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+
+        self.uart_handler.receive_response(&mut rx_parameters)?;
+
+        if !rx_parameters.is_empty() {
+            let number_stations: usize = rx_parameters[0]
+                .parse()
+                .map_err(|_| RadioControlProtocolError::ParseParameter)?;
+
+            Ok(number_stations)
+        } else {
+            Err(RadioControlProtocolError::IncorrectNumberParametersReturned)
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
 pub enum RadioControlProtocolError {
     Uart(UartHandlerError),
     StationNameNotReceived,
+    ParseParameter,
+    IncorrectNumberParametersReturned,
 }
 
 impl From<UartHandlerError> for RadioControlProtocolError {
