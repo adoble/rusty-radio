@@ -158,19 +158,6 @@ fn test_receive_ill_formed_response() {
     serial.done();
 }
 
-// #[test]
-// fn test_command_conversion_to_str() {
-//     let cmd = Command::Station;
-
-//     let cmd_str: String<3> = cmd.stringify();
-
-//     // let mut s = String::<3>::new();
-//     // s.push_str("STA");
-//     assert_eq!("STA", cmd_str);
-// }
-
-//TODO move the radio_control_protocol
-
 #[test]
 fn test_command_conversion_to_bytes() {
     let cmd = Command::Station;
@@ -181,16 +168,15 @@ fn test_command_conversion_to_bytes() {
 }
 
 #[test]
-fn test_command_from_bytes() {
-    let bytes = b"STA";
-    let cmd = Command::try_from(bytes).expect("Conversion from bytes failed!");
+fn test_command_convertion_from_bytes() {
+    let cmd = Command::try_from(b"STA").expect("Command conversion failed!");
+    assert_eq!(cmd, Command::Station);
 }
 
 #[test]
-fn test_command_from_bytes_with_error() {
-    let bytes = b"XXX";
+fn test_command_conversion_from_bytes_with_error() {
     assert_eq!(
         Err(UartHandlerError::UnknownCommand),
-        Command::try_from(bytes)
+        Command::try_from(b"XXX")
     );
 }
