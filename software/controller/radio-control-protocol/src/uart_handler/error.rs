@@ -7,6 +7,7 @@ pub enum UartHandlerError {
     NonUTF8,
     IllFormedReponse,
     ParameterTooLarge,
+    UnknownCommand,
 
     ClientCannotHandleCommand,
     ClientSentUnknownErrorCode,

@@ -179,3 +179,19 @@ fn test_command_conversion_to_bytes() {
 
     assert_eq!([b'S', b'T', b'A'], bytes);
 }
+
+#[test]
+fn test_command_from_bytes() {
+    let bytes = b"STA";
+    let cmd = Command::try_from(bytes).expect("Conversion from bytes failed!");
+    assert_eq!(Command::Station, cmd);
+}
+
+#[test]
+fn test_command_from_bytes_with_error() {
+    let bytes = b"XXX";
+    assert_eq!(
+        Err(UartHandlerError::UnknownCommand),
+        Command::try_from(bytes)
+    );
+}
