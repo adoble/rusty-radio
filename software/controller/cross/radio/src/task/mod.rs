@@ -14,6 +14,8 @@ pub mod radio_stations;
 pub mod stream;
 //pub mod stream2;
 
+pub mod receive_radio_control_commands;
+
 pub mod station_indicator;
 
 // TEST

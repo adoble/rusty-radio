@@ -24,6 +24,7 @@ mod task;
 use task::{
     play_music::play_music,
     radio_stations::radio_stations,
+    receive_radio_control_commands::receive_radio_control_commands,
     //station_indicator::station_indicator,
     //read_test_music::read_test_music,
     stream::stream,
@@ -38,6 +39,7 @@ use task::{
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
+use radio_control_protocol::{Command, RadioControlProtocol};
 // mod radio_stations;
 // use radio_stations::radio_stations;
 

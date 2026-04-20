@@ -97,6 +97,8 @@ embedded-hal  = "1.0.0"# http-builder = { path = "../../http-builder" }
 embedded-nal = "0.9.0"
 httparse = {version = "1.10.1", default-features = false}
 
+radio-control-protocol = { path = "../../radio-control-protocol" }
+
 nourl = "0.1.4"
 heapless = "0.8.0"
 
