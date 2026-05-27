@@ -1,5 +1,5 @@
-use embedded_hal_nb::serial::{Error, Read, Write}; // Import the Write trait
-use heapless::{String, Vec};
+use embedded_io_async::{Read, Write}; // Import the Write trait
+use heapless::{String, Vec, CapacityError};
 use itoa::Buffer;
 
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
@@ -10,14 +10,14 @@ pub const MAX_PARAMETER_LEN: usize = 40;
 
 pub struct RadioControlProtocol<'a, S>
 where
-    S: Write<u8> + Read<u8>,
+    S: Write + Read,
 {
     uart_handler: UartHandler<'a, S, MAX_PARAMETER_LEN, MAX_NUMBER_PARAMETERS>,
 }
 
 impl<'a, S> RadioControlProtocol<'a, S>
 where
-    S: Write<u8> + Read<u8>,
+    S: Write + Read,
 {
     pub fn new(serial: &'a mut S) -> Self {
         let uart_handler = UartHandler::new(serial);
@@ -25,26 +25,32 @@ where
     }
 
     /// Sets a radio station based on it's id. The radio station name is returned.
-    pub fn set_station(
+    pub async fn set_station(
         &mut self,
         station_id: u8,
     ) -> Result<String<MAX_PARAMETER_LEN>, RadioControlProtocolError> {
         let cmd = Command::Station;
-        let mut tx_parameters = Vec::<&str, 5>::new();
+        let mut tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
         let mut buffer = Buffer::new();
-        let station_id_str = buffer.format(station_id);
+        let mut station_id_str = String::<MAX_PARAMETER_LEN>::new();
+        station_id_str.push_str(buffer.format(station_id))?;
 
-        // SAFETY - Ony ever pushing one parameter.
+        // SAFETY - Only ever pushing one parameter.
         tx_parameters.push(station_id_str).unwrap();
 
+        //TODO make paramater a new type Parameters (and also Parameter).
+        //Use Deref to manipulat at the underlying type
         self.uart_handler
             .send_command(cmd, tx_parameters)
-            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
 
         let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
 
-        self.uart_handler.receive_response(&mut rx_parameters)?;
+        self.uart_handler
+            .receive_response(&mut rx_parameters)
+            .await?;
 
         if !rx_parameters.is_empty() {
             Ok(rx_parameters[0].clone())
@@ -54,26 +60,30 @@ where
     }
 
     /// Sets a station based its preset id. The station name is returned.
-    pub fn set_preset(
+    pub async fn set_preset(
         &mut self,
         preset_id: u8,
     ) -> Result<String<MAX_PARAMETER_LEN>, RadioControlProtocolError> {
         let cmd = Command::Preset;
-        let mut tx_parameters = Vec::<&str, 5>::new();
+        let mut tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
         let mut buffer = Buffer::new();
-        let preset_id_str = buffer.format(preset_id);
+        let mut preset_id_str = String::<MAX_PARAMETER_LEN>::new();
+        preset_id_str.push_str(buffer.format(preset_id))?;
 
         // SAFETY - Only ever pushing one parameter.
         tx_parameters.push(preset_id_str).unwrap();
 
         self.uart_handler
             .send_command(cmd, tx_parameters)
-            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
 
         let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
 
-        self.uart_handler.receive_response(&mut rx_parameters)?;
+        self.uart_handler
+            .receive_response(&mut rx_parameters)
+            .await?;
 
         if !rx_parameters.is_empty() {
             Ok(rx_parameters[0].clone())
@@ -82,10 +92,10 @@ where
         }
     }
 
-    /// Sets a station based its preset id. The station name is returned.
-    pub fn query_config(&mut self) -> Result<usize, RadioControlProtocolError> {
+    /// Queries the configuation of the stations and return the number of stations
+    pub async fn query_config(&mut self) -> Result<usize, RadioControlProtocolError> {
         let cmd = Command::Config;
-        let tx_parameters = Vec::<&str, 5>::new();
+        let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
         // let mut buffer = Buffer::new();
         // let preset_id_str = buffer.format(preset_id);
@@ -95,11 +105,14 @@ where
 
         self.uart_handler
             .send_command(cmd, tx_parameters)
-            .map_err(|e| UartHandlerError::SerialWrite(e.kind()))?;
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
 
         let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
 
-        self.uart_handler.receive_response(&mut rx_parameters)?;
+        self.uart_handler
+            .receive_response(&mut rx_parameters)
+            .await?;
 
         if !rx_parameters.is_empty() {
             let number_stations: usize = rx_parameters[0]
@@ -119,6 +132,7 @@ pub enum RadioControlProtocolError {
     StationNameNotReceived,
     ParseParameter,
     IncorrectNumberParametersReturned,
+    ParameterLengthTooSmall, 
 }
 
 impl From<UartHandlerError> for RadioControlProtocolError {
@@ -126,3 +140,10 @@ impl From<UartHandlerError> for RadioControlProtocolError {
         RadioControlProtocolError::Uart(error)
     }
 }
+
+impl From<CapacityError> for RadioControlProtocolError {
+    fn from(_: CapacityError) -> Self {
+        Self::ParameterLengthTooSmall
+    }
+}
+

@@ -1,12 +1,12 @@
-use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
+use embedded_io_async_mock::{Mock as SerialMock, Transaction as SerialTransaction};
 
 use radio_control_protocol::{
     RadioControlProtocol, radio_control_protocol::RadioControlProtocolError,
     uart_handler::UartHandlerError,
 };
 
-#[test]
-fn test_set_station() {
+#[tokio::test]
+async fn test_set_station() {
     // Configure expectations
     let tx_message = "STA:5;";
     let rx_message = "ACK:SWR3;";
@@ -22,6 +22,7 @@ fn test_set_station() {
 
     let station_name = radio_control_protocol
         .set_station(5)
+        .await
         .expect("Error in setting station");
 
     assert_eq!("SWR3", station_name);
@@ -29,8 +30,8 @@ fn test_set_station() {
     serial.done();
 }
 
-#[test]
-fn test_set_station_with_error() {
+#[tokio::test]
+async fn test_set_station_with_error() {
     // Configure expectations
     let tx_message = "STA:5;";
     let rx_message = "ERR:001;";
@@ -44,7 +45,7 @@ fn test_set_station_with_error() {
 
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
 
-    let result = radio_control_protocol.set_station(5);
+    let result = radio_control_protocol.set_station(5).await;
 
     assert_eq!(
         Err(RadioControlProtocolError::Uart(
@@ -56,8 +57,8 @@ fn test_set_station_with_error() {
     serial.done();
 }
 
-#[test]
-fn test_set_preset() {
+#[tokio::test]
+async fn test_set_preset() {
     // Configure expectations
     let tx_message = "PRE:2;";
     let rx_message = "ACK:RPR1;";
@@ -73,6 +74,7 @@ fn test_set_preset() {
 
     let station_name = radio_control_protocol
         .set_preset(2)
+        .await
         .expect("Error in setting preset");
 
     assert_eq!("RPR1", station_name);
@@ -80,8 +82,8 @@ fn test_set_preset() {
     serial.done();
 }
 
-#[test]
-fn test_query_config() {
+#[tokio::test]
+async fn test_query_config() {
     // Configure expectations
     let tx_message = "CFG:;";
     let rx_message = "ACK:42;";
@@ -97,6 +99,7 @@ fn test_query_config() {
 
     let number_stations = radio_control_protocol
         .query_config()
+        .await
         .expect("Error in setting config");
 
     assert_eq!(number_stations, 42);
@@ -104,22 +107,22 @@ fn test_query_config() {
     serial.done();
 }
 
-#[test]
-fn test_query_config_with_parameter_error() {
+#[tokio::test]
+async fn test_query_config_with_parameter_error() {
     // Configure expectations
-    let tx_message = "CFG:;";
-    let rx_message = "ACK:;";
+    let tx_message = b"CFG:;";
+    let rx_message = b"ACK:;";
     let expectations = [
-        SerialTransaction::write_many(tx_message.as_bytes()),
+        SerialTransaction::write_many(tx_message),
         SerialTransaction::flush(),
-        SerialTransaction::read_many(rx_message.as_bytes()),
+        SerialTransaction::read_many(rx_message),
     ];
 
     let mut serial = SerialMock::new(&expectations);
 
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
 
-    let r = radio_control_protocol.query_config();
+    let r = radio_control_protocol.query_config().await;
 
     assert_eq!(
         r,
@@ -129,8 +132,8 @@ fn test_query_config_with_parameter_error() {
     serial.done();
 }
 
-#[test]
-fn test_query_config_with_parse_error() {
+#[tokio::test]
+async fn test_query_config_with_parse_error() {
     // Configure expectations
     let tx_message = "CFG:;";
     let rx_message = "ACK:XXX;";
@@ -144,7 +147,7 @@ fn test_query_config_with_parse_error() {
 
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
 
-    let r = radio_control_protocol.query_config();
+    let r = radio_control_protocol.query_config().await;
 
     assert_eq!(r, Err(RadioControlProtocolError::ParseParameter));
 

@@ -1,16 +1,20 @@
-/// Note that we're using the non-blocking serial traits
-use embedded_hal_mock::eh1::serial::{Mock as SerialMock, Transaction as SerialTransaction};
+use std::str::FromStr;
 
-use radio_control_protocol::uart_handler::{Command, UartHandler, UartHandlerError};
+use embedded_io_async_mock::{Mock as SerialMock, Transaction as SerialTransaction};
+
+use radio_control_protocol::{
+    radio_control_protocol::MAX_PARAMETER_LEN,
+    uart_handler::{Command, UartHandler, UartHandlerError},
+};
 
 use heapless::{String, Vec};
 
-#[test]
-fn test_send_command() {
+#[tokio::test]
+async fn test_send_command() {
     // Configure expectations
-    let tx_message = "STA:5;";
+    let tx_message = b"STA:5;";
     let expectations = [
-        SerialTransaction::write_many(tx_message.as_bytes()),
+        SerialTransaction::write_many(tx_message),
         SerialTransaction::flush(),
     ];
 
@@ -18,20 +22,23 @@ fn test_send_command() {
 
     let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
 
-    let mut parameters = Vec::<&str, 5>::new();
-    parameters.push("5").unwrap();
+    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+    let parameter = String::<MAX_PARAMETER_LEN>::from_str("5").unwrap();
+    parameters.push(parameter).unwrap();
 
-    let r = uart_handler.send_command(Command::Station, parameters);
+    let r = uart_handler
+        .send_command(Command::Station, parameters)
+        .await;
 
     assert!(r.is_ok());
 
     serial.done();
 }
 
-#[test]
-fn test_receive_response_with_single_parameter() {
-    let rx_message = "ACK:SWR3;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_response_with_single_parameter() {
+    let rx_message = b"ACK:SWR3;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -39,7 +46,7 @@ fn test_receive_response_with_single_parameter() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_ok());
 
@@ -49,10 +56,10 @@ fn test_receive_response_with_single_parameter() {
     serial.done();
 }
 
-#[test]
-fn test_receive_response_with_many_parameters() {
-    let rx_message = "ACK:value1,value2,value3;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_response_with_many_parameters() {
+    let rx_message = b"ACK:value1,value2,value3;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -60,7 +67,7 @@ fn test_receive_response_with_many_parameters() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_ok());
 
@@ -72,10 +79,10 @@ fn test_receive_response_with_many_parameters() {
     serial.done();
 }
 
-#[test]
-fn test_receive_response_with_no_parameters() {
-    let rx_message = "ACK:;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_response_with_no_parameters() {
+    let rx_message = b"ACK:;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -83,7 +90,7 @@ fn test_receive_response_with_no_parameters() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_ok());
 
@@ -92,10 +99,10 @@ fn test_receive_response_with_no_parameters() {
     serial.done();
 }
 
-#[test]
-fn test_receive_response_with_error() {
-    let rx_message = "ERR:001;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_response_with_error() {
+    let rx_message = b"ERR:001;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -103,7 +110,7 @@ fn test_receive_response_with_error() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_err());
 
@@ -114,10 +121,10 @@ fn test_receive_response_with_error() {
     serial.done();
 }
 
-#[test]
-fn test_receive_response_with_unknown_error() {
-    let rx_message = "ERR:999;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_response_with_unknown_error() {
+    let rx_message = b"ERR:999;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -125,7 +132,7 @@ fn test_receive_response_with_unknown_error() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_err());
 
@@ -136,10 +143,10 @@ fn test_receive_response_with_unknown_error() {
     serial.done();
 }
 
-#[test]
-fn test_receive_ill_formed_response() {
-    let rx_message = "ACK;";
-    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+#[tokio::test]
+async fn test_receive_ill_formed_response() {
+    let rx_message = b"ACK;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
 
     let mut serial = SerialMock::new(&expectations);
 
@@ -147,7 +154,7 @@ fn test_receive_ill_formed_response() {
 
     let mut parameters = Vec::<String<40>, 5>::new();
 
-    let r = uart_handler.receive_response(&mut parameters);
+    let r = uart_handler.receive_response(&mut parameters).await;
 
     assert!(r.is_err());
 

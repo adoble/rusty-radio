@@ -6,11 +6,20 @@ edition = "2024"
 resolver = "2"
 
 [dependencies]
-embedded-hal-nb = "1.0.0"
+embedded-io = "0.7.1"
+embedded-io-async = "0.7.0"
+# embedded-hal-nb = "1.0.0"
 heapless = "0.9.2"
 itoa = "1.0.18"
-nb = "1.1.0"
+#nb = "1.1.0"
 
 [dev-dependencies]
-embedded-hal-mock = { version = "0.11", features = ["eh1", "embedded-hal-async"] }
+# Need this mock to test async serial communication
+#mock-serial-async = {git ="https://github.com/adoble/mock-serial-async" }
+embedded-io-async-mock = { git = "https://github.com/adoble/embedded-io-async-mock", tag = "v0.1.0" }
+
+
+# Need tokio::test to have async unit tests
+tokio = {version = "1.52.2", features = ["macros", "rt"]}
+#embedded-hal-mock = { version = "0.11", features = ["eh1", "embedded-hal-async"] }
 #embedded-hal = "1.0.0"
