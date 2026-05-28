@@ -1,7 +1,7 @@
 //! # ra8875 driver
 //! A async driver for the RA8875 display driver chip.
 //!
-//! Based on the code in https://github.com/ReeceStevens/ra8875 which in turn was
+//! Based on the code in [GitHub](https://github.com/ReeceStevens/ra8875) which in turn was
 //! adapted from Adafruit's open-source driver for their RA8875 line of TFT displays.
 #![cfg_attr(not(test), no_std)]
 #![allow(dead_code)]

@@ -1,8 +1,8 @@
-/// This is an adapter for mcp23s17_async::Mcp23s17 which does not prvide a Send trait as required by the embassy tasks.
+/// This is an adapter for mcp23s17_async::Mcp23s17 which does not provide a Send trait as required by the embassy tasks.
 ///
 /// See [issue 1](https://github.com/Fundevoge/mcp23s17-async/issues/1) in the github repo for the mcp23s17-async crate.
 ///
-/// The `Deref` and `DerefMut` implementations means hat it can be used a a drop in replacement for `Mcp23s17`.
+/// The `Deref` and `DerefMut` implementations means that it can be used a a drop in replacement for `Mcp23s17`.
 use core::ops::{Deref, DerefMut};
 
 use crate::MultiplexerDriverType;

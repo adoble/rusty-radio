@@ -50,10 +50,10 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
 
-// The address of the mcp23s17 device. This is hardwared on the front panel.
+// The address of the mcp23s17 device. This is hardwired on the front panel.
 pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
-// We need to share the front panel driver between tasks so put it in a static mutex
+// We need to share the front panel driver between tasks so put it in a static mutex.
 pub static MULTIPLEXER_DRIVER: Mutex<CriticalSectionRawMutex, Option<SendableMultiplexerDriver>> =
     Mutex::new(None);
 
@@ -72,12 +72,10 @@ esp_bootloader_esp_idf::esp_app_desc!();
 )]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
-    // generator version: 1.2.0
-
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
+    // Initialise gpio and spi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
     let hardware = Hardware::init(peripherals);
 
@@ -90,7 +88,7 @@ async fn main(spawner: Spawner) {
     let spi_bus = SPI_BUS.init(Mutex::new(hardware.spi_bus_ui));
 
     // Setup spi for the front panel controller
-    // Altough the mutiplexer SPI speed can go up to 10MHz, using a lower frequency works just fine
+    // Although the mutiplexer SPI speed can go up to 10MHz, using a lower frequency works just fine
     // (and gives less problems with transmission lines effects on the breadboard).
     let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(1));
 
@@ -111,7 +109,7 @@ async fn main(spawner: Spawner) {
         *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
     }
 
-    // Initalise the front panel containing the controls and make it static
+    // Initalise the front panel containing the controls and make it static.
     let front_panel = FrontPanel::new()
         .await
         .expect("ERROR: Cannot initialise front panel");
