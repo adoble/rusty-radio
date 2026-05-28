@@ -47,3 +47,18 @@ pub enum TunerDirection {
     Clockwise,
     CounterClockwise,
 }
+
+const RADIO_COMMANDS_CHANNEL_DEPTH: usize = 3;
+/// This channel transports commands to the radio control task
+static RADIO_COMMANDS_CHANNEL: Channel<
+    CriticalSectionRawMutex,
+    RadioCommand,
+    RADIO_COMMANDS_CHANNEL_DEPTH,
+> = Channel::new();
+
+pub enum RadioCommand {
+    /// Query the configuration status
+    Config,
+    /// Select the station
+    Station(RadioStationId),
+}
