@@ -7,45 +7,67 @@ Response = From Radio Processor -> UI Processor
 
 # Syntax 
 
+## Framing Grammer
+This acts has a template for all application specific commands and responses.
 
-## Send commmand
+### Send commmand
 
 This takes the form;
 
+```bnf
+<send-command>   ::= <command> ":" <parameter-list> ";"
+<parameter-list> ::= ( <parameter> ( <separator>  <parameter> )* )?
+<command>        ::= <capital-letter> <capital-letter> <capital-letter>
+<capital-letter> ::= "A"-"Z"
+<separator>      ::= ","
+<positive-integer> ::= <digit>+
+<digit>          ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
 ```
-<send-command>  ::=  <command> ":"  <parameter-list> ";"
 
-<<parameter-list> ::= ( <parameter> ( "," <parameter> )* )? ";"
+### Response
 
-<command> ::= <capital-letter> <capital-letter> <capital-letter>
+``` bnf
 
-<capital-letter> ::= A-Z
-
-
-```
-
-## Response
-```
-<acknowledge-response> ::= "ACK:" ( <parameter> ( "," <parameter> )* )? ";"
+<response>  ::= <acknowledge-response>  | <error-response>
+<acknowledge-response> ::= "ACK:"  <parameter-list> ";"
 
 <response> ::= <response_list> | <error-response>
 
-<error-response> ::= "ERR:" <error-code>
+<error-response> ::= "ERR:" <error-code> ";"
 
-<error-code> ::= (0-9)+
+<error-code> ::= <positive-integer>
 ```
 
-# Command List
-
-| Command | Parameter-List | Response-List | Example Parameters| Example Response |Notes |
-|---------|------------|----------|-------------|------------------|-------|
-| CFG | | n | | 12 | Query the configuration status. Returns n - the number of stations |
-| PRE | selected preset id |  The selected station name  | 3 | RPR1 | Select a preset |
-| STA | station-id | The selected station name | 4 | SWR3 | Command to tune into the station|
-| STA | station-id |  error-code | 4 | 101 | Command to tune into the station|
 
 
+## Application specific commands
 
+
+### Query configuation (CFG)
+
+```bnf
+
+;;; <query-config-command> has no parameters
+<query-config-command>  ::= "CFG" ":" ";"
+<query-config-response> ::= "ACK" ":" <number-stations> "," <presets> ";"
+<number-stations>       ::= <positive-integer>
+<presets>               ::= ( <preset> ( "," <preset> )* )?
+<preset>                ::= <positive-integer>
+
+```
+### Selecting a station
+
+```bnf
+
+;;; If station-id is not spectified then the radio is detuned/muted
+<station-select-command> ::= "STA" ";" (<station-id> |  ";")
+<station-select-response> ::= "ACK" ":" <station-name> ";"
+<station-name> ::= UTF8-CHARACTER* 
+    
+    
+
+```
 
 
 
