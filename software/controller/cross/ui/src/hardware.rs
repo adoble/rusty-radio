@@ -1,19 +1,34 @@
 /// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 use esp_hal::{
+    Async,
     gpio::{Level, Output, OutputConfig},
     interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},
     peripherals::Peripherals,
     spi::master::{Config as SpiConfig, Spi},
     timer::systimer::SystemTimer,
+    uart::{Config as UartConfig, RxConfig, Uart, UartRx, UartTx},
 };
 
+// UART fifo_full_threshold (RX)
+const UART_READ_BUF_SIZE: usize = 64;
+
 pub struct Hardware {
+    /// Chip select pin for the front panel mutliplexer
     pub mux_cs: Output<'static>,
 
+    /// Chip select pin for the display controller
     #[allow(dead_code)]
     pub disp_cs: Output<'static>,
 
+    // /// Tx pin of the UART
+    // pub tx_pin: Output<'static>,
+
+    // /// Rx pin of the UART
+    // pub rx_pin: Input<'static>,
+    pub uart0: Uart<'static, Async>,
+
+    /// Rquired to set up embassy/esp-rtos
     pub system_timer: SystemTimer<'static>,
     //pub rng: Rng,
     pub spi_bus_ui: Spi<'static, esp_hal::Async>,
@@ -38,11 +53,27 @@ impl Hardware {
 
         let output_config = OutputConfig::default();
 
+        // Default pins for Uart communication
+        let (tx_pin, rx_pin) = (peripherals.GPIO21, peripherals.GPIO20);
+
+        let uart_config = UartConfig::default()
+            .with_rx(RxConfig::default().with_fifo_full_threshold(UART_READ_BUF_SIZE as u16))
+            .with_baudrate(115200);
+
+        let uart0: Uart<'_, Async> = Uart::new(peripherals.UART0, uart_config)
+            .unwrap()
+            .with_tx(tx_pin)
+            .with_rx(rx_pin)
+            .into_async();
+
         Hardware {
             // Multiplexoer CS for the button board
             mux_cs: Output::new(peripherals.GPIO3, Level::High, output_config),
             // Intially set high to display the diplay.
             disp_cs: Output::new(peripherals.GPIO2, Level::High, output_config),
+
+            // Configured UART peripheral
+            uart0,
 
             //disp_cs: Output::new(peripherals.GPIO8, Level::High, output_config),
 
