@@ -1,6 +1,8 @@
 //use embassy_time::Timer;
 /// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
+
+// TODO Correct this to use the new versions of the esp wifi crates.
 use esp_hal::{
     gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
     interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},

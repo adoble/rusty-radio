@@ -235,10 +235,12 @@ async fn main(spawner: Spawner) {
     // TODO set these to must_spawn
 
     // Setting up the network
-    spawner
-        .spawn(wifi_connect(wifi_hardware.wifi_controller))
-        .ok();
-    spawner.spawn(run_network_stack(wifi_hardware.runner)).ok();
+    spawner.spawn(
+        wifi_connect(wifi_hardware.wifi_controller).expect("FATAL: Unable to spawn wifi_connect"),
+    );
+    spawner.spawn(
+        run_network_stack(wifi_hardware.runner).expect("FATAL: Unable to spawn run_network_stack"),
+    );
 
     // Check that the link signal is present and the stack has a valid IP config
     // before continuing.
@@ -271,13 +273,10 @@ async fn main(spawner: Spawner) {
     //     .ok();
 
     // Note that this also signals the initial station to other tasks.
-    spawner
-        .spawn(radio_stations(
-            spawner,
-            wifi_hardware.sta_stack,
-            STATIONS_URL,
-        ))
-        .ok();
+    spawner.spawn(
+        radio_stations(spawner, wifi_hardware.sta_stack, STATIONS_URL)
+            .expect("FATAL: Unable to spawn radio_stations"),
+    );
 
     // Tasks to handle peripherals
     //spawner.spawn(tuner(hardware.button_pin)).ok();
@@ -293,9 +292,9 @@ async fn main(spawner: Spawner) {
 
     // Streaming and playing music
     // spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
-    spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
+    spawner.spawn(stream(wifi_hardware.sta_stack).expect("FATAL: Unable to spawn stream"));
 
-    spawner.spawn(play_music()).ok();
+    spawner.spawn(play_music().expect("FATAL: Unable to spawn play_music"));
 
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
