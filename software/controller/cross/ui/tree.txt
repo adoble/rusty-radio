@@ -1,0 +1,16 @@
+├── embassy-executor v0.10.0
+│   ├── embassy-executor-macros v0.8.0 (proc-macro)
+│   └── embassy-executor-timer-queue v0.1.0
+├── embassy-sync v0.8.0
+├── embassy-time-driver v0.2.2
+├── embassy-time-queue-utils v0.3.2
+│   ├── embassy-executor-timer-queue v0.1.0
+│   ├── embassy-embedded-hal v0.6.0
+│   │   ├── embassy-futures v0.1.2
+│   │   ├── embassy-hal-internal v0.4.0
+│   │   ├── embassy-sync v0.8.0 (*)
+│   ├── embassy-futures v0.1.2
+│   ├── embassy-sync v0.8.0 (*)
+│   │   ├── embassy-sync v0.6.2
+│   │   ├── embassy-sync v0.7.2
+│   │   ├── embassy-sync v0.8.0 (*)

@@ -1,6 +1,6 @@
 use crate::station_config::StationConfigMutex;
 use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher};
-use crate::{FrontPanel, StationConfig, front_panel::Buttons};
+use crate::{FrontPanel, front_panel::Buttons};
 
 use embassy_time::{Duration, Timer};
 
@@ -13,17 +13,12 @@ use tuning_scale::TuningScale;
 const VALID_WINDOW: usize = 5;
 const INVALID_WINDOW: usize = 10;
 
-#[deprecated(
-    since = "0.2.0",
-    note = "Replace  with reading  the number of stations from the radio processor"
-)]
-pub const NUM_STATIONS: usize = 21; // Corresponds to the current contents of http://andrew-doble.hier-im-netz.de/ir/rr-stations.txt
-
 // DESIGN NOTE: This does not debounce the buttons in the traditional way,
 // but this polling technique seems to work just fine.
 #[embassy_executor::task]
 pub async fn tuner(
     front_panel: &'static FrontPanel,
+    // tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
     tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
     station_config: &'static StationConfigMutex,
 ) {
@@ -36,7 +31,7 @@ pub async fn tuner(
     // TODO change station_config.presets() to return an array of type RadioStationId.
     // TODO use Stations instead of StationConfig, but check that this can handle empty URLs.
     let (initial_station, number_stations) = {
-        let mut stations = station_config.lock().await;
+        let stations = station_config.lock().await;
         let initial_station = if let Some(presets) = stations.presets {
             presets[0]
         } else {
@@ -72,15 +67,18 @@ pub async fn tuner(
         if button_pressed != last_button_pressed {
             last_button_pressed = button_pressed.clone();
 
+            let stations = station_config.lock().await;
+
             let selection = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
                     esp_println::println!("INFO: Rotary Switch pressed");
                     None
                 }
-                Buttons::Button1 => station_config.map_preset(0),
-                Buttons::Button2 => station_config.map_preset(1),
-                Buttons::Button3 => station_config.map_preset(2),
-                Buttons::Button4 => station_config.map_preset(3),
+
+                Buttons::Button1 => stations.map_preset(0),
+                Buttons::Button3 => stations.map_preset(2),
+                Buttons::Button4 => stations.map_preset(3),
+                Buttons::Button2 => stations.map_preset(1),
                 Buttons::None => None, // No button pressed so keep waiting
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };

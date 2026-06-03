@@ -1,34 +1,10 @@
 /// Synchronisation between the different tasks.
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
-    channel::Channel,
-    watch::{Receiver, Watch},
+    pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 
-use crate::RadioStationId;
-
-// This watches for changes to the station
-const STATION_CHANGE_WATCHERS: usize = 2;
-pub static STATION_CHANGE_WATCH: Watch<
-    CriticalSectionRawMutex,
-    Option<RadioStationId>,
-    STATION_CHANGE_WATCHERS,
-> = Watch::new();
-
-pub type StationChangeReceiver = Receiver<
-    'static,
-    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-    Option<RadioStationId>,
-    STATION_CHANGE_WATCHERS,
->;
-
-// This channel transports commands to the display.
-const UI_COMMAND_BUFFER_DEPTH: usize = 3;
-pub static UI_COMMANDS_CHANNEL: Channel<
-    CriticalSectionRawMutex,
-    UiCommand,
-    UI_COMMAND_BUFFER_DEPTH,
-> = Channel::new();
+use crate::station_config::RadioStationId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiCommand {
@@ -48,17 +24,40 @@ pub enum TunerDirection {
     CounterClockwise,
 }
 
-const RADIO_COMMANDS_CHANNEL_DEPTH: usize = 3;
-/// This channel transports commands to the radio control task
-static RADIO_COMMANDS_CHANNEL: Channel<
-    CriticalSectionRawMutex,
-    RadioCommand,
-    RADIO_COMMANDS_CHANNEL_DEPTH,
-> = Channel::new();
+const TUNER_EVENTS_CHANNEL_CAP: usize = 8;
+const TUNER_EVENTS_CHANNEL_SUBS: usize = 2;
+const TUNER_EVENTS_CHANNEL_PUBS: usize = 1;
 
-pub enum RadioCommand {
-    /// Query the configuration status
-    Config,
-    /// Select the station
-    Station(RadioStationId),
+pub static TUNER_EVENTS_CHANNEL: PubSubChannel<
+    CriticalSectionRawMutex,
+    TunerEvents,
+    TUNER_EVENTS_CHANNEL_CAP,
+    TUNER_EVENTS_CHANNEL_SUBS,
+    TUNER_EVENTS_CHANNEL_PUBS,
+> = PubSubChannel::new();
+
+pub type TunerEventsChannelPublisher = Publisher<
+    'static,
+    CriticalSectionRawMutex,
+    TunerEvents,
+    TUNER_EVENTS_CHANNEL_CAP,
+    TUNER_EVENTS_CHANNEL_SUBS,
+    TUNER_EVENTS_CHANNEL_PUBS,
+>;
+pub type TunerEventsChannelSubscriber = Subscriber<
+    'static,
+    CriticalSectionRawMutex,
+    TunerEvents,
+    TUNER_EVENTS_CHANNEL_CAP,
+    TUNER_EVENTS_CHANNEL_SUBS,
+    TUNER_EVENTS_CHANNEL_PUBS,
+>;
+
+#[derive(Clone, Copy)]
+pub enum TunerEvents {
+    /// The station has been changed to either a station or is in between stations.
+    StationChanged(Option<RadioStationId>),
+
+    /// The tuner know has been moved
+    TunerMoved(TunerDirection),
 }

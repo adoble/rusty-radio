@@ -1,6 +1,9 @@
-use crate::RadioStationId;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::mutex::Mutex;
 
 const NUMBER_PRESETS: usize = 4;
+
+pub type RadioStationId = usize;
 
 pub struct StationConfig {
     pub number_stations: usize,
@@ -18,3 +21,22 @@ impl StationConfig {
             .and_then(|presets| presets.get(preset_number).copied())
     }
 }
+
+// For test purposes this is set to some values. Later there need to be loaded from the radio
+impl Default for StationConfig {
+    /// # Deprecated  
+    /// Temporary placeholder — replace with a read from the radio processor.
+    fn default() -> Self {
+        Self {
+            number_stations: 21,
+            presets: Some([2, 3, 5, 7]),
+        }
+    }
+}
+
+pub type StationConfigMutex = Mutex<CriticalSectionRawMutex, StationConfig>;
+
+pub static STATION_CONFIG: StationConfigMutex = Mutex::new(StationConfig {
+    number_stations: 0,
+    presets: None,
+});

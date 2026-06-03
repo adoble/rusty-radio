@@ -18,14 +18,13 @@ mod sendable_multiplexer_driver;
 use sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 mod task;
-use task::tuner::tuner;
+use task::sync::TUNER_EVENTS_CHANNEL;
+use task::{radio_control::radio_control, tuner::tuner};
 
 mod station_config;
-pub use station_config::StationConfig;
+pub use station_config::{StationConfig, StationConfigMutex};
 
 use mcp23s17_async::Mcp23s17;
-
-static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
 
 // Drivers
 static FRONT_PANEL: StaticCell<FrontPanel> = StaticCell::new();
@@ -40,15 +39,19 @@ pub type MultiplexerDriverType<'a> =
 use embassy_executor::Spawner;
 
 use esp_hal::{
+    Async,
     clock::CpuClock,
     gpio::Output,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
+    uart::Uart,
 };
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
+
+use crate::task::sync::{TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 // The address of the mcp23s17 device. This is hardwired on the front panel.
 pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
@@ -116,13 +119,49 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
+    // Set up the uart so that it can be used by the tasks.
+    static UART: StaticCell<Mutex<CriticalSectionRawMutex, Uart<'static, Async>>> =
+        StaticCell::new();
+    let uart = UART.init(Mutex::new(hardware.uart0));
+
     // Get the stations configuration from the radio processor and make it static
-    let station_config = get_station_config().await;
-    let station_config = STATION_CONFIG.init(station_config);
+    // TODO - note the default funcion sets up some text values.Need to setup from the radio
+    // TODO DOES STATION CONFIG need to be in a mutex? after loading it is only read!
+
+    static STATION_CONFIG: StaticCell<StationConfigMutex> = StaticCell::new();
+    let station_config = STATION_CONFIG.init(Mutex::new(StationConfig::default()));
+
+    // Set up the end points of the tuner events channel
+    static TUNER_EVENTS_SUBSCRIBER: StaticCell<TunerEventsChannelSubscriber> = StaticCell::new();
+    let tuner_events_subscriber = TUNER_EVENTS_SUBSCRIBER.init(
+        TUNER_EVENTS_CHANNEL
+            .subscriber()
+            .expect("FATAL:  Subscriber for tuner events channel could not be created!"),
+    );
+    static TUNER_EVENTS_PUBLISHER: StaticCell<TunerEventsChannelPublisher> = StaticCell::new();
+    let tuner_events_publisher = TUNER_EVENTS_PUBLISHER.init(
+        TUNER_EVENTS_CHANNEL
+            .publisher()
+            .expect("FATAL:  Publisher for tuner events channel could not be created!"),
+    );
+
+    //let mut tuner_events_publisher = TUNER_EVENTS_CHANNEL.publisher().unwrap();
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
-    spawner.must_spawn(tuner(station_config, front_panel));
+    spawner.spawn(
+        tuner(
+            front_panel,
+            //&mut tuner_events_publisher,
+            tuner_events_publisher,
+            station_config,
+        )
+        .expect("FATAL: Could not spawn tuner"),
+    );
+
+    spawner.spawn(
+        radio_control(uart, tuner_events_subscriber).expect("FATAL: Could not spawn radio_control"),
+    );
 
     // loop {
     //     Timer::after(Duration::from_secs(1)).await;
@@ -130,12 +169,4 @@ async fn main(spawner: Spawner) {
     // }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0/examples
-}
-
-#[deprecated(note = "Replace with read from radio processor")]
-async fn get_station_config() -> StationConfig {
-    StationConfig {
-        number_stations: 21,
-        presets: Some([2, 3, 5, 7]),
-    }
 }

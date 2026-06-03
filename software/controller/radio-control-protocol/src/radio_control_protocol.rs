@@ -1,5 +1,5 @@
 use embedded_io_async::{Read, Write}; // Import the Write trait
-use heapless::{String, Vec, CapacityError};
+use heapless::{CapacityError, String, Vec};
 use itoa::Buffer;
 
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
@@ -132,7 +132,7 @@ pub enum RadioControlProtocolError {
     StationNameNotReceived,
     ParseParameter,
     IncorrectNumberParametersReturned,
-    ParameterLengthTooSmall, 
+    ParameterLengthTooSmall,
 }
 
 impl From<UartHandlerError> for RadioControlProtocolError {
@@ -146,4 +146,3 @@ impl From<CapacityError> for RadioControlProtocolError {
         Self::ParameterLengthTooSmall
     }
 }
-

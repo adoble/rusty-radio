@@ -7,7 +7,7 @@ use esp_hal::{
     peripherals::Peripherals,
     spi::master::{Config as SpiConfig, Spi},
     timer::systimer::SystemTimer,
-    uart::{Config as UartConfig, RxConfig, Uart, UartRx, UartTx},
+    uart::{Config as UartConfig, RxConfig, Uart},
 };
 
 // UART fifo_full_threshold (RX)
