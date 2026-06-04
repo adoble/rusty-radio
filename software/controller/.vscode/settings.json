@@ -23,9 +23,10 @@
     //"rust-analyzer.cargo.extraArgs": ["--release"],
     
     "rust-analyzer.linkedProjects": [
-        "Cargo.toml",
+        //"Cargo.toml",
         "http/Cargo.toml",
-        "cross/Cargo.toml",
+        "cross/radio/Cargo.toml",
+        "cross/ui/Cargo.toml",
         "stations/Cargo.toml", 
         "m3u/Cargo.toml",
         "periodic-map/Cargo.toml",

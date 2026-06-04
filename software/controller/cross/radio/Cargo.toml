@@ -28,14 +28,14 @@ description = "An internet radio using an ESP32-C3"
 
 # ] }
 
-embassy-executor = "0.10.0"
+embassy-executor = "0.9.0"
 
 #embassy-time = "0.4.0"
 embassy-time = "0.5.0"
 
 embedded-hal-async = "1.0.0"
 
-embassy-net = { version = "0.9.1", features = [
+embassy-net = { version = "0.7.0", features = [
     "tcp",
     "udp",
     "dhcpv4",
@@ -45,25 +45,27 @@ embassy-net = { version = "0.9.1", features = [
     "proto-ipv4",
 ] }
 
-embedded-io = { version = "0.7.1", default-features = false }
+embedded-io = { version = "0.6.1", default-features = false }
 
-esp-backtrace = { version = "0.19.0", features = [
-    "esp32c3",
-    "panic-handler",
-    "println",
-] }
-
-
-esp-hal = { version = "1.0.0", features = ["esp32c3", "unstable"] }
+# esp-backtrace = { version = "0.18.0", features = [
+#     "esp32c3",
+#     "panic-handler",
+#     "println",
+# ] }
 
 
-esp-rtos = { version = "0.3.0", features = ["esp32c3", "embassy", "esp-radio"] }
+# esp-hal = { version = "=1.0.0", features = ["esp32c3", "unstable"] }
+esp-hal = { version = "=1.0.0", features = ["esp32c3", "unstable"] }
 
-esp-alloc = {version = "0.10.0", features = ["esp32c3"]}
 
+esp-rtos = { version = "0.2.0", features = ["esp32c3", "embassy", "esp-radio"] }
+
+esp-alloc = {version = "0.9.0", features = ["esp32c3"]}
+
+# esp-println = { version = "0.16.0", features = ["esp32c3"] }
 esp-println = { version = "0.17.0", features = ["esp32c3"] }
 
-esp-radio = {version = "0.18.0", features = [
+esp-radio = {version = "0.17.0", features = [
   "esp32c3",
   "wifi",
   #"esp-alloc",
@@ -75,9 +77,9 @@ esp-radio = {version = "0.18.0", features = [
 static_cell        = "2.1.0"
 embassy-net-driver = "0.2.0"#
 
-embassy-sync       = "0.8.0"
+embassy-sync       = "0.7.0"
 
-embassy-embedded-hal = "0.6.0"
+embassy-embedded-hal = "0.5.0"
 
 
 # Using older version.See https://github.com/drogue-iot/reqwless/issues/93
@@ -87,7 +89,7 @@ embassy-embedded-hal = "0.6.0"
 
 #embedded-nal-async = "0.8.0"
 static_assertions  = "1.1.0"
-embedded-io-async  = "0.7.0"
+embedded-io-async  = "0.6.1"
 
 critical-section = "1.2.0"
 
@@ -97,10 +99,8 @@ embedded-hal  = "1.0.0"# http-builder = { path = "../../http-builder" }
 embedded-nal = "0.9.0"
 httparse = {version = "1.10.1", default-features = false}
 
-radio-control-protocol = { path = "../../radio-control-protocol" }
-
 nourl = "0.1.4"
-heapless = "0.9.3"
+heapless = "0.8.0"
 
 # Local libs
 http = { path = "../../http" }
@@ -119,7 +119,7 @@ periodic-map = {path = "../../periodic-map"}
 reqwless = {version = "0.13.0", default-features = false}
 embedded-graphics-core = "0.4.0"
 embedded-graphics = "0.8.1"
-esp-bootloader-esp-idf = {version = "0.5.0", features = ["esp32c3"]}
+esp-bootloader-esp-idf = {version = "0.4.0", features = ["esp32c3"]}
 #reqwless = "0.12.1"
 
 #nutype = { version = "0.6.1", default-features = false }
