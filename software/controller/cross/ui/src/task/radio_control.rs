@@ -4,6 +4,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
 //use embedded_io_async::{Read, Write}; // Import the Write trait
 
+use esp_println::println;
 use radio_control_protocol::RadioControlProtocol;
 
 use crate::station_config::RadioStationId;
@@ -26,6 +27,7 @@ pub async fn radio_control(
 
     loop {
         let event = tuner_event_channel.next_message_pure().await;
+        esp_println::println!("DEBUG tuner event {:?}", event);
         match event {
             TunerEvents::StationChanged(station_id) => {
                 station_changed(&mut radio_control_protocol, station_id).await

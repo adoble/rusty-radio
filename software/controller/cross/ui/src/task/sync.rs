@@ -53,7 +53,7 @@ pub type TunerEventsChannelSubscriber = Subscriber<
     TUNER_EVENTS_CHANNEL_PUBS,
 >;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TunerEvents {
     /// The station has been changed to either a station or is in between stations.
     StationChanged(Option<RadioStationId>),
