@@ -1,6 +1,9 @@
 use embedded_io_async::{Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 
+#[allow(unused_imports)]
+use log::{debug, error, info};
+
 pub mod command;
 pub use command::Command;
 
@@ -29,6 +32,10 @@ where
         parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
     ) -> Result<(), S::Error> {
         //let cmd = command.stringify().into_bytes();
+
+        // Flush the serial buffer before trying to write stuff to it. This is to remove any extraneous
+        // characters that are in the buffer. For instance the splurge of characters when the esp32c3 is booted.
+        // self.serial.flush().await?;
 
         //
         // TODO replace all the writes with a buffer to collect everything and then one write_all.
@@ -78,7 +85,7 @@ where
                 loop {
                     self.serial.read_exact(&mut char_buf).await?;
 
-                    // SAFETY: A char is always avaialble.
+                    // SAFETY: A char is always avaialable.
                     let c = str::from_utf8(&char_buf)?.chars().next().unwrap();
                     if c != ';' {
                         if c != ',' {

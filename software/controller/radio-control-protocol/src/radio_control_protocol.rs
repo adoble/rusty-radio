@@ -1,6 +1,7 @@
 use embedded_io_async::{Read, Write}; // Import the Write trait
 use heapless::{CapacityError, String, Vec};
 use itoa::Buffer;
+use log::{debug, error, info};
 
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
 
@@ -39,7 +40,7 @@ where
         // SAFETY - Only ever pushing one parameter.
         tx_parameters.push(station_id_str).unwrap();
 
-        //TODO make paramater a new type Parameters (and also Parameter).
+        //TODO make parameter a new type Parameters (and also Parameter).
         //Use Deref to manipulat at the underlying type
         self.uart_handler
             .send_command(cmd, tx_parameters)
@@ -51,10 +52,10 @@ where
         self.uart_handler
             .receive_response(&mut rx_parameters)
             .await?;
-
         if !rx_parameters.is_empty() {
             Ok(rx_parameters[0].clone())
         } else {
+            error!("Station name not received");
             Err(RadioControlProtocolError::StationNameNotReceived)
         }
     }

@@ -53,6 +53,9 @@ use static_cell::StaticCell;
 
 use crate::task::sync::{TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
+#[allow(unused_imports)]
+use log::{debug, error, info};
+
 // The address of the mcp23s17 device. This is hardwired on the front panel.
 pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
 
@@ -75,6 +78,11 @@ esp_bootloader_esp_idf::esp_app_desc!();
 )]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
+    // Set up the logger
+    esp_println::logger::init_logger(log::LevelFilter::Debug);
+    // TODO set the logger level from the environment variables
+    // esp_println::logger::init_logger_from_env();
+
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -84,7 +92,8 @@ async fn main(spawner: Spawner) {
 
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
-    esp_println::println!("INFO: Starting UI");
+    // esp_println::println!("INFO: Starting UI");
+    info!("Starting UI");
 
     // Wrap the spi_bus in a Mutex and store statically
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
