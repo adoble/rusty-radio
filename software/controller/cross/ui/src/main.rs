@@ -39,12 +39,10 @@ pub type MultiplexerDriverType<'a> =
 use embassy_executor::Spawner;
 
 use esp_hal::{
-    Async,
     clock::CpuClock,
     gpio::Output,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
-    uart::Uart,
 };
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
@@ -128,11 +126,6 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
-    // Set up the uart so that it can be used by the tasks.
-    static UART: StaticCell<Mutex<CriticalSectionRawMutex, Uart<'static, Async>>> =
-        StaticCell::new();
-    let uart = UART.init(Mutex::new(hardware.uart0));
-
     // Get the stations configuration from the radio processor and make it static
     // TODO - note the default funcion sets up some text values.Need to setup from the radio
     // TODO DOES STATION CONFIG need to be in a mutex? after loading it is only read!
@@ -169,7 +162,8 @@ async fn main(spawner: Spawner) {
     );
 
     spawner.spawn(
-        radio_control(uart, tuner_events_subscriber).expect("FATAL: Could not spawn radio_control"),
+        radio_control(hardware.uart0, tuner_events_subscriber)
+            .expect("FATAL: Could not spawn radio_control"),
     );
 
     // loop {

@@ -1,6 +1,8 @@
 use embedded_io_async::{Read, Write}; // Import the Write trait
 use heapless::{CapacityError, String, Vec};
 use itoa::Buffer;
+
+#[allow(unused_imports)]
 use log::{debug, error, info};
 
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};

@@ -31,16 +31,6 @@ where
         command: Command,
         parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
     ) -> Result<(), S::Error> {
-        //let cmd = command.stringify().into_bytes();
-
-        // Flush the serial buffer before trying to write stuff to it. This is to remove any extraneous
-        // characters that are in the buffer. For instance the splurge of characters when the esp32c3 is booted.
-        // self.serial.flush().await?;
-
-        //
-        // TODO replace all the writes with a buffer to collect everything and then one write_all.
-        //      do this for the other function as well. This will make it easier to test.
-        //
         let cmd: [u8; 3] = (&command).into();
         self.serial.write_all(&cmd).await?;
 
