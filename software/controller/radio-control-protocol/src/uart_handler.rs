@@ -121,4 +121,41 @@ where
 
         Ok(())
     }
+
+    pub async fn send_acknowledge(
+        &mut self,
+        parameters: &Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
+    ) -> Result<(), S::Error> {
+        self.serial.write_all(b"ACK:").await?;
+
+        for (index, param) in parameters.iter().enumerate() {
+            self.serial.write_all(param.as_bytes()).await?;
+
+            if index < parameters.len() - 1 {
+                // Not at end so add a comma
+                self.serial.write_all(b",").await?
+            };
+        }
+
+        // Terminate
+        self.serial.write_all(b";").await?;
+
+        self.serial.flush().await?;
+
+        Ok(())
+    }
+
+    pub async fn send_error(&mut self, error: usize) -> Result<(), S::Error> {
+        self.serial.write_all(b"ERR:").await?;
+
+        let mut s: String<20> = String::new();
+        core::fmt::Write::write_fmt(&mut s, format_args!("{}", error)).ok();
+        self.serial.write_all(s.as_bytes()).await?;
+
+        self.serial.write_all(b";").await?;
+
+        self.serial.flush().await?;
+
+        Ok(())
+    }
 }

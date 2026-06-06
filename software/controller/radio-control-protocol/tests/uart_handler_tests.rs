@@ -9,6 +9,29 @@ use radio_control_protocol::{
 
 use heapless::{String, Vec};
 
+#[test]
+fn test_command_conversion_to_bytes() {
+    let cmd = Command::Station;
+
+    let bytes: [u8; 3] = (&cmd).into();
+
+    assert_eq!([b'S', b'T', b'A'], bytes);
+}
+
+#[test]
+fn test_command_conversion_from_bytes() {
+    let cmd = Command::try_from(b"STA").expect("Command conversion failed!");
+    assert_eq!(cmd, Command::Station);
+}
+
+#[test]
+fn test_command_conversion_from_bytes_with_error() {
+    assert_eq!(
+        Err(UartHandlerError::UnknownCommand),
+        Command::try_from(b"XXX")
+    );
+}
+
 #[tokio::test]
 async fn test_send_command() {
     // Configure expectations
@@ -25,6 +48,30 @@ async fn test_send_command() {
     let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
     let parameter = String::<MAX_PARAMETER_LEN>::from_str("5").unwrap();
     parameters.push(parameter).unwrap();
+
+    let r = uart_handler
+        .send_command(Command::Station, parameters)
+        .await;
+
+    assert!(r.is_ok());
+
+    serial.done();
+}
+
+#[tokio::test]
+async fn test_send_command_with_no_parameters() {
+    // Configure expectations
+    let tx_message = b"STA:;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message),
+        SerialTransaction::flush(),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
     let r = uart_handler
         .send_command(Command::Station, parameters)
@@ -165,25 +212,77 @@ async fn test_receive_ill_formed_response() {
     serial.done();
 }
 
-#[test]
-fn test_command_conversion_to_bytes() {
-    let cmd = Command::Station;
+#[tokio::test]
+async fn test_send_empty_acknowledge() {
+    // Configure expectations
+    let tx_message = b"ACK:;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message),
+        SerialTransaction::flush(),
+    ];
 
-    let bytes: [u8; 3] = (&cmd).into();
+    let mut serial = SerialMock::new(&expectations);
 
-    assert_eq!([b'S', b'T', b'A'], bytes);
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+    //let parameter = String::<MAX_PARAMETER_LEN>::from_str("5").unwrap();
+    //parameters.push(parameter).unwrap();
+
+    let r = uart_handler.send_acknowledge(&parameters).await;
+
+    assert!(r.is_ok());
+
+    serial.done();
 }
 
-#[test]
-fn test_command_convertion_from_bytes() {
-    let cmd = Command::try_from(b"STA").expect("Command conversion failed!");
-    assert_eq!(cmd, Command::Station);
+#[tokio::test]
+async fn test_send_acknowledge() {
+    // Configure expectations
+    let tx_message = b"ACK:SWR3,RPR2;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message),
+        SerialTransaction::flush(),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+
+    let parameter = String::<MAX_PARAMETER_LEN>::from_str("SWR3").unwrap();
+    parameters.push(parameter).unwrap();
+    let parameter = String::<MAX_PARAMETER_LEN>::from_str("RPR2").unwrap();
+    parameters.push(parameter).unwrap();
+
+    let r = uart_handler.send_acknowledge(&parameters).await;
+
+    assert!(r.is_ok());
+
+    assert_eq!(parameters.len(), 2);
+
+    assert_eq!(parameters.to_vec(), ["SWR3", "RPR2"]);
+
+    serial.done();
 }
 
-#[test]
-fn test_command_conversion_from_bytes_with_error() {
-    assert_eq!(
-        Err(UartHandlerError::UnknownCommand),
-        Command::try_from(b"XXX")
-    );
+#[tokio::test]
+async fn test_send_error() {
+    // Configure expectations
+    let tx_message = b"ERR:101;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message),
+        SerialTransaction::flush(),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let r = uart_handler.send_error(101).await;
+
+    assert!(r.is_ok());
+
+    serial.done();
 }
