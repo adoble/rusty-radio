@@ -153,3 +153,28 @@ async fn test_query_config_with_parse_error() {
 
     serial.done();
 }
+
+#[tokio::test]
+async fn test_acknowledge_set_station() {
+    // Configure expectations
+    let message = "ACK:SWR3;";
+    let expectations = [
+        SerialTransaction::write_many(message.as_bytes()),
+        SerialTransaction::flush(),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
+
+    let mut station_name: heapless::String<40> = heapless::String::new();
+    station_name.push_str("SWR3").unwrap();
+
+    let r = radio_control_protocol
+        .acknowledge_set_station(station_name)
+        .await;
+
+    assert!(r.is_ok());
+
+    serial.done();
+}

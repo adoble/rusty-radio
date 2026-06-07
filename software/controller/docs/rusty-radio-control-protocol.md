@@ -14,31 +14,39 @@ This acts has a template for all application specific commands and responses.
 
 This takes the form;
 
-```bnf
-<send-command>   ::= <command> ":" <parameter-list> ";"
-<parameter-list> ::= ( <parameter> ( <separator>  <parameter> )* )?
-<command>        ::= <capital-letter> <capital-letter> <capital-letter>
-<capital-letter> ::= "A"-"Z"
+
+```ebnf
+<send_command>   ::= <command> ":" <parameter_list> ";"
+<parameter_list> ::= ( <parameter> ( <separator>  <parameter> )* )?
+<command>        ::= <capital_letter> <capital_letter> <capital_letter>
+<parameter>      ::= <utf8_string>
+<capital_letter> ::= [A-Z]
 <separator>      ::= ","
-<positive-integer> ::= <digit>+
+<positive_integer> ::= <digit>+
 <digit>          ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+```
+
+## Response
+```ebnf
+
+<response>  ::= <acknowledge_response>  | <error_response>
+
+<acknowledge_response> ::= "ACK:"  <parameter_list> ";"
+
+<error_response> ::= "ERR:" <error_code> ";"
+
+<error_code> ::= <positive_integer>
 
 ```
 
-### Response
+## General  
 
-``` bnf
+```ebnf
 
-<response>  ::= <acknowledge-response>  | <error-response>
-<acknowledge-response> ::= "ACK:"  <parameter-list> ";"
+<utf8_string>   ::=  <utf8_char>*
 
-<response> ::= <response_list> | <error-response>
-
-<error-response> ::= "ERR:" <error-code> ";"
-
-<error-code> ::= <positive-integer>
+<utf8_char> ::= /* A set of UTF8_1 characters */ 
 ```
-
 
 
 ## Application specific commands
@@ -48,22 +56,22 @@ This takes the form;
 
 ```bnf
 
-;;; <query-config-command> has no parameters
-<query-config-command>  ::= "CFG" ":" ";"
-<query-config-response> ::= "ACK" ":" <number-stations> "," <presets> ";"
-<number-stations>       ::= <positive-integer>
+;;; <query_config_command> has no parameters
+<query_config_command>  ::= "CFG" ":" ";"
+<query_config_response> ::= "ACK" ":" <number_stations> "," <presets> ";"
+<number_stations>       ::= <positive_integer>
 <presets>               ::= ( <preset> ( "," <preset> )* )?
-<preset>                ::= <positive-integer>
+<preset>                ::= <positive_integer>
 
 ```
 ### Selecting a station
 
 ```bnf
 
-;;; If station-id is not spectified then the radio is detuned/muted
-<station-select-command> ::= "STA" ";" (<station-id> |  ";")
-<station-select-response> ::= "ACK" ":" <station-name> ";"
-<station-name> ::= UTF8-CHARACTER* 
+;;; If station_id is not spectified then the radio is detuned/muted
+<station_select_command> ::= "STA" ";" (<station_id> |  ";")
+<station_select_response> ::= "ACK" ":" <station_name> ";"
+<station_name> ::= UTF8_CHARACTER* 
     
     
 
