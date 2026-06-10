@@ -3,6 +3,8 @@ use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher};
 use crate::{FrontPanel, front_panel::Buttons};
 
 use embassy_time::{Duration, Timer};
+#[allow(unused_imports)]
+use log::{debug, error, info};
 
 use periodic_map::PeriodicMap;
 
@@ -71,7 +73,7 @@ pub async fn tuner(
 
             let selection = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
-                    esp_println::println!("INFO: Rotary Switch pressed");
+                    info!("Rotary Switch pressed");
                     None
                 }
 
@@ -88,7 +90,7 @@ pub async fn tuner(
 
             match selection {
                 Some(station_id) => {
-                    esp_println::println!("\n\nINFO: Playing preset station: {}\n\n", station_id);
+                    info!("Playing preset station: {}\n\n", station_id);
 
                     // Adjust the tuner scale so that any later movement is from the selected preset station
                     let scale_value = periodic_map.inverse_map(station_id);
@@ -101,7 +103,7 @@ pub async fn tuner(
                         .await;
                 }
                 None => {
-                    () //esp_println::println!("INFO: No preset for button {:?}", button_pressed)
+                    () //info!("No preset for button {:?}", button_pressed)
                 }
             }
         }
@@ -127,7 +129,7 @@ pub async fn tuner(
             if station_id != last_station_id {
                 match station_id {
                     Some(id) => {
-                        esp_println::println!("\n\nINFO: Playing station: {:?}\n\n", id);
+                        info!("Playing station: {:?}\n\n", id);
                         last_station_id = station_id;
                         //station_change_sender.send(Some(id));
                         tuner_events_publisher

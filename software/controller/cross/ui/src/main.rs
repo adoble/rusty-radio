@@ -90,7 +90,6 @@ async fn main(spawner: Spawner) {
 
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
-    // esp_println::println!("INFO: Starting UI");
     info!("Starting UI");
 
     // Wrap the spi_bus in a Mutex and store statically
