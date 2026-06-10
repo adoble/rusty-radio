@@ -71,7 +71,7 @@ async fn test_send_command_with_no_parameters() {
 
     let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
 
-    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+    let parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
     let r = uart_handler
         .send_command(Command::Station, parameters)
@@ -225,7 +225,7 @@ async fn test_send_empty_acknowledge() {
 
     let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
 
-    let mut parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+    let parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
     //let parameter = String::<MAX_PARAMETER_LEN>::from_str("5").unwrap();
     //parameters.push(parameter).unwrap();
 

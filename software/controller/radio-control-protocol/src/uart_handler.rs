@@ -1,3 +1,36 @@
+//! Handles the low level communication over the UART connection between
+//! the ui processor and the radio processor.
+//!
+//! ## Protocol Grammer
+//! It effectively handles the following framing grammer for the protocol.
+//!
+//!
+//!```ebnf
+//! <send_command>   ::= <command> ":" <parameter_list> ";"
+//! <parameter_list> ::= ( <parameter> ( <separator>  <parameter> )* )?
+//! <command>        ::= <capital_letter> <capital_letter> <capital_letter>
+//! <parameter>      ::= <utf8_string>
+//! <capital_letter> ::= [A-Z]
+//! <separator>      ::= ","
+//! <positive_integer> ::= <digit>+
+//! <digit>          ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+//!
+//!
+//! <response>  ::= <acknowledge_response>  | <error_response>
+//!
+//! <acknowledge_response> ::= "ACK:"  <parameter_list> ";"
+//!
+//! <error_response> ::= "ERR:" <error_code> ";"
+//!
+//! <error_code> ::= <positive_integer>
+//!
+//!
+//!
+//! <utf8_string>   ::=  <utf8_char>*
+//!
+//! <utf8_char> ::= /* A set of UTF8_1 characters */
+//!```
+
 use embedded_io_async::{Read, Write}; // Import the Write trait
 use heapless::{String, Vec};
 
@@ -10,6 +43,10 @@ pub use command::Command;
 mod error;
 pub use error::UartHandlerError;
 
+/// Sending and receiving of commands and reposnses using the framing grammer.
+///
+/// Instead of using a specific UART periperhal it uses the traits `embedded_io_async::{Read, Write}`.
+/// In this way it can be used tested in a `std` environment,
 pub struct UartHandler<'a, S, const MAX_PARAMETER_LEN: usize, const MAX_NUMBER_PARAMETERS: usize>
 where
     S: Write + Read,
@@ -22,10 +59,15 @@ impl<'a, S, const MAX_PARAMETER_LEN: usize, const MAX_NUMBER_PARAMETERS: usize>
 where
     S: Write + Read,
 {
+    /// Crate a new uart handler using the serial interface specified.
+    ///
     pub fn new(serial: &'a mut S) -> Self {
         Self { serial }
     }
 
+    /// Send a command over the serial interface to the receiver.
+    ///
+    /// This is used from the sender side of the interface.
     pub async fn send_command(
         &mut self,
         command: Command,
@@ -53,6 +95,10 @@ where
         Ok(())
     }
 
+    /// Receive a response over the serial interfaces
+    /// Any parameters contained in the response are placed in `parameters`.
+    ///
+    /// This is used from the sender side of the interface.
     pub async fn receive_response(
         &mut self,
         parameters: &mut Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
@@ -122,6 +168,9 @@ where
         Ok(())
     }
 
+    /// Send an acknowledge back to the sender with any parameters.
+    ///
+    /// This is used from the receiver side of the interface
     pub async fn send_acknowledge(
         &mut self,
         parameters: &Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
@@ -145,11 +194,12 @@ where
         Ok(())
     }
 
-    pub async fn send_error(&mut self, error: usize) -> Result<(), S::Error> {
+    /// Send an error back from the receiver with the error number
+    pub async fn send_error(&mut self, error_number: usize) -> Result<(), S::Error> {
         self.serial.write_all(b"ERR:").await?;
 
         let mut s: String<20> = String::new();
-        core::fmt::Write::write_fmt(&mut s, format_args!("{}", error)).ok();
+        core::fmt::Write::write_fmt(&mut s, format_args!("{}", error_number)).ok();
         self.serial.write_all(s.as_bytes()).await?;
 
         self.serial.write_all(b";").await?;

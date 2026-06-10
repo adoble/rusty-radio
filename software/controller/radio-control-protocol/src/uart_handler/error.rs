@@ -1,7 +1,7 @@
 // use embedded_io::Read;
 use core::str::Utf8Error;
-use embedded_io_async::{ErrorKind,  ReadExactError};
-use heapless::{CapacityError};
+use embedded_io_async::{ErrorKind, ReadExactError};
+use heapless::CapacityError;
 
 #[derive(Debug, PartialEq)]
 //#[cfg_attr(not(test), derive(defmt::Format))] // Only used when running on target hardware

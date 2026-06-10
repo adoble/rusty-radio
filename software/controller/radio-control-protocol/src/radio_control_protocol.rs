@@ -1,6 +1,7 @@
 use embedded_io_async::{Read, Write}; // Import the Write trait
 use heapless::{CapacityError, String, Vec};
 use itoa::Buffer;
+use static_assertions::const_assert;
 
 #[allow(unused_imports)]
 use log::{debug, error, info};
@@ -8,6 +9,7 @@ use log::{debug, error, info};
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
 
 const MAX_NUMBER_PARAMETERS: usize = 5;
+const_assert!(MAX_NUMBER_PARAMETERS > 0);
 
 pub const MAX_PARAMETER_LEN: usize = 40;
 
@@ -126,6 +128,25 @@ where
         } else {
             Err(RadioControlProtocolError::IncorrectNumberParametersReturned)
         }
+    }
+
+    /// Acknowledge a set-station request
+    pub async fn acknowledge_set_station(
+        &mut self,
+        station_name: String<MAX_PARAMETER_LEN>,
+    ) -> Result<(), RadioControlProtocolError> {
+        // let mut parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+        let mut parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+
+        // SAFETY: Only pushing one parameter
+        parameters.push(station_name).unwrap();
+
+        self.uart_handler
+            .send_acknowledge(&parameters)
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
+
+        Ok(())
     }
 }
 
