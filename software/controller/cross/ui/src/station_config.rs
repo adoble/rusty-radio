@@ -4,7 +4,7 @@ use embassy_sync::mutex::Mutex;
 const NUMBER_PRESETS: usize = 4;
 
 pub type RadioStationId = usize;
-
+#[derive(Copy, Clone)]
 pub struct StationConfig {
     pub number_stations: usize,
     pub presets: Option<[RadioStationId; NUMBER_PRESETS]>,
