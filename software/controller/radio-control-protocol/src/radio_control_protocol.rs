@@ -6,6 +6,7 @@ use static_assertions::const_assert;
 #[allow(unused_imports)]
 use log::{debug, error, info};
 
+use crate::station_config::StationConfig;
 use crate::uart_handler::{UartHandler, UartHandlerError, command::Command};
 
 const MAX_NUMBER_PARAMETERS: usize = 5;
@@ -98,7 +99,7 @@ where
     }
 
     /// Queries the configuation of the stations and return the number of stations
-    pub async fn query_config(&mut self) -> Result<usize, RadioControlProtocolError> {
+    pub async fn query_config(&mut self) -> Result<StationConfig, RadioControlProtocolError> {
         let cmd = Command::Config;
         let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
@@ -119,34 +120,29 @@ where
             .receive_response(&mut rx_parameters)
             .await?;
 
-        if !rx_parameters.is_empty() {
-            let number_stations: usize = rx_parameters[0]
+        if rx_parameters.is_empty() {
+            error!("No parameters returned from query config");
+            return Err(RadioControlProtocolError::IncorrectNumberParametersReturned);
+        };
+
+        let mut station_config = StationConfig::new();
+        station_config.number_stations = rx_parameters[0]
+            .parse()
+            .map_err(|_| RadioControlProtocolError::ParseParameter)?;
+
+        // Now extract the presets
+        for param in rx_parameters.iter().skip(1) {
+            debug!("param {}", param);
+            let preset_station_id: usize = param
                 .parse()
                 .map_err(|_| RadioControlProtocolError::ParseParameter)?;
-
-            Ok(number_stations)
-        } else {
-            Err(RadioControlProtocolError::IncorrectNumberParametersReturned)
+            station_config
+                .presets
+                .push(preset_station_id)
+                .map_err(|_| RadioControlProtocolError::IncorrectNumberParametersReturned)?;
         }
-    }
 
-    /// Acknowledge a set-station request
-    pub async fn acknowledge_set_station(
-        &mut self,
-        station_name: String<MAX_PARAMETER_LEN>,
-    ) -> Result<(), RadioControlProtocolError> {
-        // let mut parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
-        let mut parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
-
-        // SAFETY: Only pushing one parameter
-        parameters.push(station_name).unwrap();
-
-        self.uart_handler
-            .send_acknowledge(&parameters)
-            .await
-            .map_err(|_| UartHandlerError::SerialWrite)?;
-
-        Ok(())
+        Ok(station_config)
     }
 }
 

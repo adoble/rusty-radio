@@ -1,7 +1,7 @@
 use embedded_io_async_mock::{Mock as SerialMock, Transaction as SerialTransaction};
 
 use radio_control_protocol::{
-    RadioControlProtocol, radio_control_protocol::RadioControlProtocolError,
+    RadioControlProtocol, StationConfig, radio_control_protocol::RadioControlProtocolError,
     uart_handler::UartHandlerError,
 };
 
@@ -86,7 +86,7 @@ async fn test_set_preset() {
 async fn test_query_config() {
     // Configure expectations
     let tx_message = "CFG:;";
-    let rx_message = "ACK:42;";
+    let rx_message = "ACK:7,1,2,3,5;";
     let expectations = [
         SerialTransaction::write_many(tx_message.as_bytes()),
         SerialTransaction::flush(),
@@ -97,12 +97,42 @@ async fn test_query_config() {
 
     let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
 
-    let number_stations = radio_control_protocol
+    let station_config = radio_control_protocol
         .query_config()
         .await
         .expect("Error in setting config");
 
-    assert_eq!(number_stations, 42);
+    let expected_station_config = StationConfig::new()
+        .with_number_stations(7)
+        .with_presets([1, 2, 3, 5]);
+    assert_eq!(station_config, expected_station_config);
+
+    serial.done();
+}
+
+#[tokio::test]
+async fn test_query_config_with_no_presets() {
+    // Configure expectations
+    let tx_message = "CFG:;";
+    let rx_message = "ACK:40;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message.as_bytes()),
+        SerialTransaction::flush(),
+        SerialTransaction::read_many(rx_message.as_bytes()),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
+
+    let station_config = radio_control_protocol
+        .query_config()
+        .await
+        .expect("Error in setting config");
+
+    let expected_station_config = StationConfig::new().with_number_stations(40);
+
+    assert_eq!(station_config, expected_station_config);
 
     serial.done();
 }
@@ -150,31 +180,6 @@ async fn test_query_config_with_parse_error() {
     let r = radio_control_protocol.query_config().await;
 
     assert_eq!(r, Err(RadioControlProtocolError::ParseParameter));
-
-    serial.done();
-}
-
-#[tokio::test]
-async fn test_acknowledge_set_station() {
-    // Configure expectations
-    let message = "ACK:SWR3;";
-    let expectations = [
-        SerialTransaction::write_many(message.as_bytes()),
-        SerialTransaction::flush(),
-    ];
-
-    let mut serial = SerialMock::new(&expectations);
-
-    let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
-
-    let mut station_name: heapless::String<40> = heapless::String::new();
-    station_name.push_str("SWR3").unwrap();
-
-    let r = radio_control_protocol
-        .acknowledge_set_station(station_name)
-        .await;
-
-    assert!(r.is_ok());
 
     serial.done();
 }
