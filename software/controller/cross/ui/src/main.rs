@@ -19,10 +19,9 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
-use task::{radio_control::radio_control, tuner::tuner};
+use task::{radio_control::radio_control, station_config::load_station_config, tuner::tuner};
 
-mod station_config;
-pub use station_config::{StationConfig, StationConfigMutex};
+pub use radio_control_protocol::StationConfig;
 
 use mcp23s17_async::Mcp23s17;
 
@@ -147,6 +146,11 @@ async fn main(spawner: Spawner) {
     );
 
     //let mut tuner_events_publisher = TUNER_EVENTS_CHANNEL.publisher().unwrap();
+
+    spawner.spawn(
+        load_station_config(hardware.uart0, station_config_signal)
+            .expect("FATAL: Could not load station config"),
+    );
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
