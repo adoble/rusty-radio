@@ -4,7 +4,7 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 
-use crate::station_config::RadioStationId;
+use radio_control_protocol::station_config::RadioStationId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiCommand {

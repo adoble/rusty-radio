@@ -1,5 +1,5 @@
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use esp_hal::{Async, uart::Uart};
 
 use radio_control_protocol::{
@@ -17,23 +17,26 @@ pub type RadioStationId = usize;
 // close to the actual structure is a departure from this style. Is this a good idea?
 pub static STATION_CONFIG: Signal<CriticalSectionRawMutex, StationConfig> = Signal::new();
 
+// use core::ops::DerefMut;
+
 /// Load the station config from the radio
 #[embassy_executor::task]
 pub async fn load_station_config(
-    mut uart: Uart<'static, Async>,
-    load_signal: &'static Signal<CriticalSectionRawMutex, StationConfig>,
+    uart: &'static Mutex<CriticalSectionRawMutex, esp_hal::uart::Uart<'static, Async>>,
 ) {
-    if let Ok(station_config) = load_station_config_from_radio(uart).await {
-        load_signal.signal(station_config);
+    let mut uart = uart.lock().await;
+
+    if let Ok(station_config) = load_station_config_from_radio(&mut uart).await {
+        STATION_CONFIG.signal(station_config);
     } else {
         error!("Could not load station from radio")
     };
 }
 
 async fn load_station_config_from_radio(
-    mut uart: Uart<'static, Async>,
+    uart: &mut Uart<'static, Async>,
 ) -> Result<StationConfig, RadioControlProtocolError> {
-    let mut radio_control_protocol = RadioControlProtocol::new(&mut uart);
+    let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
     //    pub async fn query_config(&mut self) -> Result<usize, RadioControlProtocolError>
     let station_config = radio_control_protocol.query_config().await?;

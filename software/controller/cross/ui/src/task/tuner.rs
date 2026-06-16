@@ -1,8 +1,12 @@
-use crate::station_config::StationConfigMutex;
-use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher};
-use crate::{FrontPanel, front_panel::Buttons};
-
 use embassy_time::{Duration, Timer};
+
+// use crate::task::radio_control::STATION_CONFIG;
+use crate::front_panel::{Buttons, FrontPanel};
+use crate::task::{
+    station_config::STATION_CONFIG,
+    sync::{TunerEvents, TunerEventsChannelPublisher},
+};
+
 #[allow(unused_imports)]
 use log::{debug, error, info};
 
@@ -22,7 +26,6 @@ pub async fn tuner(
     front_panel: &'static FrontPanel,
     // tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
     tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
-    station_config: &'static StationConfigMutex,
 ) {
     //let station_change_sender = STATION_CHANGE_WATCH.sender();
 
@@ -32,16 +35,14 @@ pub async fn tuner(
 
     // TODO change station_config.presets() to return an array of type RadioStationId.
     // TODO use Stations instead of StationConfig, but check that this can handle empty URLs.
-    let (initial_station, number_stations) = {
-        let stations = station_config.lock().await;
-        let initial_station = if let Some(presets) = stations.presets {
-            presets[0]
-        } else {
-            0
-        };
-        let number_stations = stations.number_stations;
-        (initial_station, number_stations)
-    };
+    // Wait until the station config has been loaded
+    let stations = STATION_CONFIG.wait().await;
+
+    // Use as the initial station the first preset or use station id 0
+    // TODO Maybe need to use the last station selected.
+    let initial_station = stations.map_preset(0).map_or(0, |o| o);
+
+    let number_stations = stations.number_stations;
 
     // Send the inital station
     //station_change_sender.send(Some(initial_station));
@@ -69,7 +70,7 @@ pub async fn tuner(
         if button_pressed != last_button_pressed {
             last_button_pressed = button_pressed.clone();
 
-            let stations = station_config.lock().await;
+            //let stations = station_config.lock().await;
 
             let selection = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {

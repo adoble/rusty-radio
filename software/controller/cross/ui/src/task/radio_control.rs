@@ -1,3 +1,4 @@
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use esp_hal::{Async, uart::Uart};
 
 // use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -7,20 +8,25 @@ use esp_hal::{Async, uart::Uart};
 use log::*;
 use radio_control_protocol::RadioControlProtocol;
 
-use crate::station_config::RadioStationId;
+use crate::task::station_config::{RadioStationId, STATION_CONFIG};
 use crate::task::sync::{TunerEvents, TunerEventsChannelSubscriber};
 
 // TODO the message structure has been extended.Change to use this.
 
 #[embassy_executor::task]
 pub async fn radio_control(
-    mut uart: Uart<'static, Async>,
+    uart: &'static Mutex<CriticalSectionRawMutex, esp_hal::uart::Uart<'static, Async>>,
     tuner_event_channel: &'static mut TunerEventsChannelSubscriber,
 ) {
     // TODO set up the serial interface
     // DO we need to do this here?
 
-    let mut radio_control_protocol = RadioControlProtocol::new(&mut uart);
+    // Only continue if the station config has been read.
+    let station_config = STATION_CONFIG.wait().await;
+
+    let mut uart = uart.lock().await;
+
+    //let mut radio_control_protocol = RadioControlProtocol::new(&mut uart);
 
     loop {
         let event = tuner_event_channel.next_message_pure().await;
@@ -29,7 +35,7 @@ pub async fn radio_control(
             TunerEvents::StationChanged(station_id) => {
                 //DEBUG
                 //read_something(&uart);
-                station_changed(&mut radio_control_protocol, station_id).await
+                station_changed(&mut uart, station_id).await
             }
 
             TunerEvents::TunerMoved(_) => {}
@@ -39,9 +45,12 @@ pub async fn radio_control(
 
 /// Signal the radio that it should either change the station or detune
 async fn station_changed(
-    radio_control_protocol: &mut RadioControlProtocol<'_, Uart<'static, Async>>,
+    // radio_control_protocol: &mut RadioControlProtocol<'_, Uart<'static, Async>>,
+    uart: &mut Uart<'static, Async>,
     station_id: Option<RadioStationId>,
 ) {
+    let mut radio_control_protocol = RadioControlProtocol::new(uart);
+
     match station_id {
         Some(id) => {
             let result = radio_control_protocol
