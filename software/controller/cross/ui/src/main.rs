@@ -9,7 +9,7 @@
 //#![deny(clippy::large_stack_frames)]
 
 mod hardware;
-use esp_hal::Async;
+use esp_hal::{Async, uart::Uart};
 use hardware::Hardware;
 
 mod front_panel;
@@ -20,7 +20,10 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
-use task::{radio_control::radio_control, station_config::load_station_config, tuner::tuner};
+use task::{
+    radio_control::{load_station_config, radio_control},
+    tuner::tuner,
+};
 
 pub use radio_control_protocol::StationConfig;
 
@@ -127,14 +130,15 @@ async fn main(spawner: Spawner) {
     // TODO - note the default funcion sets up some text values.Need to setup from the radio
     // TODO DOES STATION CONFIG need to be in a mutex? after loading it is only read!
 
-    // static STATION_CONFIG: StaticCell<StationConfigMutex> = StaticCell::new();
-    // let station_config = STATION_CONFIG.init(Mutex::new(StationConfig::default()));
+    // // The UART is shared my tasks so put it into a mutex
+    // static UART: StaticCell<Mutex<CriticalSectionRawMutex, esp_hal::uart::Uart<'static, Async>>> =
+    //     StaticCell::new();
+    // let uart = UART.init(Mutex::new(hardware.uart0));
+    // // let uart = &*UART.init(Mutex::new(hardware.uart0));
 
-    // The UART is shared my tasks so put it into a mutex
-    static UART: StaticCell<Mutex<CriticalSectionRawMutex, esp_hal::uart::Uart<'static, Async>>> =
-        StaticCell::new();
-    let uart = UART.init(Mutex::new(hardware.uart0));
-    // let uart = &*UART.init(Mutex::new(hardware.uart0));
+    // The uart is shared so make it static
+    static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
+    let uart = UART.init(hardware.uart0);
 
     // Set up the end points of the tuner events channel
     static TUNER_EVENTS_SUBSCRIBER: StaticCell<TunerEventsChannelSubscriber> = StaticCell::new();
@@ -150,26 +154,20 @@ async fn main(spawner: Spawner) {
             .expect("FATAL:  Publisher for tuner events channel could not be created!"),
     );
 
-    //let mut tuner_events_publisher = TUNER_EVENTS_CHANNEL.publisher().unwrap();
-
-    // TODO the uart is in a mutex bit is also non-mutable. Does it need to be a mutex.
-    // Make a branch from this and adjust the signatures
-
-    spawner.spawn(load_station_config(uart).expect("FATAL: Could not load station config"));
+    let station_config = load_station_config(uart).await.unwrap();
+    static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
+    let station_config = STATION_CONFIG.init(station_config);
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
     spawner.spawn(
-        tuner(
-            front_panel,
-            //&mut tuner_events_publisher,
-            tuner_events_publisher,
-        )
-        .expect("FATAL: Could not spawn tuner"),
+        tuner(front_panel, station_config, tuner_events_publisher)
+            .expect("FATAL: Could not spawn tuner"),
     );
 
     spawner.spawn(
-        radio_control(uart, tuner_events_subscriber).expect("FATAL: Could not spawn radio_control"),
+        radio_control(uart, station_config, tuner_events_subscriber)
+            .expect("FATAL: Could not spawn radio_control"),
     );
 
     // loop {

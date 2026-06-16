@@ -2,10 +2,8 @@ use embassy_time::{Duration, Timer};
 
 // use crate::task::radio_control::STATION_CONFIG;
 use crate::front_panel::{Buttons, FrontPanel};
-use crate::task::{
-    station_config::STATION_CONFIG,
-    sync::{TunerEvents, TunerEventsChannelPublisher},
-};
+use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher};
+use radio_control_protocol::StationConfig;
 
 #[allow(unused_imports)]
 use log::{debug, error, info};
@@ -24,6 +22,7 @@ const INVALID_WINDOW: usize = 10;
 #[embassy_executor::task]
 pub async fn tuner(
     front_panel: &'static FrontPanel,
+    stations_config: &'static StationConfig,
     // tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
     tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
 ) {
@@ -35,14 +34,16 @@ pub async fn tuner(
 
     // TODO change station_config.presets() to return an array of type RadioStationId.
     // TODO use Stations instead of StationConfig, but check that this can handle empty URLs.
-    // Wait until the station config has been loaded
-    let stations = STATION_CONFIG.wait().await;
+    // // Wait until the station config has been loaded
+    // let stations = STATION_CONFIG.wait().await;
 
-    // Use as the initial station the first preset or use station id 0
-    // TODO Maybe need to use the last station selected.
-    let initial_station = stations.map_preset(0).map_or(0, |o| o);
+    // Use as the initial station :
+    // 1. The last set station - TODO
+    // 2. The first preset stations if set
+    // 3. The first station in the station list
+    let initial_station = stations_config.map_preset(0).map_or(0, |o| o);
 
-    let number_stations = stations.number_stations;
+    let number_stations = stations_config.number_stations;
 
     // Send the inital station
     //station_change_sender.send(Some(initial_station));
@@ -78,10 +79,10 @@ pub async fn tuner(
                     None
                 }
 
-                Buttons::Button1 => stations.map_preset(0),
-                Buttons::Button3 => stations.map_preset(2),
-                Buttons::Button4 => stations.map_preset(3),
-                Buttons::Button2 => stations.map_preset(1),
+                Buttons::Button1 => stations_config.map_preset(0),
+                Buttons::Button3 => stations_config.map_preset(2),
+                Buttons::Button4 => stations_config.map_preset(3),
+                Buttons::Button2 => stations_config.map_preset(1),
                 Buttons::None => None, // No button pressed so keep waiting
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };

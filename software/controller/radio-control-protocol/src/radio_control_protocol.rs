@@ -153,6 +153,7 @@ pub enum RadioControlProtocolError {
     ParseParameter,
     IncorrectNumberParametersReturned,
     ParameterLengthTooSmall,
+    CannotLoadStationConfig,
 }
 
 impl From<UartHandlerError> for RadioControlProtocolError {
