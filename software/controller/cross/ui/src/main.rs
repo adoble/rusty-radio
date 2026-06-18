@@ -126,16 +126,6 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
-    // Get the stations configuration from the radio processor and make it static
-    // TODO - note the default funcion sets up some text values.Need to setup from the radio
-    // TODO DOES STATION CONFIG need to be in a mutex? after loading it is only read!
-
-    // // The UART is shared my tasks so put it into a mutex
-    // static UART: StaticCell<Mutex<CriticalSectionRawMutex, esp_hal::uart::Uart<'static, Async>>> =
-    //     StaticCell::new();
-    // let uart = UART.init(Mutex::new(hardware.uart0));
-    // // let uart = &*UART.init(Mutex::new(hardware.uart0));
-
     // The uart is shared so make it static
     static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
     let uart = UART.init(hardware.uart0);
@@ -154,6 +144,7 @@ async fn main(spawner: Spawner) {
             .expect("FATAL:  Publisher for tuner events channel could not be created!"),
     );
 
+    // Get the stations configuration from the radio processor and make it static
     let station_config = load_station_config(uart).await.unwrap();
     static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
     let station_config = STATION_CONFIG.init(station_config);

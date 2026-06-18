@@ -58,6 +58,6 @@ pub enum TunerEvents {
     /// The station has been changed to either a station or is in between stations.
     StationChanged(Option<RadioStationId>),
 
-    /// The tuner know has been moved
+    /// The tuner knob  has been moved
     TunerMoved(TunerDirection),
 }

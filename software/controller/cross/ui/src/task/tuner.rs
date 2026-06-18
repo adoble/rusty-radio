@@ -1,6 +1,5 @@
 use embassy_time::{Duration, Timer};
 
-// use crate::task::radio_control::STATION_CONFIG;
 use crate::front_panel::{Buttons, FrontPanel};
 use crate::task::sync::{TunerDirection, TunerEvents, TunerEventsChannelPublisher};
 use radio_control_protocol::StationConfig;
@@ -23,20 +22,8 @@ const INVALID_WINDOW: usize = 10;
 pub async fn tuner(
     front_panel: &'static FrontPanel,
     stations_config: &'static StationConfig,
-    // tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
     tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
 ) {
-    //let station_change_sender = STATION_CHANGE_WATCH.sender();
-
-    // 1. The last set station - TODO
-    // 2. The first preset stations if set
-    // 3. The first station in the station list
-
-    // TODO change station_config.presets() to return an array of type RadioStationId.
-    // TODO use Stations instead of StationConfig, but check that this can handle empty URLs.
-    // // Wait until the station config has been loaded
-    // let stations = STATION_CONFIG.wait().await;
-
     // Use as the initial station :
     // 1. The last set station - TODO
     // 2. The first preset stations if set
@@ -46,7 +33,6 @@ pub async fn tuner(
     let number_stations = stations_config.number_stations;
 
     // Send the inital station
-    //station_change_sender.send(Some(initial_station));
     tuner_events_publisher
         .publish(TunerEvents::StationChanged(Some(initial_station)))
         .await;
@@ -74,10 +60,7 @@ pub async fn tuner(
             //let stations = station_config.lock().await;
 
             let selection = match button_pressed {
-                Buttons::RotaryEncoderSwitch => {
-                    //info!("Rotary Switch pressed");
-                    None
-                }
+                Buttons::RotaryEncoderSwitch => None,
 
                 Buttons::Button1 => stations_config.map_preset(0),
                 Buttons::Button3 => stations_config.map_preset(2),
@@ -87,26 +70,20 @@ pub async fn tuner(
                 Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
             };
 
-            // TODO should the station_id be in Station?
             // [ ] test what happens when no preset is set!
 
-            match selection {
-                Some(station_id) => {
-                    info!("Playing preset station: {}\n\n", station_id);
+            if let Some(station_id) = selection {
+                info!("Playing preset station: {}\n\n", station_id);
 
-                    // Adjust the tuner scale so that any later movement is from the selected preset station
-                    let scale_value = periodic_map.inverse_map(station_id);
-                    tuning_scale.set(scale_value);
+                // Adjust the tuner scale so that any later movement is from the selected preset station
+                let scale_value = periodic_map.inverse_map(station_id);
+                tuning_scale.set(scale_value);
 
-                    // Signal that the station has changed
-                    //station_change_sender.send(Some(station_id));
-                    tuner_events_publisher
-                        .publish(TunerEvents::StationChanged(Some(station_id)))
-                        .await;
-                }
-                None => {
-                    () //info!("No preset for button {:?}", button_pressed)
-                }
+                // Signal that the station has changed
+                //station_change_sender.send(Some(station_id));
+                tuner_events_publisher
+                    .publish(TunerEvents::StationChanged(Some(station_id)))
+                    .await;
             }
         }
 
