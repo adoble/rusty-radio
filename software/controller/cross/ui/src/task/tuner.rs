@@ -2,7 +2,7 @@ use embassy_time::{Duration, Timer};
 
 // use crate::task::radio_control::STATION_CONFIG;
 use crate::front_panel::{Buttons, FrontPanel};
-use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher};
+use crate::task::sync::{TunerDirection, TunerEvents, TunerEventsChannelPublisher};
 use radio_control_protocol::StationConfig;
 
 #[allow(unused_imports)]
@@ -75,7 +75,7 @@ pub async fn tuner(
 
             let selection = match button_pressed {
                 Buttons::RotaryEncoderSwitch => {
-                    info!("Rotary Switch pressed");
+                    //info!("Rotary Switch pressed");
                     None
                 }
 
@@ -117,10 +117,16 @@ pub async fn tuner(
             crate::front_panel::Direction::Clockwise => {
                 rotary_encoder_movement = true;
                 tuning_scale.increment();
+                tuner_events_publisher
+                    .publish(TunerEvents::TunerMoved(TunerDirection::Clockwise))
+                    .await;
             }
             crate::front_panel::Direction::CounterClockwise => {
                 rotary_encoder_movement = true;
                 tuning_scale.decrement();
+                tuner_events_publisher
+                    .publish(TunerEvents::TunerMoved(TunerDirection::CounterClockwise))
+                    .await;
             }
             crate::front_panel::Direction::None => (),
         }

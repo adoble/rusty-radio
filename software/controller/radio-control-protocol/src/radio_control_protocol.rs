@@ -132,7 +132,6 @@ where
 
         // Now extract the presets
         for param in rx_parameters.iter().skip(1) {
-            debug!("param {}", param);
             let preset_station_id: usize = param
                 .parse()
                 .map_err(|_| RadioControlProtocolError::ParseParameter)?;

@@ -6,17 +6,17 @@ use embassy_sync::{
 
 use radio_control_protocol::station_config::RadioStationId;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UiCommand {
-    /// Indicates if the wifi is connected
-    WiFiConnected(bool),
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// pub enum UiCommand {
+//     /// Indicates if the wifi is connected
+//     WiFiConnected(bool),
 
-    /// The selected station id
-    StationSelect(usize),
+//     /// The selected station id
+//     StationSelect(usize),
 
-    /// If the user has turned the tuner knob
-    TunerMoved(TunerDirection),
-}
+//     /// If the user has turned the tuner knob
+//     TunerMoved(TunerDirection),
+// }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TunerDirection {

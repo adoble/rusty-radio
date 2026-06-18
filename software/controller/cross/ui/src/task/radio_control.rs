@@ -1,4 +1,3 @@
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, signal::Signal};
 use esp_hal::{Async, uart::Uart};
 
 // use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -36,7 +35,6 @@ pub async fn radio_control(
 
     loop {
         let event = tuner_event_channel.next_message_pure().await;
-        debug!("tuner event {:?}", event);
         match event {
             TunerEvents::StationChanged(station_id) => {
                 //DEBUG
