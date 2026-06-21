@@ -143,9 +143,14 @@ where
 
         Ok(station_config)
     }
+
+    /// Detunes the radio.
+    pub async fn detune(&mut self) -> Result<(), RadioControlProtocolError> {
+        todo!("Detune")
+    }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum RadioControlProtocolError {
     Uart(UartHandlerError),
     StationNameNotReceived,

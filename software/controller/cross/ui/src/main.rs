@@ -21,6 +21,7 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
 use task::{
+    display::display,
     radio_control::{load_station_config, radio_control},
     tuner::tuner,
 };
@@ -130,19 +131,16 @@ async fn main(spawner: Spawner) {
     static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
     let uart = UART.init(hardware.uart0);
 
-    // Set up the end points of the tuner events channel
-    static TUNER_EVENTS_SUBSCRIBER: StaticCell<TunerEventsChannelSubscriber> = StaticCell::new();
-    let tuner_events_subscriber = TUNER_EVENTS_SUBSCRIBER.init(
-        TUNER_EVENTS_CHANNEL
-            .subscriber()
-            .expect("FATAL:  Subscriber for tuner events channel could not be created!"),
-    );
-    static TUNER_EVENTS_PUBLISHER: StaticCell<TunerEventsChannelPublisher> = StaticCell::new();
-    let tuner_events_publisher = TUNER_EVENTS_PUBLISHER.init(
-        TUNER_EVENTS_CHANNEL
-            .publisher()
-            .expect("FATAL:  Publisher for tuner events channel could not be created!"),
-    );
+    // Set up the end points of the tuner events channel. Setting the publishers and subscriber up this way to avoid borrow
+    // problems when using the same pusblisher and subscriber for the (later spawned) tasks.
+    // SAFETY: These calls fail only if the number of subscribers and publishers have been incorrectly set up
+    // in TUNER_EVENTS_CHANNEL.This is then a programming error and should result in a panic, using unwrap here.
+    let tuner_events_pub = TUNER_EVENTS_CHANNEL.publisher().unwrap();
+
+    let radio_control_events_pub = TUNER_EVENTS_CHANNEL.publisher().unwrap();
+    let radio_control_events_sub = TUNER_EVENTS_CHANNEL.subscriber().unwrap();
+
+    let display_events_sub = TUNER_EVENTS_CHANNEL.subscriber().unwrap();
 
     // Get the stations configuration from the radio processor and make it static
     let station_config = load_station_config(uart).await.unwrap();
@@ -152,14 +150,22 @@ async fn main(spawner: Spawner) {
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
     spawner.spawn(
-        tuner(front_panel, station_config, tuner_events_publisher)
-            .expect("FATAL: Could not spawn tuner"),
+        tuner(front_panel, station_config, tuner_events_pub).expect("FATAL: Could not spawn tuner"),
     );
 
     spawner.spawn(
-        radio_control(uart, station_config, tuner_events_subscriber)
-            .expect("FATAL: Could not spawn radio_control"),
+        radio_control(
+            uart,
+            station_config,
+            radio_control_events_sub,
+            radio_control_events_pub,
+        )
+        .expect("FATAL: Could not spawn radio_control"),
     );
+
+    spawner.spawn(
+        display(station_config, display_events_sub).expect("FATAL: Could not spawn display task"),
+    )
 
     // loop {
     //     Timer::after(Duration::from_secs(1)).await;

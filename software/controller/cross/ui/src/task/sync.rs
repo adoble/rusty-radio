@@ -4,7 +4,10 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 
-use radio_control_protocol::station_config::RadioStationId;
+use radio_control_protocol::{
+    RadioControlProtocolError,
+    station_config::{RadioStationId, RadioStationName},
+};
 
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 // pub enum UiCommand {
@@ -26,7 +29,7 @@ pub enum TunerDirection {
 
 const TUNER_EVENTS_CHANNEL_CAP: usize = 8;
 const TUNER_EVENTS_CHANNEL_SUBS: usize = 2;
-const TUNER_EVENTS_CHANNEL_PUBS: usize = 1;
+const TUNER_EVENTS_CHANNEL_PUBS: usize = 2;
 
 pub static TUNER_EVENTS_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
@@ -53,11 +56,20 @@ pub type TunerEventsChannelSubscriber = Subscriber<
     TUNER_EVENTS_CHANNEL_PUBS,
 >;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum TunerEvents {
     /// The station has been changed to either a station or is in between stations.
     StationChanged(Option<RadioStationId>),
 
     /// The tuner knob  has been moved
     TunerMoved(TunerDirection),
+
+    /// A station has been selected and the name obtained
+    StationSelected(RadioStationName),
+
+    /// Detune between stations
+    Detune,
+
+    /// An error has been detected
+    Error(RadioControlProtocolError),
 }

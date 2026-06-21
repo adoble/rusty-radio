@@ -22,7 +22,8 @@ const INVALID_WINDOW: usize = 10;
 pub async fn tuner(
     front_panel: &'static FrontPanel,
     stations_config: &'static StationConfig,
-    tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
+    //tuner_events_publisher: &'static mut TunerEventsChannelPublisher,
+    tuner_events_publisher: TunerEventsChannelPublisher,
 ) {
     // Use as the initial station :
     // 1. The last set station - TODO

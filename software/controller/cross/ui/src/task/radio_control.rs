@@ -6,24 +6,40 @@ use esp_hal::{Async, uart::Uart};
 
 use log::*;
 use radio_control_protocol::{
-    RadioControlProtocol, RadioControlProtocolError, StationConfig, station_config,
+    RadioControlProtocol, RadioControlProtocolError, StationConfig,
+    station_config::{RadioStationId, RadioStationName},
 };
-use station_config::RadioStationId;
 
-use crate::task::sync::{TunerEvents, TunerEventsChannelSubscriber};
+use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 /// Process the events from the tuner
 #[embassy_executor::task]
 pub async fn radio_control(
     uart: &'static mut Uart<'static, Async>,
     station_config: &'static StationConfig,
-    tuner_event_channel: &'static mut TunerEventsChannelSubscriber,
+    // tuner_event_subscriber: &'static mut TunerEventsChannelSubscriber,
+    mut tuner_event_subscriber: TunerEventsChannelSubscriber,
+    // tuner_event_publisher: &'static mut TunerEventsChannelPublisher,
+    tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
     loop {
-        let event = tuner_event_channel.next_message_pure().await;
+        let event = tuner_event_subscriber.next_message_pure().await;
 
         if let TunerEvents::StationChanged(station_id) = event {
-            station_changed(uart, station_id).await
+            match station_changed(uart, station_id).await {
+                Ok(station_name) => match station_name {
+                    Some(station_name) => {
+                        tuner_event_publisher
+                            .publish(TunerEvents::StationSelected(station_name))
+                            .await
+                    }
+                    None => {
+                        detune(uart).await;
+                        tuner_event_publisher.publish(TunerEvents::Detune).await
+                    }
+                },
+                Err(e) => tuner_event_publisher.publish(TunerEvents::Error(e)).await,
+            };
         }
     }
 }
@@ -33,22 +49,26 @@ async fn station_changed(
     // radio_control_protocol: &mut RadioControlProtocol<'_, Uart<'static, Async>>,
     uart: &mut Uart<'static, Async>,
     station_id: Option<RadioStationId>,
-) {
+) -> Result<Option<RadioStationName>, RadioControlProtocolError> {
     let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
-    match station_id {
+    let station_name = match station_id {
         Some(id) => {
-            let result = radio_control_protocol
-                .set_station(id.try_into().expect("station id exceeded u8 range"))
-                .await;
-
-            match result {
-                Ok(station_name) => info!("Selected station {}", station_name),
-                Err(e) => error!("Set station error {:?}", e),
-            }
+            let station_name = radio_control_protocol
+                .set_station(id.try_into().expect("station id exceeded range"))
+                .await?;
+            Some(station_name)
         }
-        None => todo!(), // radio_control_protocol.detune(),
-    }
+        None => None, // radio_control_protocol.detune(),
+    };
+    Ok(station_name)
+}
+
+/// In-between stations so detune the radio
+async fn detune(uart: &mut Uart<'static, Async>) -> Result<(), RadioControlProtocolError> {
+    let mut radio_control_protocol = RadioControlProtocol::new(uart);
+
+    radio_control_protocol.detune().await
 }
 
 /// Load the station config from the radio

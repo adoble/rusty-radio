@@ -3,10 +3,11 @@ use core::str::Utf8Error;
 use embedded_io_async::{ErrorKind, ReadExactError};
 use heapless::CapacityError;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 //#[cfg_attr(not(test), derive(defmt::Format))] // Only used when running on target hardware
 
 // TODO  use what we learnt in writing mock-serial-async
+
 pub enum UartHandlerError {
     SerialWrite,
     SerialRead,
