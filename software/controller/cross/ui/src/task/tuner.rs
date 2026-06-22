@@ -68,7 +68,10 @@ pub async fn tuner(
                 Buttons::Button4 => stations_config.map_preset(3),
                 Buttons::Button2 => stations_config.map_preset(1),
                 Buttons::None => None, // No button pressed so keep waiting
-                Buttons::Unknown => panic!("ERROR: Unknown button pressed"),
+                Buttons::Unknown => {
+                    error!("Unknown button pressed");
+                    None
+                }
             };
 
             // [ ] test what happens when no preset is set!

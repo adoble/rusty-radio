@@ -36,6 +36,11 @@ esp-println = { version = "0.17.0", features = ["esp32c3", "log-04"] }
 radio-control-protocol = {path = "../../radio-control-protocol"}
 heapless = "0.9.3"
 
+
+# These are only used for testing on the target and can be removed when development is done.
+embedded-io-async = "0.7.0"
+embedded-io = "0.7.1"
+
 # [profile.dev]
 # # Rust debug is too slow.
 # # For debug builds always builds with some optimization

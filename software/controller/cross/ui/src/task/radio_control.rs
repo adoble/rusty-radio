@@ -10,6 +10,7 @@ use radio_control_protocol::{
     station_config::{RadioStationId, RadioStationName},
 };
 
+use crate::mock_uart::MockUart;
 use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 /// Process the events from the tuner
@@ -17,11 +18,49 @@ use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsCha
 pub async fn radio_control(
     uart: &'static mut Uart<'static, Async>,
     station_config: &'static StationConfig,
-    // tuner_event_subscriber: &'static mut TunerEventsChannelSubscriber,
     mut tuner_event_subscriber: TunerEventsChannelSubscriber,
-    // tuner_event_publisher: &'static mut TunerEventsChannelPublisher,
     tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
+    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher);
+    // loop {
+    //     let event = tuner_event_subscriber.next_message_pure().await;
+
+    //     if let TunerEvents::StationChanged(station_id) = event {
+    //         match station_changed(uart, station_id).await {
+    //             Ok(station_name) => match station_name {
+    //                 Some(station_name) => {
+    //                     tuner_event_publisher
+    //                         .publish(TunerEvents::StationSelected(station_name))
+    //                         .await
+    //                 }
+    //                 None => {
+    //                     detune(uart).await;
+    //                     tuner_event_publisher.publish(TunerEvents::Detune).await
+    //                 }
+    //             },
+    //             Err(e) => tuner_event_publisher.publish(TunerEvents::Error(e)).await,
+    //         };
+    //     }
+    // }
+}
+
+#[embassy_executor::task]
+pub async fn radio_control_mock(
+    uart: &'static mut MockUart,
+    station_config: &'static StationConfig,
+    mut tuner_event_subscriber: TunerEventsChannelSubscriber,
+    tuner_event_publisher: TunerEventsChannelPublisher,
+) {
+    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher);
+}
+
+pub async fn run_radio_control<U>(
+    uart: &mut U,
+    mut tuner_event_subscriber: TunerEventsChannelSubscriber,
+    tuner_event_publisher: TunerEventsChannelPublisher,
+) where
+    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
+{
     loop {
         let event = tuner_event_subscriber.next_message_pure().await;
 
@@ -45,11 +84,15 @@ pub async fn radio_control(
 }
 
 /// Signal the radio that it should either change the station or detune
-async fn station_changed(
+async fn station_changed<U>(
     // radio_control_protocol: &mut RadioControlProtocol<'_, Uart<'static, Async>>,
-    uart: &mut Uart<'static, Async>,
+    // uart: &mut Uart<'static, Async>,
+    uart: &mut U,
     station_id: Option<RadioStationId>,
-) -> Result<Option<RadioStationName>, RadioControlProtocolError> {
+) -> Result<Option<RadioStationName>, RadioControlProtocolError>
+where
+    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
+{
     let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
     let station_name = match station_id {
@@ -65,7 +108,10 @@ async fn station_changed(
 }
 
 /// In-between stations so detune the radio
-async fn detune(uart: &mut Uart<'static, Async>) -> Result<(), RadioControlProtocolError> {
+async fn detune<U>(uart: &mut U) -> Result<(), RadioControlProtocolError>
+where
+    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
+{
     let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
     radio_control_protocol.detune().await

@@ -9,7 +9,9 @@
 //#![deny(clippy::large_stack_frames)]
 
 mod hardware;
-use esp_hal::{Async, uart::Uart};
+use esp_hal::Async;
+use esp_hal::uart::Uart;
+
 use hardware::Hardware;
 
 mod front_panel;
@@ -17,6 +19,9 @@ use front_panel::FrontPanel;
 
 mod sendable_multiplexer_driver;
 use sendable_multiplexer_driver::SendableMultiplexerDriver;
+
+mod mock_uart;
+use mock_uart::MockUart;
 
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
@@ -51,10 +56,10 @@ use embassy_embedded_hal::shared_bus::asynch::spi::SpiDeviceWithConfig;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 use static_cell::StaticCell;
 
-use crate::task::sync::{TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
+// use crate::task::sync::{TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 #[allow(unused_imports)]
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 // The address of the mcp23s17 device. This is hardwired on the front panel.
 pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;
@@ -166,11 +171,4 @@ async fn main(spawner: Spawner) {
     spawner.spawn(
         display(station_config, display_events_sub).expect("FATAL: Could not spawn display task"),
     )
-
-    // loop {
-    //     Timer::after(Duration::from_secs(1)).await;
-    //     esp_println::println!("INFO: Blink");
-    // }
-
-    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0/examples
 }
