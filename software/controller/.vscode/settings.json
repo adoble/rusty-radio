@@ -32,7 +32,8 @@
         "stations/Cargo.toml", 
         "m3u/Cargo.toml",
         "periodic-map/Cargo.toml",
-        "radio-control-protocol/Cargo.toml"
+        "radio-control-protocol/Cargo.toml",
+        "mock-uart/Cargo.toml"
     ],
 
 
