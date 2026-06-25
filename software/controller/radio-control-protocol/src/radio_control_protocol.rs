@@ -103,16 +103,14 @@ where
         let cmd = Command::Config;
         let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
-        // let mut buffer = Buffer::new();
-        // let preset_id_str = buffer.format(preset_id);
-
-        // SAFETY - Only ever pushing one parameter.
-        // tx_parameters.push(preset_id_str).unwrap();
+        debug!("Entering query_config");
 
         self.uart_handler
             .send_command(cmd, tx_parameters)
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
+
+        debug!("Sent command to uart handler");
 
         let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
 
@@ -120,6 +118,7 @@ where
             .receive_response(&mut rx_parameters)
             .await?;
 
+        debug!("Received response from config command");
         if rx_parameters.is_empty() {
             error!("No parameters returned from query config");
             return Err(RadioControlProtocolError::IncorrectNumberParametersReturned);
@@ -146,7 +145,21 @@ where
 
     /// Detunes the radio.
     pub async fn detune(&mut self) -> Result<(), RadioControlProtocolError> {
-        todo!("Detune")
+        let cmd = Command::Detune;
+        let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+
+        self.uart_handler
+            .send_command(cmd, tx_parameters)
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
+
+        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+
+        self.uart_handler
+            .receive_response(&mut rx_parameters)
+            .await?;
+
+        Ok(())
     }
 }
 

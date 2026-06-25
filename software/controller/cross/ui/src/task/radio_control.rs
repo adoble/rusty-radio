@@ -5,12 +5,12 @@ use esp_hal::{Async, uart::Uart};
 //use embedded_io_async::{Read, Write}; // Import the Write trait
 
 use log::*;
+use mock_uart::MockUart;
 use radio_control_protocol::{
     RadioControlProtocol, RadioControlProtocolError, StationConfig,
     station_config::{RadioStationId, RadioStationName},
 };
 
-use crate::mock_uart::MockUart;
 use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 /// Process the events from the tuner
@@ -21,29 +21,10 @@ pub async fn radio_control(
     mut tuner_event_subscriber: TunerEventsChannelSubscriber,
     tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
-    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher);
-    // loop {
-    //     let event = tuner_event_subscriber.next_message_pure().await;
-
-    //     if let TunerEvents::StationChanged(station_id) = event {
-    //         match station_changed(uart, station_id).await {
-    //             Ok(station_name) => match station_name {
-    //                 Some(station_name) => {
-    //                     tuner_event_publisher
-    //                         .publish(TunerEvents::StationSelected(station_name))
-    //                         .await
-    //                 }
-    //                 None => {
-    //                     detune(uart).await;
-    //                     tuner_event_publisher.publish(TunerEvents::Detune).await
-    //                 }
-    //             },
-    //             Err(e) => tuner_event_publisher.publish(TunerEvents::Error(e)).await,
-    //         };
-    //     }
-    // }
+    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
 }
 
+#[deprecated]
 #[embassy_executor::task]
 pub async fn radio_control_mock(
     uart: &'static mut MockUart,
@@ -51,7 +32,8 @@ pub async fn radio_control_mock(
     mut tuner_event_subscriber: TunerEventsChannelSubscriber,
     tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
-    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher);
+    debug!("radio_control_mock");
+    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
 }
 
 pub async fn run_radio_control<U>(
@@ -61,6 +43,7 @@ pub async fn run_radio_control<U>(
 ) where
     U: embedded_io_async::Read + embedded_io_async::Write + 'static,
 {
+    debug!("run_radio_control");
     loop {
         let event = tuner_event_subscriber.next_message_pure().await;
 
@@ -118,9 +101,15 @@ where
 }
 
 /// Load the station config from the radio
-pub async fn load_station_config(
-    uart: &mut Uart<'static, Async>,
-) -> Result<StationConfig, RadioControlProtocolError> {
+pub async fn load_station_config<U>(
+    //uart: &mut Uart<'static, Async>,
+    uart: &mut U,
+) -> Result<StationConfig, RadioControlProtocolError>
+where
+    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
+{
+    debug!("Entered load_station_config");
+
     let station_config = match load_station_config_from_radio(uart).await {
         Ok(station_config) => station_config,
         Err(e) => {
@@ -132,13 +121,19 @@ pub async fn load_station_config(
     Ok(station_config)
 }
 
-async fn load_station_config_from_radio(
-    uart: &mut Uart<'static, Async>,
-) -> Result<StationConfig, RadioControlProtocolError> {
+async fn load_station_config_from_radio<U>(
+    //uart: &mut Uart<'static, Async>,
+    uart: &mut U,
+) -> Result<StationConfig, RadioControlProtocolError>
+where
+    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
+{
+    debug!("Entered load_station_config_from_radio");
     let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
     //    pub async fn query_config(&mut self) -> Result<usize, RadioControlProtocolError>
     let station_config = radio_control_protocol.query_config().await?;
+    debug!("station_config = {:?}", station_config);
 
     Ok(station_config)
 }

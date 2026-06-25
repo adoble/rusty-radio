@@ -62,3 +62,58 @@ async fn test_large_message() {
     let s = str::from_utf8(&buf).unwrap();
     assert_eq!(&s[..response_len], "ACK:Bayern Eins;")
 }
+
+#[tokio::test]
+async fn test_fragmented_message() {
+    let mut uart = MockUart::new();
+
+    let message_part1 = b"STA";
+    let message_part2 = b":";
+    let message_part3 = b"5";
+    let message_part4 = b";";
+
+    uart.write(message_part1).await.unwrap();
+    uart.write(message_part2).await.unwrap();
+    uart.write(message_part3).await.unwrap();
+    uart.write(message_part4).await.unwrap();
+
+    let mut buf = [0u8; 40];
+
+    let response_len = uart.read(&mut buf).await.unwrap();
+
+    let s = str::from_utf8(&buf).unwrap();
+    assert_eq!(&s[..response_len], "ACK:Classic;")
+}
+
+#[tokio::test]
+async fn test_write_all() {
+    let mut uart = MockUart::new();
+
+    let message = b"CFG:;";
+
+    uart.write_all(message).await.unwrap();
+
+    let mut buf = [0u8; 40];
+
+    let response_len = uart.read(&mut buf).await.unwrap();
+
+    let s = str::from_utf8(&buf).unwrap();
+    assert_eq!(&s[..response_len], "ACK:7,2,4,6,1;")
+}
+
+#[tokio::test]
+async fn test_buf_larger_than_frame_buffer() {
+    let mut uart = MockUart::new();
+
+    let message_81: [u8; 81] = core::array::from_fn(|i| {
+        let b = b'!' + i as u8;
+        if b >= b';' { b + 1 } else { b }
+    });
+
+    assert!(!message_81.contains(&b';'));
+    assert_eq!(message_81.len(), 81);
+
+    let n = uart.write(&message_81).await.unwrap();
+
+    assert_eq!(n, 80);
+}

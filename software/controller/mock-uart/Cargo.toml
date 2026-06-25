@@ -8,6 +8,7 @@ embedded-io = "0.7.1"
 embedded-io-async = "0.7.0"
 heapless = "0.9.3"
 itoa = "1.0.18"
+log = "0.4.33"
 
 [dev-dependencies]
 

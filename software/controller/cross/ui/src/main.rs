@@ -20,16 +20,15 @@ use front_panel::FrontPanel;
 mod sendable_multiplexer_driver;
 use sendable_multiplexer_driver::SendableMultiplexerDriver;
 
-mod mock_uart;
-use mock_uart::MockUart;
-
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
 use task::{
     display::display,
-    radio_control::{load_station_config, radio_control},
+    radio_control::{load_station_config, radio_control, radio_control_mock},
     tuner::tuner,
 };
+
+use mock_uart::MockUart;
 
 pub use radio_control_protocol::StationConfig;
 
@@ -98,6 +97,7 @@ async fn main(spawner: Spawner) {
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
     info!("Starting UI");
+    debug!("Debug works");
 
     // Wrap the spi_bus in a Mutex and store statically
     static SPI_BUS: StaticCell<SharedSpiBus> = StaticCell::new();
@@ -132,9 +132,19 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
+    debug!("Initialied front panel");
+
     // The uart is shared so make it static
-    static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
-    let uart = UART.init(hardware.uart0);
+    // let uart = {
+    //     static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
+    //     UART.init(hardware.uart0)
+    // };
+    let uart = {
+        static UART: StaticCell<MockUart> = StaticCell::new();
+        UART.init(MockUart::new())
+    };
+
+    debug!("Initialised uart");
 
     // Set up the end points of the tuner events channel. Setting the publishers and subscriber up this way to avoid borrow
     // problems when using the same pusblisher and subscriber for the (later spawned) tasks.
@@ -147,10 +157,14 @@ async fn main(spawner: Spawner) {
 
     let display_events_sub = TUNER_EVENTS_CHANNEL.subscriber().unwrap();
 
+    debug!("Initialied publishers and subscribers");
+
     // Get the stations configuration from the radio processor and make it static
     let station_config = load_station_config(uart).await.unwrap();
     static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
     let station_config = STATION_CONFIG.init(station_config);
+
+    debug!("STATION CONFIG{:?}", station_config);
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
@@ -158,8 +172,18 @@ async fn main(spawner: Spawner) {
         tuner(front_panel, station_config, tuner_events_pub).expect("FATAL: Could not spawn tuner"),
     );
 
+    // spawner.spawn(
+    //     radio_control(
+    //         uart,
+    //         station_config,
+    //         radio_control_events_sub,
+    //         radio_control_events_pub,
+    //     )
+    //     .expect("FATAL: Could not spawn radio_control"),
+    // );
+
     spawner.spawn(
-        radio_control(
+        radio_control_mock(
             uart,
             station_config,
             radio_control_events_sub,

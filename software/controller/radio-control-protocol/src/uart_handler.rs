@@ -73,6 +73,8 @@ where
         command: Command,
         parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
     ) -> Result<(), S::Error> {
+        debug!("Enter send_command");
+
         let cmd: [u8; 3] = (&command).into();
         self.serial.write_all(&cmd).await?;
 
@@ -103,10 +105,13 @@ where
         &mut self,
         parameters: &mut Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS>,
     ) -> Result<(), UartHandlerError> {
+        debug!("Entering receive_response");
         //let mut rx_buffer = String::<4>::new();
         // TODO what happens if less than 4 characters are sent back?
         let mut rx_cmd_buffer = [0u8; 4];
         self.serial.read_exact(&mut rx_cmd_buffer).await?;
+
+        debug!("rx_cmd_buffer: {:?}", rx_cmd_buffer);
 
         // TODO what should be the max size of a parameter? Use compile time contraints,
         let mut param = String::<MAX_PARAMETER_LEN>::new();
