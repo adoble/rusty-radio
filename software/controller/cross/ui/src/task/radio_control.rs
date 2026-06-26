@@ -16,8 +16,7 @@ use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsCha
 #[embassy_executor::task]
 pub async fn radio_control(
     uart: &'static mut Uart<'static, Async>,
-    station_config: &'static StationConfig,
-    mut tuner_event_subscriber: TunerEventsChannelSubscriber,
+    tuner_event_subscriber: TunerEventsChannelSubscriber,
     tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
     run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
@@ -41,10 +40,7 @@ pub async fn run_radio_control<U>(
                             .publish(TunerEvents::StationSelected(station_name))
                             .await
                     }
-                    None => {
-                        detune(uart).await;
-                        tuner_event_publisher.publish(TunerEvents::Detune).await
-                    }
+                    None => tuner_event_publisher.publish(TunerEvents::Detune).await,
                 },
                 Err(e) => tuner_event_publisher.publish(TunerEvents::Error(e)).await,
             };
@@ -67,23 +63,19 @@ where
     let station_name = match station_id {
         Some(id) => {
             let station_name = radio_control_protocol
-                .set_station(id.try_into().expect("station id exceeded range"))
+                .set_station(id.try_into().expect("Station id exceeded range"))
                 .await?;
             Some(station_name)
         }
-        None => None, // radio_control_protocol.detune(),
+        None => {
+            radio_control_protocol
+                .detune()
+                .await
+                .expect("Could not detune radio");
+            None
+        } // radio_control_protocol.detune(),
     };
     Ok(station_name)
-}
-
-/// In-between stations so detune the radio
-async fn detune<U>(uart: &mut U) -> Result<(), RadioControlProtocolError>
-where
-    U: embedded_io_async::Read + embedded_io_async::Write + 'static,
-{
-    let mut radio_control_protocol = RadioControlProtocol::new(uart);
-
-    radio_control_protocol.detune().await
 }
 
 /// Load the station config from the radio

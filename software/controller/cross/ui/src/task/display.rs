@@ -2,16 +2,10 @@ use log::*;
 
 use crate::task::sync::TunerEvents;
 
-use radio_control_protocol::{
-    RadioControlProtocol, RadioControlProtocolError, StationConfig,
-    station_config::{RadioStationId, RadioStationName},
-};
-
 use crate::task::sync::TunerEventsChannelSubscriber;
 
 #[embassy_executor::task]
 pub async fn display(
-    station_config: &'static StationConfig,
     // tuner_event_subscriber: &'static mut TunerEventsChannelSubscriber,
     mut tuner_event_subscriber: TunerEventsChannelSubscriber,
 ) {

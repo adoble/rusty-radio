@@ -129,7 +129,7 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
-    // The uart is shared so make it static
+    // The uart is passed to a task so make it static
     let uart = {
         static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
         UART.init(hardware.uart0)
@@ -158,16 +158,9 @@ async fn main(spawner: Spawner) {
     );
 
     spawner.spawn(
-        radio_control(
-            uart,
-            station_config,
-            radio_control_events_sub,
-            radio_control_events_pub,
-        )
-        .expect("FATAL: Could not spawn radio_control"),
+        radio_control(uart, radio_control_events_sub, radio_control_events_pub)
+            .expect("FATAL: Could not spawn radio_control"),
     );
 
-    spawner.spawn(
-        display(station_config, display_events_sub).expect("FATAL: Could not spawn display task"),
-    )
+    spawner.spawn(display(display_events_sub).expect("FATAL: Could not spawn display task"))
 }
