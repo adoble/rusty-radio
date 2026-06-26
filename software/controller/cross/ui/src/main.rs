@@ -129,7 +129,7 @@ async fn main(spawner: Spawner) {
 
     let front_panel = FRONT_PANEL.init(front_panel);
 
-    // The uart is shared so make it static
+    // The uart is passed to a task so make it static
     let uart = {
         static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
         UART.init(hardware.uart0)
