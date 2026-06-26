@@ -158,16 +158,9 @@ async fn main(spawner: Spawner) {
     );
 
     spawner.spawn(
-        radio_control(
-            uart,
-            station_config,
-            radio_control_events_sub,
-            radio_control_events_pub,
-        )
-        .expect("FATAL: Could not spawn radio_control"),
+        radio_control(uart, radio_control_events_sub, radio_control_events_pub)
+            .expect("FATAL: Could not spawn radio_control"),
     );
 
-    spawner.spawn(
-        display(station_config, display_events_sub).expect("FATAL: Could not spawn display task"),
-    )
+    spawner.spawn(display(display_events_sub).expect("FATAL: Could not spawn display task"))
 }
