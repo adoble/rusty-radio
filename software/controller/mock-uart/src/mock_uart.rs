@@ -16,13 +16,13 @@ const STATIONS: [&str; NUMBER_STATIONS] = [
 ];
 
 // const PRESETS: [u8; 4] = [2, 4, 6, 1];
-const CFG_MSG = b"ACK:7,2,4,6,1;";
+const CFG_MSG: &[u8] = b"ACK:7,2,4,6,1;";
 
 //#[deprecated]
 pub struct MockUart {
     state: State,
     frame_buf: heapless::Vec<u8, 80>,
-    cfg_msg_index: usize, 
+    cfg_msg_index: usize,
 }
 
 impl MockUart {
@@ -30,12 +30,11 @@ impl MockUart {
         MockUart {
             state: State::Initial,
             frame_buf: Vec::new(),
-            cfg_msg_index : 0, 
+            cfg_msg_index: 0,
         }
     }
 
     fn parse_frame_buffer(&mut self) {
-        debug!("Entered parse_frame_buffer");
         match &self.frame_buf[0..3] {
             b"STA" => {
                 let station_id: &[u8] = &self.frame_buf[4..];
@@ -62,16 +61,20 @@ impl embedded_io_async::Read for MockUart {
     async fn read(&mut self, buf: &mut [u8]) -> Result<usize, MockUartError> {
         let mut len = 0;
         let convert = itoa::Buffer::new();
-        debug!("embedded_io_async::Read");
 
         match self.state {
             State::Initial => panic!("Reading before sending a command"),
             State::Config => {
-                debug!("State Config");
                 let msg = b"ACK:7,2,4,6,1;";
-                debug!("msg : {:?})", msg);
-                buf[..msg.len()].copy_from_slice(msg); // Hardcoded for now 
-                debug!("out buf : {:?})", buf);
+                if let Some((left, right)) =
+                    CFG_MSG[self.cfg_msg_index..].split_at_checked(buf.len())
+                {
+                    buf[..].copy_from_slice(left);
+                    self.cfg_msg_index = buf.len();
+                } else {
+                    buf[..CFG_MSG.len()].copy_from_slice(CFG_MSG);
+                    self.cfg_msg_index = 0;
+                }
                 len = msg.len();
                 self.state = State::Initial;
             }
@@ -93,13 +96,10 @@ impl embedded_io_async::Read for MockUart {
 
 impl embedded_io_async::Write for MockUart {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        debug!("Write {:?}", buf);
         let mut len = 0;
         for (i, byte) in buf.iter().enumerate() {
-            debug!("Write bye: {}", *byte);
             if *byte != b';' {
                 if let Err(missed_byte) = self.frame_buf.push(*byte) {
-                    debug!("Returning with Ok({})", i);
                     return Ok(i);
                 }
                 len += 1;
@@ -108,8 +108,6 @@ impl embedded_io_async::Write for MockUart {
                 len += 1;
             }
         }
-
-        debug!("Wrote {} bytes", len);
 
         Ok(len)
     }

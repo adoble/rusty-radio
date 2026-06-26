@@ -5,7 +5,6 @@ use esp_hal::{Async, uart::Uart};
 //use embedded_io_async::{Read, Write}; // Import the Write trait
 
 use log::*;
-use mock_uart::MockUart;
 use radio_control_protocol::{
     RadioControlProtocol, RadioControlProtocolError, StationConfig,
     station_config::{RadioStationId, RadioStationName},
@@ -24,18 +23,6 @@ pub async fn radio_control(
     run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
 }
 
-#[deprecated]
-#[embassy_executor::task]
-pub async fn radio_control_mock(
-    uart: &'static mut MockUart,
-    station_config: &'static StationConfig,
-    mut tuner_event_subscriber: TunerEventsChannelSubscriber,
-    tuner_event_publisher: TunerEventsChannelPublisher,
-) {
-    debug!("radio_control_mock");
-    run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
-}
-
 pub async fn run_radio_control<U>(
     uart: &mut U,
     mut tuner_event_subscriber: TunerEventsChannelSubscriber,
@@ -43,7 +30,6 @@ pub async fn run_radio_control<U>(
 ) where
     U: embedded_io_async::Read + embedded_io_async::Write + 'static,
 {
-    debug!("run_radio_control");
     loop {
         let event = tuner_event_subscriber.next_message_pure().await;
 
@@ -108,8 +94,6 @@ pub async fn load_station_config<U>(
 where
     U: embedded_io_async::Read + embedded_io_async::Write + 'static,
 {
-    debug!("Entered load_station_config");
-
     let station_config = match load_station_config_from_radio(uart).await {
         Ok(station_config) => station_config,
         Err(e) => {
@@ -128,12 +112,10 @@ async fn load_station_config_from_radio<U>(
 where
     U: embedded_io_async::Read + embedded_io_async::Write + 'static,
 {
-    debug!("Entered load_station_config_from_radio");
     let mut radio_control_protocol = RadioControlProtocol::new(uart);
 
     //    pub async fn query_config(&mut self) -> Result<usize, RadioControlProtocolError>
     let station_config = radio_control_protocol.query_config().await?;
-    debug!("station_config = {:?}", station_config);
 
     Ok(station_config)
 }

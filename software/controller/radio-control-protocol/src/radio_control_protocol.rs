@@ -103,14 +103,10 @@ where
         let cmd = Command::Config;
         let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
 
-        debug!("Entering query_config");
-
         self.uart_handler
             .send_command(cmd, tx_parameters)
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
-
-        debug!("Sent command to uart handler");
 
         let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
 
@@ -118,7 +114,6 @@ where
             .receive_response(&mut rx_parameters)
             .await?;
 
-        debug!("Received response from config command");
         if rx_parameters.is_empty() {
             error!("No parameters returned from query config");
             return Err(RadioControlProtocolError::IncorrectNumberParametersReturned);

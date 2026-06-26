@@ -117,3 +117,26 @@ async fn test_buf_larger_than_frame_buffer() {
 
     assert_eq!(n, 80);
 }
+
+#[tokio::test]
+async fn test_multiple_reads() {
+    let mut uart = MockUart::new();
+
+    let mut buf = [0u8; 4];
+
+    let msg = b"CFG:;";
+
+    uart.write_all(msg).await.unwrap();
+
+    uart.read(&mut buf).await.unwrap();
+
+    // b"ACK:7,2,4,6,1;";
+
+    assert_eq!(&buf, b"ACK:");
+
+    let mut buf = [0u8; 10];
+
+    uart.read(&mut buf);
+
+    assert_eq!(&buf, b"7,2,4,6,1;");
+}
