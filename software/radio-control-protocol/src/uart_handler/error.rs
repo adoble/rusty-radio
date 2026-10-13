@@ -18,6 +18,7 @@ pub enum UartHandlerError {
     ParameterTooLarge,
     TooManyParameters,
     UnknownCommand,
+    FrameBufferOverflow,
 
     ClientCannotHandleCommand,
     ClientSentUnknownErrorCode,

@@ -67,17 +67,19 @@ This takes the form;
 ### Selecting a station
 
 ```bnf
-
-;;; If station_id is not spectified then the radio is detuned/muted
-<station_select_command> ::= "STA" ";" (<station_id> |  ";")
+<station_select_command> ::= "STA" ":" <station_id> |  ";"
 <station_select_response> ::= "ACK" ":" <station_name> ";"
 <station_name> ::= UTF8_CHARACTER* 
-    
-    
-
+ 
 ```
 
 
+### Detune
+```bnf
+<detune_command> ::= "DTN" ":  ";"
+<station_select_response> ::= "ACK:;" 
+ 
+```
 
 
 

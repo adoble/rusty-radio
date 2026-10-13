@@ -1,11 +1,12 @@
-use heapless::{String, Vec};
+use heapless::Vec;
 
 const NUMBER_PRESETS: usize = 4;
 
-// TODO move these to radio_starion_protocol and check the size
-pub type RadioStationId = usize;
-pub type RadioStationName = String<40>;
+// // TODO move these to radio_starion_protocol and check the size
+// pub type RadioStationId = usize;
+// pub type RadioStationName = String<40>;
 
+use crate::radio_control_protocol::RadioStationId;
 #[derive(Clone, Debug, PartialEq)]
 pub struct StationConfig {
     pub number_stations: usize,

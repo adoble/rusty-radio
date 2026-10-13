@@ -286,3 +286,40 @@ async fn test_send_error() {
 
     serial.done();
 }
+
+#[tokio::test]
+async fn test_read_frame() {
+    let rx_message = b"CFG:7,1,2,3,4;";
+    let expectations = [SerialTransaction::read_many(rx_message)];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let r = uart_handler.receive_frame().await;
+
+    assert_eq!(r, Ok(rx_message.len()));
+
+    serial.done();
+}
+
+#[tokio::test]
+async fn test_read_frame_with_buffer_overflow() {
+    const FRAME_BUFFER_LEN: usize = 80;
+    let rx_message = b"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \
+    XXXXXXXXXXXXXXXXXXXXXX;";
+
+    let expectations = [SerialTransaction::read_many(rx_message)];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut uart_handler: UartHandler<'_, _, 40, 5> = UartHandler::new(&mut serial);
+
+    let r = uart_handler.receive_frame().await;
+    assert_eq!(r, Err(UartHandlerError::FrameBufferOverflow));
+
+    let r = uart_handler.receive_frame().await;
+    assert_eq!(r, Ok(2));
+
+    serial.done();
+}

@@ -43,6 +43,9 @@ pub use command::Command;
 mod error;
 pub use error::UartHandlerError;
 
+const FRAME_BUFFER_LEN: usize = 80;
+const TERMINATOR: char = ';';
+
 /// Sending and receiving of commands and reposnses using the framing grammer.
 ///
 /// Instead of using a specific UART periperhal it uses the traits `embedded_io_async::{Read, Write}`.
@@ -52,6 +55,7 @@ where
     S: Write + Read,
 {
     serial: &'a mut S,
+    framebuffer: [u8; FRAME_BUFFER_LEN],
 }
 
 impl<'a, S, const MAX_PARAMETER_LEN: usize, const MAX_NUMBER_PARAMETERS: usize>
@@ -62,7 +66,15 @@ where
     /// Crate a new uart handler using the serial interface specified.
     ///
     pub fn new(serial: &'a mut S) -> Self {
-        Self { serial }
+        Self {
+            serial,
+            framebuffer: [0; FRAME_BUFFER_LEN],
+        }
+    }
+
+    /// Return a reference to the framebuffer
+    pub fn framebuffer(&self) -> &[u8] {
+        &self.framebuffer
     }
 
     /// Send a command over the serial interface to the receiver.
@@ -123,7 +135,7 @@ where
 
                     // SAFETY: A char is always avaialable.
                     let c = str::from_utf8(&char_buf)?.chars().next().unwrap();
-                    if c != ';' {
+                    if c != TERMINATOR {
                         if c != ',' {
                             param.push(c)?;
                         } else {
@@ -148,7 +160,7 @@ where
                 let error_code = loop {
                     self.serial.read_exact(&mut char_buf).await?;
                     let c = str::from_utf8(&char_buf)?.chars().next().unwrap();
-                    if c != ';' {
+                    if c != TERMINATOR {
                         error_code.push(c)?;
                     } else {
                         // Terminator found
@@ -166,6 +178,36 @@ where
         }
 
         Ok(())
+    }
+
+    /// Receives a frame which it places in the frame buffer. The number of bytes is returned.
+    /// A frame is defined as a string of bytes until the terminator character is reached. The terminator
+    /// is included in the frame buffer. No attempt is made to parse the framebuffer.
+    /// A error occurs if the frame buffer overflows, i.e. no terminator has been detected.
+    /// reading into a frame buffer before parsing is done as the serial connection may have a number of
+    /// spurious charaters, especially during startup. This ensures that they are discarded. It may be
+    /// that some characters starting a command are at the end of the framebuffer befire it overflows. In which
+    /// case it is the responsibilty of the caller to retry sending the command.
+    pub async fn receive_frame(&mut self) -> Result<usize, UartHandlerError> {
+        let mut len = 0usize;
+
+        loop {
+            // Overflow check happens before the write, so we never silently
+            // drop a byte that *did* fit.
+            if len >= self.framebuffer.len() {
+                return Err(UartHandlerError::FrameBufferOverflow);
+            }
+
+            let mut byte = [0u8; 1];
+            self.serial.read_exact(&mut byte).await?; // .map_err(|_| UartHandlerError::ReadError)?;
+
+            self.framebuffer[len] = byte[0];
+            len += 1;
+
+            if byte[0] == TERMINATOR as u8 {
+                return Ok(len);
+            }
+        }
     }
 
     /// Send an acknowledge back to the sender with any parameters.

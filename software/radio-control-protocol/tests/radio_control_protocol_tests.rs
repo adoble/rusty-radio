@@ -1,8 +1,8 @@
 use embedded_io_async_mock::{Mock as SerialMock, Transaction as SerialTransaction};
 
 use radio_control_protocol::{
-    RadioControlProtocol, StationConfig, radio_control_protocol::RadioControlProtocolError,
-    uart_handler::UartHandlerError,
+    RadioCommand, RadioControlProtocol, StationConfig,
+    radio_control_protocol::RadioControlProtocolError, uart_handler::UartHandlerError,
 };
 
 #[tokio::test]
@@ -180,6 +180,24 @@ async fn test_query_config_with_parse_error() {
     let r = radio_control_protocol.query_config().await;
 
     assert_eq!(r, Err(RadioControlProtocolError::ParseParameter));
+
+    serial.done();
+}
+
+//  pub async fn receive_command(&mut self) -> Result<RadioCommand, RadioControlProtocolError> {
+#[tokio::test]
+async fn test_receive_command() {
+    // Configure expectations
+    let rx_message = "STA:7;";
+    let expectations = [SerialTransaction::read_many(rx_message.as_bytes())];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
+
+    let command = radio_control_protocol.receive_command().await.unwrap();
+
+    assert_eq!(command, RadioCommand::Station(7));
 
     serial.done();
 }

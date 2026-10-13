@@ -1,5 +1,7 @@
 use crate::UartHandlerError;
 
+// TODO merge with RadioCommand
+
 #[derive(PartialEq, Debug)]
 pub enum Command {
     Station,
