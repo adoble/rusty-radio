@@ -4,10 +4,7 @@ use embassy_sync::{
     pubsub::{PubSubChannel, Publisher, Subscriber},
 };
 
-use radio_control_protocol::{
-    RadioControlProtocolError,
-    station_config::{RadioStationId, RadioStationName},
-};
+use radio_control_protocol::{RadioControlProtocolError, RadioStationId, RadioStationName};
 
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 // pub enum UiCommand {
@@ -58,14 +55,13 @@ pub type TunerEventsChannelSubscriber = Subscriber<
 
 #[derive(Clone, Debug)]
 pub enum TunerEvents {
-    /// The station has been changed to either a station or is in between stations.
+    /// Set a station based on it's ID.
     StationChanged(Option<RadioStationId>),
+
+    StationSelected(RadioStationName),
 
     /// The tuner knob  has been moved
     TunerMoved(TunerDirection),
-
-    /// A station has been selected and the name obtained
-    StationSelected(RadioStationName),
 
     /// Detune between stations
     Detune,

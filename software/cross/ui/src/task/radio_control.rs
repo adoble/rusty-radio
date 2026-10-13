@@ -6,8 +6,8 @@ use esp_hal::{Async, uart::Uart};
 
 use log::*;
 use radio_control_protocol::{
-    RadioControlProtocol, RadioControlProtocolError, StationConfig,
-    station_config::{RadioStationId, RadioStationName},
+    RadioControlProtocol, RadioControlProtocolError, RadioStationId, RadioStationName,
+    StationConfig,
 };
 
 use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
@@ -86,6 +86,9 @@ pub async fn load_station_config<U>(
 where
     U: embedded_io_async::Read + embedded_io_async::Write + 'static,
 {
+    #[cfg(feature = "solo")]
+    return Ok(debug_station_config());
+
     let station_config = match load_station_config_from_radio(uart).await {
         Ok(station_config) => station_config,
         Err(e) => {
@@ -110,4 +113,11 @@ where
     let station_config = radio_control_protocol.query_config().await?;
 
     Ok(station_config)
+}
+
+#[allow(dead_code)]
+fn debug_station_config() -> StationConfig {
+    StationConfig::new()
+        .with_number_stations(10)
+        .with_presets([2, 4, 6, 8])
 }

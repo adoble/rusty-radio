@@ -22,8 +22,7 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 mod task;
 use task::sync::TUNER_EVENTS_CHANNEL;
 use task::{
-    display::display,
-    radio_control::{load_station_config, radio_control},
+    display::display, radio_control::load_station_config, radio_control::radio_control,
     tuner::tuner,
 };
 
@@ -136,7 +135,7 @@ async fn main(spawner: Spawner) {
     };
 
     // Set up the end points of the tuner events channel. Setting the publishers and subscriber up this way to avoid borrow
-    // problems when using the same pusblisher and subscriber for the (later spawned) tasks.
+    // problems when using the same publisher and subscriber for the (later spawned) tasks.
     // SAFETY: These calls fail only if the number of subscribers and publishers have been incorrectly set up
     // in TUNER_EVENTS_CHANNEL.This is then a programming error and should result in a panic, using unwrap here.
     let tuner_events_pub = TUNER_EVENTS_CHANNEL.publisher().unwrap();
@@ -148,8 +147,11 @@ async fn main(spawner: Spawner) {
 
     // Get the stations configuration from the radio processor and make it static
     let station_config = load_station_config(uart).await.unwrap();
+
     static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
     let station_config = STATION_CONFIG.init(station_config);
+
+    info!("About to spawn");
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.
@@ -162,5 +164,5 @@ async fn main(spawner: Spawner) {
             .expect("FATAL: Could not spawn radio_control"),
     );
 
-    spawner.spawn(display(display_events_sub).expect("FATAL: Could not spawn display task"))
+    spawner.spawn(display(display_events_sub).expect("FATAL: Could not spawn display task"));
 }

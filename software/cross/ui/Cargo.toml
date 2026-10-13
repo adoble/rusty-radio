@@ -55,3 +55,6 @@ embedded-io = "0.7.1"
 # opt-level        = 's'
 # overflow-checks  = false
 
+[features]
+# The UI processor is working alone (e.g during development)
+solo = []
