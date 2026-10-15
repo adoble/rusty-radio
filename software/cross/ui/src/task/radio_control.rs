@@ -1,3 +1,4 @@
+use embassy_time::{Duration, WithTimeout};
 use esp_hal::{Async, uart::Uart};
 
 // use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
@@ -10,7 +11,9 @@ use radio_control_protocol::{
     StationConfig,
 };
 
-use crate::task::sync::{TunerEvents, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
+const UART_TIMEOUT: Duration = Duration::from_millis(100);
+
+use crate::task::sync::{TunerEvent, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
 
 /// Process the events from the tuner
 #[embassy_executor::task]
@@ -32,17 +35,19 @@ pub async fn run_radio_control<U>(
     loop {
         let event = tuner_event_subscriber.next_message_pure().await;
 
-        if let TunerEvents::StationChanged(station_id) = event {
+        if let TunerEvent::StationChanged(station_id) = event {
             match station_changed(uart, station_id).await {
                 Ok(station_name) => match station_name {
                     Some(station_name) => {
+                        // Publish the selected station name so that it can be displayed.
                         tuner_event_publisher
-                            .publish(TunerEvents::StationSelected(station_name))
+                            .publish(TunerEvent::StationSelected(station_name))
                             .await
                     }
-                    None => tuner_event_publisher.publish(TunerEvents::Detune).await,
+                    // Publish that the station is detuned so that it can be displayed.
+                    None => tuner_event_publisher.publish(TunerEvent::Detune).await,
                 },
-                Err(e) => tuner_event_publisher.publish(TunerEvents::Error(e)).await,
+                Err(e) => tuner_event_publisher.publish(TunerEvent::Error(e)).await,
             };
         }
     }
@@ -89,7 +94,11 @@ where
     #[cfg(feature = "solo")]
     return Ok(debug_station_config());
 
-    let station_config = match load_station_config_from_radio(uart).await {
+    let station_config = match load_station_config_from_radio(uart)
+        .with_timeout(UART_TIMEOUT)
+        .await
+        .map_err(|_| RadioControlProtocolError::Timeout)?
+    {
         Ok(station_config) => station_config,
         Err(e) => {
             error!("Could not load station from radio, error:{:?}", e);

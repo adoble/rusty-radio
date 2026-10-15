@@ -1,7 +1,7 @@
 use embassy_time::{Duration, Timer};
 
 use crate::front_panel::{Buttons, FrontPanel};
-use crate::task::sync::{TunerDirection, TunerEvents, TunerEventsChannelPublisher};
+use crate::task::sync::{TunerDirection, TunerEvent, TunerEventsChannelPublisher};
 use radio_control_protocol::StationConfig;
 
 #[allow(unused_imports)]
@@ -35,7 +35,7 @@ pub async fn tuner(
 
     // Send the inital station
     tuner_events_publisher
-        .publish(TunerEvents::StationChanged(Some(initial_station)))
+        .publish(TunerEvent::StationChanged(Some(initial_station)))
         .await;
 
     let mut last_button_pressed = Buttons::None;
@@ -86,7 +86,7 @@ pub async fn tuner(
                 // Signal that the station has changed
                 //station_change_sender.send(Some(station_id));
                 tuner_events_publisher
-                    .publish(TunerEvents::StationChanged(Some(station_id)))
+                    .publish(TunerEvent::StationChanged(Some(station_id)))
                     .await;
             }
         }
@@ -99,14 +99,14 @@ pub async fn tuner(
                 rotary_encoder_movement = true;
                 tuning_scale.increment();
                 tuner_events_publisher
-                    .publish(TunerEvents::TunerMoved(TunerDirection::Clockwise))
+                    .publish(TunerEvent::TunerMoved(TunerDirection::Clockwise))
                     .await;
             }
             crate::front_panel::Direction::CounterClockwise => {
                 rotary_encoder_movement = true;
                 tuning_scale.decrement();
                 tuner_events_publisher
-                    .publish(TunerEvents::TunerMoved(TunerDirection::CounterClockwise))
+                    .publish(TunerEvent::TunerMoved(TunerDirection::CounterClockwise))
                     .await;
             }
             crate::front_panel::Direction::None => (),
@@ -122,7 +122,7 @@ pub async fn tuner(
                         last_station_id = station_id;
                         //station_change_sender.send(Some(id));
                         tuner_events_publisher
-                            .publish(TunerEvents::StationChanged(Some(id)))
+                            .publish(TunerEvent::StationChanged(Some(id)))
                             .await;
 
                         // TODO assuming that the following will work.
@@ -133,7 +133,7 @@ pub async fn tuner(
                         last_station_id = station_id;
                         //station_change_sender.send(None);
                         tuner_events_publisher
-                            .publish(TunerEvents::StationChanged(None))
+                            .publish(TunerEvent::StationChanged(None))
                             .await;
                     }
                 }

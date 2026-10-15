@@ -30,7 +30,7 @@ const TUNER_EVENTS_CHANNEL_PUBS: usize = 2;
 
 pub static TUNER_EVENTS_CHANNEL: PubSubChannel<
     CriticalSectionRawMutex,
-    TunerEvents,
+    TunerEvent,
     TUNER_EVENTS_CHANNEL_CAP,
     TUNER_EVENTS_CHANNEL_SUBS,
     TUNER_EVENTS_CHANNEL_PUBS,
@@ -39,7 +39,7 @@ pub static TUNER_EVENTS_CHANNEL: PubSubChannel<
 pub type TunerEventsChannelPublisher = Publisher<
     'static,
     CriticalSectionRawMutex,
-    TunerEvents,
+    TunerEvent,
     TUNER_EVENTS_CHANNEL_CAP,
     TUNER_EVENTS_CHANNEL_SUBS,
     TUNER_EVENTS_CHANNEL_PUBS,
@@ -47,14 +47,14 @@ pub type TunerEventsChannelPublisher = Publisher<
 pub type TunerEventsChannelSubscriber = Subscriber<
     'static,
     CriticalSectionRawMutex,
-    TunerEvents,
+    TunerEvent,
     TUNER_EVENTS_CHANNEL_CAP,
     TUNER_EVENTS_CHANNEL_SUBS,
     TUNER_EVENTS_CHANNEL_PUBS,
 >;
 
 #[derive(Clone, Debug)]
-pub enum TunerEvents {
+pub enum TunerEvent {
     /// Set a station based on it's ID.
     StationChanged(Option<RadioStationId>),
 

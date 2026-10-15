@@ -234,6 +234,7 @@ pub enum RadioControlProtocolError {
     ParameterLengthTooSmall,
     CannotLoadStationConfig,
     IllFormedReponse,
+    Timeout,
     UnknownCommand,
 }
 
