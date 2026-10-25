@@ -7,7 +7,7 @@
 	(title_block
 		(title "Rusty Radio")
 		(date "2026-03-20")
-		(rev "0.6.0")
+		(rev "0.7.0")
 		(company "Doble Audio")
 		(comment 1 "Using a XIAO ESP32C3  board for UI and XIAO ESP32S3 for radio")
 		(comment 2 "See https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/")
@@ -4479,13 +4479,15 @@
 		(color 0 0 0 0)
 		(uuid "ec26ec70-8cae-404c-bb79-d33720f62fdd")
 	)
+	(junction
+		(at 60.96 63.5)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "f2f7ef96-9984-43ce-a4cd-838a55a8db22")
+	)
 	(no_connect
 		(at 212.09 88.9)
 		(uuid "100e140d-2270-4756-8956-524162d2fb04")
-	)
-	(no_connect
-		(at 86.36 63.5)
-		(uuid "10697f80-1065-465d-9db9-704dc9e6d4da")
 	)
 	(no_connect
 		(at 339.09 207.01)
@@ -4534,10 +4536,6 @@
 	(no_connect
 		(at 212.09 53.34)
 		(uuid "8fd1af4c-3972-497c-8935-7dc588a783a7")
-	)
-	(no_connect
-		(at 121.92 205.74)
-		(uuid "961c16bd-803f-4276-9e68-18222ba9748e")
 	)
 	(no_connect
 		(at 339.09 209.55)
@@ -4964,6 +4962,16 @@
 	)
 	(wire
 		(pts
+			(xy 60.96 63.5) (xy 86.36 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "299d8060-1e13-45a4-b92c-9301a3635353")
+	)
+	(wire
+		(pts
 			(xy 294.64 196.85) (xy 294.64 236.22)
 		)
 		(stroke
@@ -4971,6 +4979,16 @@
 			(type default)
 		)
 		(uuid "2ace9c97-1856-4ef3-a7ff-527f1c52188f")
+	)
+	(wire
+		(pts
+			(xy 121.92 205.74) (xy 133.35 205.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2b1c60b2-5350-4683-9d46-fbe817f84885")
 	)
 	(bus
 		(pts
@@ -5563,6 +5581,16 @@
 			(type default)
 		)
 		(uuid "86c9bee6-f350-4fb7-a040-2dc6f468084f")
+	)
+	(wire
+		(pts
+			(xy 55.88 63.5) (xy 60.96 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "87bf9e4e-e155-4e69-9efd-901bcaa707d3")
 	)
 	(wire
 		(pts
@@ -6716,6 +6744,16 @@
 		)
 		(uuid "6300e31c-bd61-4209-b308-5077a6336931")
 	)
+	(label "~{RADIO_READY}"
+		(at 123.19 205.74 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "6768df9e-eb6b-4dc5-a9fb-c21d9e4a2618")
+	)
 	(label "DISP-CS"
 		(at 121.92 217.17 0)
 		(effects
@@ -6857,6 +6895,16 @@
 			(justify left bottom)
 		)
 		(uuid "bf657fd2-dd57-4a51-85f4-ef4ac01b225d")
+	)
+	(label "~{RADIO_READY}"
+		(at 63.5 63.5 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "c99e1d35-7c93-483e-a728-9d9922c9b43c")
 	)
 	(label "~{MUX_CS}"
 		(at 175.26 175.26 180)
@@ -7076,7 +7124,7 @@
 			(uuid "346b5414-4807-4c9a-bbe7-57a24bdeef47")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR016")
 					(unit 1)
@@ -7142,7 +7190,7 @@
 			(uuid "a8d88f30-12af-4444-a458-1dd50573de1a")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR013")
 					(unit 1)
@@ -7208,7 +7256,7 @@
 			(uuid "c2e1feea-82a9-42fb-9850-3afa9f6db89b")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR04")
 					(unit 1)
@@ -7345,7 +7393,7 @@
 			(uuid "7e3e0e17-4590-4a90-9074-d732b088c585")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR014")
 					(unit 1)
@@ -7411,7 +7459,7 @@
 			(uuid "97fb944b-0d0c-4bb6-8785-fa7e0d732dad")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR015")
 					(unit 1)
@@ -7477,7 +7525,7 @@
 			(uuid "4d22369f-1ddc-4338-8de8-cee6c5fd2899")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR020")
 					(unit 1)
@@ -7823,7 +7871,7 @@
 			(uuid "3dfaffd9-c633-48d5-8f4a-c4d0273c28ad")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "U3")
 					(unit 1)
@@ -7888,7 +7936,7 @@
 			(uuid "daf6f9e6-a8e8-45bc-97c3-cc2ffd15ba0b")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR019")
 					(unit 1)
@@ -7955,7 +8003,7 @@
 			(uuid "3129ec03-f217-4d1e-b4e7-05d07aad7fb0")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR012")
 					(unit 1)
@@ -8022,7 +8070,7 @@
 			(uuid "6ff47f19-a40c-46f1-9ab8-527f5f1861ad")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "AE1")
 					(unit 1)
@@ -8282,7 +8330,7 @@
 			(uuid "53dd9fa8-aac3-4f3b-b063-d9522dfc457d")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "U4")
 					(unit 1)
@@ -8351,7 +8399,7 @@
 			(uuid "3f565655-d1ba-4cb5-a568-f3cc7e53db58")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "D1")
 					(unit 1)
@@ -8765,7 +8813,7 @@
 			(uuid "6a1cde2e-a08e-492a-b337-3c130a93ba41")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR018")
 					(unit 1)
@@ -8899,7 +8947,7 @@
 			(uuid "43b2b7d5-22c5-40b5-8466-59c34b2d15c6")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "U1")
 					(unit 1)
@@ -9037,7 +9085,7 @@
 			(uuid "ddd0f449-8894-4b76-bd11-409d1cfa4df5")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "J2")
 					(unit 1)
@@ -9243,6 +9291,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+3.3V")
+		(at 60.96 58.42 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "930e33be-cc37-48e9-a099-84617049f98b")
+		(property "Reference" "#PWR025"
+			(at 60.96 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 60.96 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 60.96 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 60.96 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+			(at 60.96 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "a58547aa-872a-4bfa-b864-74d4c059abb6")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "#PWR025")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_name "R_Small_1")
 		(lib_id "Device:R_Small")
 		(at 308.61 222.25 0)
@@ -9305,9 +9419,80 @@
 			(uuid "b4c97124-a8fd-4426-bd6f-5f0cbfe87f7b")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "R1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_name "R_Small_2")
+		(lib_id "Device:R_Small")
+		(at 60.96 60.96 180)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a15db8c6-0924-4c14-a268-5d90e3481d96")
+		(property "Reference" "R7"
+			(at 58.42 62.2301 0)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 58.42 59.6901 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 60.96 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 60.96 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, small symbol"
+			(at 60.96 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5e8e9399-fcef-4114-95d0-a9bca270a842")
+		)
+		(pin "2"
+			(uuid "2de34ff5-9ff6-4e94-b282-01997e1b224c")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "R7")
 					(unit 1)
 				)
 			)
@@ -9452,7 +9637,7 @@
 			(uuid "f6b7beff-9bf4-431a-b7da-3e367e57b384")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "R6")
 					(unit 1)
@@ -9518,7 +9703,7 @@
 			(uuid "fe514e6a-d3ae-46db-b65c-6cbbb52d1865")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR011")
 					(unit 1)
@@ -9813,7 +9998,7 @@
 			(uuid "adf29679-f7cb-4bd9-b543-f2fa4e8b6767")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "J1")
 					(unit 1)
@@ -10016,7 +10201,7 @@
 			(uuid "0c6eba0f-46c4-47b4-a520-e73bbe2b1cb0")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR010")
 					(unit 1)
@@ -10082,7 +10267,7 @@
 			(uuid "9fec23b8-91cc-468e-b806-0e9fb6cef6af")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR09")
 					(unit 1)
@@ -10297,7 +10482,7 @@
 			(uuid "85e33a7d-dd73-41a0-918b-f3aabb13cb7e")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "SW1")
 					(unit 1)
@@ -10505,7 +10690,7 @@
 			(uuid "2af623ca-cce0-4063-9d59-1f49c5e15632")
 		)
 		(instances
-			(project ""
+			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR07")
 					(unit 1)
