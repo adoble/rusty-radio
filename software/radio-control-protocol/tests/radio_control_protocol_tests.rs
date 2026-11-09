@@ -184,7 +184,6 @@ async fn test_query_config_with_parse_error() {
     serial.done();
 }
 
-//  pub async fn receive_command(&mut self) -> Result<RadioCommand, RadioControlProtocolError> {
 #[tokio::test]
 async fn test_receive_command() {
     // Configure expectations
@@ -198,6 +197,33 @@ async fn test_receive_command() {
     let command = radio_control_protocol.receive_command().await.unwrap();
 
     assert_eq!(command, RadioCommand::Station(7));
+
+    serial.done();
+}
+
+#[tokio::test]
+async fn test_send_ack() {
+    // Configure expectations
+    let tx_message = "ACK:SWR3;";
+    let expectations = [
+        SerialTransaction::write_many(tx_message.as_bytes()),
+        SerialTransaction::flush(),
+    ];
+
+    let mut serial = SerialMock::new(&expectations);
+
+    let mut parameters: heapless::Vec<heapless::String<40>, 5> = heapless::Vec::new();
+
+    let param = heapless::String::try_from("SWR3").unwrap();
+
+    parameters.push(param).unwrap();
+
+    let mut radio_control_protocol = RadioControlProtocol::new(&mut serial);
+
+    radio_control_protocol
+        .send_acknowledge(&parameters)
+        .await
+        .unwrap();
 
     serial.done();
 }

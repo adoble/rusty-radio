@@ -137,7 +137,9 @@ where
                     let c = str::from_utf8(&char_buf)?.chars().next().unwrap();
                     if c != TERMINATOR {
                         if c != ',' {
-                            param.push(c)?;
+                            param
+                                .push(c)
+                                .map_err(|_| UartHandlerError::ResponseTooLarge)?;
                         } else {
                             parameters
                                 .push(param)
@@ -161,7 +163,9 @@ where
                     self.serial.read_exact(&mut char_buf).await?;
                     let c = str::from_utf8(&char_buf)?.chars().next().unwrap();
                     if c != TERMINATOR {
-                        error_code.push(c)?;
+                        error_code
+                            .push(c)
+                            .map_err(|_| UartHandlerError::ResponseTooLarge)?;
                     } else {
                         // Terminator found
                         break error_code;
@@ -191,6 +195,9 @@ where
     pub async fn receive_frame(&mut self) -> Result<usize, UartHandlerError> {
         let mut len = 0usize;
 
+        // Clear any data in the frame buffer
+        self.framebuffer.fill(0);
+
         loop {
             // Overflow check happens before the write, so we never silently
             // drop a byte that *did* fit.
@@ -201,9 +208,22 @@ where
             let mut byte = [0u8; 1];
             self.serial.read_exact(&mut byte).await?; // .map_err(|_| UartHandlerError::ReadError)?;
 
+            debug!("{}: {}", len, char::from(byte[0]));
+
             self.framebuffer[len] = byte[0];
             len += 1;
 
+            // /* DEBUG  */
+            // debug!("framebuffer:");
+            // let v = Vec::<u8, 60>::from_slice(&self.framebuffer);
+            // debug!("vector: {:?}", v);
+            // let v = v.unwrap();
+
+            // let dbg_str: String<60> = String::from_utf8(v).unwrap();
+
+            // debug!("{}", dbg_str);
+
+            // /* END DEBUG */
             if byte[0] == TERMINATOR as u8 {
                 return Ok(len);
             }
@@ -237,7 +257,7 @@ where
     }
 
     /// Send an error back from the receiver with the error number
-    pub async fn send_error(&mut self, error_number: usize) -> Result<(), S::Error> {
+    pub async fn send_error(&mut self, error_number: u8) -> Result<(), S::Error> {
         self.serial.write_all(b"ERR:").await?;
 
         let mut s: String<20> = String::new();
@@ -246,6 +266,12 @@ where
 
         self.serial.write_all(b";").await?;
 
+        self.serial.flush().await?;
+
+        Ok(())
+    }
+
+    pub async fn flush(&mut self) -> Result<(), S::Error> {
         self.serial.flush().await?;
 
         Ok(())

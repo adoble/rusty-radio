@@ -1,15 +1,16 @@
-//use embassy_time::Timer;
 /// The contains the initialised peripherals used by the system.
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
-
 // TODO Correct this to use the new versions of the esp wifi crates.
 use esp_hal::{
-    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    gpio::{DriveMode, Input, InputConfig, Level, Output, OutputConfig, Pull},
     interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},
-    peripherals::{Peripherals, TIMG1, WIFI},
+    // peripherals::TIMG1,
+    peripherals::{Peripherals, WIFI},
     rng::Rng,
     spi::master::{Config as SpiConfig, Spi},
-    timer::{systimer::SystemTimer, timg::TimerGroup},
+    timer::systimer::SystemTimer,
+    //timer::timg::TimerGroup,
+    uart::{Config as UartConfig, Uart},
 };
 
 //use esp_wifi::wifi::{WifiController, WifiDevice};
@@ -18,8 +19,6 @@ use esp_radio::{
     Controller,
 };
 // use esp_wifi::EspWifiController;
-
-use esp_println::println;
 
 use embassy_net::{Runner, Stack};
 
@@ -39,9 +38,10 @@ pub struct Hardware {
     pub xdcs: Output<'static>,
     pub dreq: Input<'static>,
     pub reset_codec: Output<'static>,
+    pub radio_ready: Output<'static>,
 
     pub system_timer: SystemTimer<'static>,
-    pub timer_group: TimerGroup<'static, TIMG1<'static>>,
+    //pub timer_group: TimerGroup<'static, TIMG1<'static>>,
     pub rng: Rng,
 
     pub spi_bus: Spi<'static, esp_hal::Async>,
@@ -51,6 +51,7 @@ pub struct Hardware {
     // pub runner: Runner<'static, WifiDevice<'static>>,
     // pub wifi_controller: &'static mut WifiController<'static>,
     pub wifi: WIFI<'static>,
+    pub uart: Uart<'static, esp_hal::Async>,
 }
 
 impl Hardware {
@@ -62,7 +63,7 @@ impl Hardware {
         //let radio_clk = peripherals.RADIO_CLK;
         let systimer = peripherals.SYSTIMER;
 
-        let timer_group = TimerGroup::new(peripherals.TIMG1);
+        // let timer_group = TimerGroup::new(peripherals.TIMG1);
 
         // Create the SPI from the HAL. This implements SpiBus, not SpiDevice!
         // Only SPI2 is available for the ESP32-C3 - TODO is this true?
@@ -73,18 +74,41 @@ impl Hardware {
             .with_miso(peripherals.GPIO7)
             .into_async();
 
-        let output_config = OutputConfig::default();
+        let pin_output_config = OutputConfig::default();
+
+        let (uart_tx_pin, uart_rx_pin) = (peripherals.GPIO21, peripherals.GPIO20);
+
+        let uart_config = UartConfig::default().with_baudrate(115200);
+
+        let uart = match Uart::new(peripherals.UART0, uart_config) {
+            Ok(u) => u,
+            Err(e) => {
+                esp_println::println!("UART config rejected: {:?}", e);
+                esp_hal::system::software_reset()
+            }
+        };
+        let uart = uart.with_tx(uart_tx_pin).with_rx(uart_rx_pin).into_async();
 
         Hardware {
             // Pins for ESP32-C3
-            xcs: Output::new(peripherals.GPIO4, Level::High, output_config),
-            xdcs: Output::new(peripherals.GPIO10, Level::High, output_config),
+            xcs: Output::new(peripherals.GPIO4, Level::High, pin_output_config),
+            xdcs: Output::new(peripherals.GPIO10, Level::High, pin_output_config),
             dreq: Input::new(
                 peripherals.GPIO8,
                 InputConfig::default().with_pull(Pull::None),
             ),
             //reset: Output::new(peripherals.GPIO20, Level::High, output_config),
-            reset_codec: Output::new(peripherals.GPIO3, Level::High, output_config),
+            reset_codec: Output::new(peripherals.GPIO3, Level::High, pin_output_config),
+
+            // Set low when the radio is ready to connect to the UI processor over the UART connection
+
+            // Note that GPIO2 has an external pull up resistor to ensure that
+            // it is high during power up.
+            radio_ready: Output::new(
+                peripherals.GPIO2,
+                Level::High,
+                OutputConfig::default().with_pull(Pull::None),
+            ),
 
             // Intially set high to display the diplay.
             //disp_cs: Output::new(peripherals.GPIO8, Level::High, output_config),
@@ -96,8 +120,7 @@ impl Hardware {
             // ),
             system_timer: SystemTimer::new(systimer),
 
-            timer_group,
-
+            //timer_group,
             rng,
             // SPI
             spi_bus,
@@ -110,6 +133,7 @@ impl Hardware {
             // runner: wifi_peripherals.runner,
             // wifi_controller: wifi_peripherals.wifi_controller,
             wifi: peripherals.WIFI,
+            uart,
         }
     }
 }

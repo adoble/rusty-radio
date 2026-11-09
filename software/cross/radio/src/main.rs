@@ -15,38 +15,26 @@
 mod async_delay;
 mod constants;
 
-use constants::{MULTIPLEXER_DEVICE_ADDR, NUMBER_SOCKETS_STACK_RESOURCES};
+use constants::NUMBER_SOCKETS_STACK_RESOURCES;
 
 mod hardware;
 use hardware::Hardware;
 
 mod task;
 use task::{
+    command_processor::process_commands,
     play_music::play_music,
-    radio_stations::radio_stations,
-    //station_indicator::station_indicator,
-    //read_test_music::read_test_music,
     stream::stream,
-    //stream2::stream2,
     sync::CODEC_DRIVER,
-    sync::MULTIPLEXER_DRIVER,
     sync::STATION_CHANGE_WATCH,
-
-    //access_radio_stations::access_radio_stations,
-    //tuner::tuner,
-    //wifi_connected_indicator::wifi_connected_indicator,
     wifi_tasks::{run_network_stack, wifi_connect},
 };
 
-//use radio_control_protocol::{Command, RadioControlProtocol};
-// mod radio_stations;
-// use radio_stations::radio_stations;
+mod radio_stations;
+use radio_stations::{radio_stations, RadioStations};
 
-mod front_panel;
-use front_panel::FrontPanel;
-
-mod sendable_multiplexer_driver;
-use sendable_multiplexer_driver::SendableMultiplexerDriver;
+// mod radio_errorX;
+// use radio_errorX::RadioError;
 
 //use stations::{Station, Stations};
 
@@ -55,9 +43,10 @@ use sendable_multiplexer_driver::SendableMultiplexerDriver;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Input, Output},
-    ram,
     spi::master::{Config as SpiConfig, Spi},
     time::Rate,
+    uart::Uart,
+    Async,
 };
 
 use embassy_executor::Spawner;
@@ -79,15 +68,13 @@ use mcp23s17_async::Mcp23s17;
 
 // use ra8875::RA8875;
 
-use esp_println::println;
+use log::*;
 
 use esp_alloc as _;
 
-use crate::{constants::STATIONS_URL, hardware::WifiHardware};
+use crate::{constants::STATIONS_URL, hardware::WifiHardware, radio_stations::RadioStationsError};
 
 static STACK: StaticCell<embassy_net::Stack> = StaticCell::new();
-
-static FRONT_PANEL: StaticCell<FrontPanel> = StaticCell::new();
 
 type SharedSpiBus = Mutex<CriticalSectionRawMutex, Spi<'static, esp_hal::Async>>;
 
@@ -114,7 +101,10 @@ esp_bootloader_esp_idf::esp_app_desc!();
 // #[esp_hal_embassy::main]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
-    esp_println::println!("INFO: Rusty Radio started");
+    #[cfg(not(feature = "no_log"))]
+    esp_println::logger::init_logger(log::LevelFilter::Debug);
+
+    info!("Rusty Radio started");
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
@@ -122,15 +112,11 @@ async fn main(spawner: Spawner) {
     // See this: https://github.com/esp-rs/esp-hal/blob/v0.21.1/esp-wifi/MIGRATING-0.9.md#memory-allocation
     // Size has been empirically determined.
     // esp_alloc::heap_allocator!(size: 48 * 1024); //Recommended
-    esp_alloc::heap_allocator!(size: 76 * 1024);
-    //    esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
-    //esp_alloc::heap_allocator!(#[ram(reclaimed)] size: 64 * 1024);
-    // For the S3
-    // esp_alloc::heap_allocator!(size: 64 * 1024);
+    esp_alloc::heap_allocator!(size: 76 * 1024); // This worked
 
     // Initialise gpio ,spi and wifi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
-    let hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
+    let mut hardware = Hardware::init::<NUMBER_SOCKETS_STACK_RESOURCES>(peripherals);
 
     let delay = AsyncDelay::new();
 
@@ -172,7 +158,7 @@ async fn main(spawner: Spawner) {
         hardware.reset_codec,
         delay,
     )
-    .unwrap();
+    .unwrap(); //TODO error handling
 
     // Setup the mutex for the vs1053 driver and then initialise the chip.
     {
@@ -183,167 +169,72 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    // Setup spi for the front panel controller
-    // Altough the mutiplexer SPI speed can go up to 10MHz, using a lower frequency works just fine
-    // (and gives less problems with transmission lines effects on the breadboard).
-    // let spi_multiplexer_config = SpiConfig::default().with_frequency(Rate::from_mhz(1));
+    // The uart is passed to a task so make it static
+    let uart = {
+        static UART: StaticCell<Uart<'_, Async>> = StaticCell::new();
+        UART.init(hardware.uart)
+    };
 
-    // let spi_multiplexer_device: SpiDeviceWithConfig<
-    //     '_,
-    //     CriticalSectionRawMutex,
-    //     Spi<'_, esp_hal::Async>,
-    //     Output<'_>,
-    // > = SpiDeviceWithConfig::new(spi_bus, hardware.mux_cs, spi_multiplexer_config);
-
-    // Set up the mutiplexer driver and provide a mutex for it. Using the sendable version.
-    // let multiplexer_driver: SendableMultiplexerDriver = SendableMultiplexerDriver(
-    //     Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
-    //         .await
-    //         .unwrap(),
-    // );
-    // {
-    //     *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
-    // }
-
-    // Set up the mutiplexer driver and provide a mutex for it.
-    // let multiplexer_driver: Mcp23s17<
-    //     SpiDeviceWithConfig<'_, CriticalSectionRawMutex, Spi<'_, esp_hal::Async>, Output<'_>>,
-    // > = Mcp23s17::new(spi_multiplexer_device, MULTIPLEXER_DEVICE_ADDR)
-    //     .await
-    //     .unwrap();
-    // {
-    //     *(MULTIPLEXER_DRIVER.lock().await) = Some(multiplexer_driver);
-    // }
-
-    // Initalise the front panel containing the controls
-    // let front_panel = FrontPanel::new()
-    //     .await
-    //     .expect("ERROR: Cannot initialise front panel");
-
-    // let front_panel = FRONT_PANEL.init(front_panel);
-
-    // set up the stations
-
-    // let stations_data = include_bytes!("../../../resources/stations.txt");
-
-    // let stations = RadioStations::load(stations_data).expect("ERROR: Cannot load stations");
-    // let stations = RADIO_STATIONS.init(stations);
-
-    // Print the registers using the shared driver for the vs1053
-    //print_registers().await;
-
-    // TODO set these to must_spawn
+    /*
+       ----------------------------------------
+       Setup channel publishers and subscribers
+       ----------------------------------------
+    */
+    // // Set up the end points of the radio commands channel. Setting the publishers and subscriber up this way to avoid borrow
+    // // problems when using the same publisher and subscriber for the (later spawned) tasks.
+    // // SAFETY: These calls fail only if the number of subscribers and publishers have been incorrectly set up
+    // // in RADIO_COMMAND_CHANNEL.This is then a programming error and should result in a panic, using unwrap here.
+    // let radio_command_pub: RadioCommandChannelPublisher =
+    //     RADIO_COMMAND_CHANNEL.publisher().unwrap();
+    // //let radio_command_sub = RADIO_COMMAND_CHANNEL.subscriber().unwrap();
 
     // Setting up the network
-    spawner.spawn(
-        wifi_connect(wifi_hardware.wifi_controller)
-    ).ok();
-    spawner.spawn(
-        run_network_stack(wifi_hardware.runner),
-    ).ok();
+    spawner
+        .spawn(wifi_connect(wifi_hardware.wifi_controller))
+        .ok();
+    spawner.spawn(run_network_stack(wifi_hardware.runner)).ok();
 
     // Check that the link signal is present and the stack has a valid IP config
     // before continuing.
     wifi_hardware.sta_stack.wait_link_up().await;
     wifi_hardware.sta_stack.wait_config_up().await;
 
-    // // Read the stations from the internet
-    // let stations = read_stations(hardware.sta_stack, constants::STATIONS_URL)
-    //     .await
-    //     .expect("ERROR: Unable to read stations list");
+    // Read the stations from the web. Note that this also signals the
+    // initial station to other tasks.
+    // TODO improve the error handling
+    let stations = radio_stations(
+        wifi_hardware.sta_stack,
+        STATIONS_URL,
+        STATION_CHANGE_WATCH.sender(),
+    )
+    .await
+    .unwrap_or_else(|e| {
+        panic!("Could not read radio stations: {:?}", e);
+    });
 
-    // Read the stations from the stations list in the internet and set up the tuner task
-    // let r = spawner.spawn(radio_stations(
-    //     spawner,
-    //     wifi_hardware.sta_stack,
-    //     front_panel,
-    //     STATIONS_URL,
-    // ));
-    // match r {
-    //     Ok(_) => esp_println::println!("DEBUG: radio_stations spawn successful"),
-    //     Err(e) => esp_println::println!("DEBUG: radio spawn error:{:?}", e),
-    // }
-    // spawner
-    //     .spawn(radio_stations(
-    //         spawner,
-    //         wifi_hardware.sta_stack,
-    //         front_panel,
-    //         STATIONS_URL,
-    //     ))
-    //     .ok();
-
-    // Note that this also signals the initial station to other tasks.
-    spawner.spawn(
-        radio_stations(spawner, wifi_hardware.sta_stack, STATIONS_URL)
-            
-    ).ok();
-
-    // Tasks to handle peripherals
-    //spawner.spawn(tuner(hardware.button_pin)).ok();
-    // spawner
-    //     .spawn(tuner(stations, front_panel, hardware.intr))
-    //     .ok();
-
-    // spawner
-    //     .spawn(tuner(stations, front_panel, hardware.intr))
-    //     .ok();
-
-    //spawner.spawn(wifi_connected_indicator(hardware.led)).ok();
+    //.expect("Could not read radio stations.");
+    static RADIO_STATIONS: StaticCell<RadioStations> = StaticCell::new();
+    // let radio_stations: &mut stations::Stations<_, _, _> = RADIO_STATIONS.init(statios);
+    let radio_stations: &mut RadioStations = RADIO_STATIONS.init(stations);
 
     // Streaming and playing music
-    // spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
     spawner.spawn(stream(wifi_hardware.sta_stack)).ok();
 
     spawner.spawn(play_music()).ok();
 
+    // Process the serial commands comming from the UI processor
+    spawner
+        .spawn(process_commands(
+            uart,
+            STATION_CHANGE_WATCH.sender(),
+            radio_stations,
+        ))
+        .ok();
+
+    // Signal the UI that the radio is ready
+    hardware.radio_ready.set_low();
+
     // Showing on the panel LED when a station has been tuned in
     // TODO This is a temporary solution until the display is ready.
     //spawner.spawn(station_indicator(front_panel)).ok();
-}
-
-// async fn print_registers() {
-//     let mut driver_unlocked = CODEC_DRIVER.lock().await;
-//     if let Some(driver) = driver_unlocked.as_mut() {
-//         // Set the volume so we can see the value when we dump the registers
-//         let left_vol = 0x11;
-//         let right_vol = 0x22;
-
-//         driver.set_volume(left_vol, right_vol).await.unwrap();
-//         // Should see 1122 as the vol reg
-//         let registers = driver.dump_registers().await.unwrap();
-
-//         esp_println::println!("Dumped registers:");
-//         esp_println::println!("mode: {:X}", registers.mode);
-//         esp_println::println!("status: {:X}", registers.status);
-//         esp_println::println!("clockf: {:X}", registers.clock_f);
-//         esp_println::println!("volume: {:X}", registers.volume);
-//         esp_println::println!("audio_data : {:X}", registers.audio_data);
-//     } else {
-//         esp_println::println!("ERROR: Could not print registers");
-//     }
-// }
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum DisplayError {
-    /// Error from the display driver itself
-    DriverError,
-    /// Drawing operation failed
-    DrawingError,
-    /// Display initialization failed
-    InitializationError,
-    /// Display communication error (I2C, SPI, etc.)
-    CommunicationError,
-    /// Display is not ready or in wrong state
-    NotReady,
-    /// Invalid coordinates or size
-    InvalidDimensions {
-        x: i32,
-        y: i32,
-        width: u32,
-        height: u32,
-    },
-    /// Color conversion error
-    ColorError,
-    /// Generic error with message
-    Other,
 }

@@ -57,7 +57,6 @@ impl Default for StationConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::station_config;
 
     use super::*;
 

@@ -2,7 +2,7 @@ use core::num::ParseIntError;
 use core::str::Utf8Error;
 
 use embedded_io_async::{Read, Write}; // Import the Write trait
-use heapless::{CapacityError, String, Vec};
+use heapless::{String, Vec};
 use itoa::Buffer;
 use static_assertions::const_assert;
 
@@ -19,7 +19,10 @@ const_assert!(MAX_NUMBER_PARAMETERS > 0);
 pub const MAX_PARAMETER_LEN: usize = 40;
 
 pub type RadioStationId = usize;
-pub type RadioStationName = String<40>;
+pub type RadioStationName = String<MAX_PARAMETER_LEN>;
+
+pub type Parameter = String<MAX_PARAMETER_LEN>;
+pub type Parameters = Vec<Parameter, MAX_NUMBER_PARAMETERS>;
 
 pub struct RadioControlProtocol<'a, S>
 where
@@ -41,25 +44,25 @@ where
     pub async fn set_station(
         &mut self,
         station_id: u8,
-    ) -> Result<String<MAX_PARAMETER_LEN>, RadioControlProtocolError> {
+    ) -> Result<RadioStationName, RadioControlProtocolError> {
         let cmd = Command::Station;
-        let mut tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+        let mut tx_parameters = Parameters::new();
 
         let mut buffer = Buffer::new();
-        let mut station_id_str = String::<MAX_PARAMETER_LEN>::new();
-        station_id_str.push_str(buffer.format(station_id))?;
+        let mut station_id_str = RadioStationName::new();
+        station_id_str
+            .push_str(buffer.format(station_id))
+            .map_err(|_| RadioControlProtocolError::StationIdInvalid)?;
 
         // SAFETY - Only ever pushing one parameter.
         tx_parameters.push(station_id_str).unwrap();
 
-        //TODO make parameter a new type Parameters (and also Parameter).
-        //Use Deref to manipulat at the underlying type
         self.uart_handler
             .send_command(cmd, tx_parameters)
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
 
-        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+        let mut rx_parameters = Parameters::new();
 
         self.uart_handler
             .receive_response(&mut rx_parameters)
@@ -76,13 +79,15 @@ where
     pub async fn set_preset(
         &mut self,
         preset_id: u8,
-    ) -> Result<String<MAX_PARAMETER_LEN>, RadioControlProtocolError> {
+    ) -> Result<RadioStationName, RadioControlProtocolError> {
         let cmd = Command::Preset;
-        let mut tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+        let mut tx_parameters = Parameters::new();
 
         let mut buffer = Buffer::new();
-        let mut preset_id_str = String::<MAX_PARAMETER_LEN>::new();
-        preset_id_str.push_str(buffer.format(preset_id))?;
+        let mut preset_id_str = RadioStationName::new();
+        preset_id_str
+            .push_str(buffer.format(preset_id))
+            .map_err(|_| RadioControlProtocolError::StationIdInvalid)?;
 
         // SAFETY - Only ever pushing one parameter.
         tx_parameters.push(preset_id_str).unwrap();
@@ -92,7 +97,7 @@ where
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
 
-        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+        let mut rx_parameters = Parameters::new();
 
         self.uart_handler
             .receive_response(&mut rx_parameters)
@@ -108,14 +113,14 @@ where
     /// Queries the configuation of the stations and return the number of stations
     pub async fn query_config(&mut self) -> Result<StationConfig, RadioControlProtocolError> {
         let cmd = Command::Config;
-        let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+        let tx_parameters = Parameters::new();
 
         self.uart_handler
             .send_command(cmd, tx_parameters)
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
 
-        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+        let mut rx_parameters = Parameters::new();
 
         self.uart_handler
             .receive_response(&mut rx_parameters)
@@ -148,14 +153,14 @@ where
     /// Detunes the radio.
     pub async fn detune(&mut self) -> Result<(), RadioControlProtocolError> {
         let cmd = Command::Detune;
-        let tx_parameters = Vec::<String<MAX_PARAMETER_LEN>, 5>::new();
+        let tx_parameters = Parameters::new();
 
         self.uart_handler
             .send_command(cmd, tx_parameters)
             .await
             .map_err(|_| UartHandlerError::SerialWrite)?;
 
-        let mut rx_parameters: Vec<String<MAX_PARAMETER_LEN>, MAX_NUMBER_PARAMETERS> = Vec::new();
+        let mut rx_parameters = Parameters::new();
 
         self.uart_handler
             .receive_response(&mut rx_parameters)
@@ -166,22 +171,103 @@ where
 
     // TODO move this out to another struct just for receiving
     pub async fn receive_command(&mut self) -> Result<RadioCommand, RadioControlProtocolError> {
-        let number_bytes = self.uart_handler.receive_frame().await?;
+        debug!("Entered receive_command");
+
+        let number_bytes: usize;
+        const RETRIES: usize = 20; // TODO where to put this constant
+        let mut count: usize = 0;
+
+        loop {
+            match self.uart_handler.receive_frame().await {
+                Ok(n) => {
+                    number_bytes = n;
+                    break;
+                }
+                Err(UartHandlerError::FrameBufferOverflow) => {
+                    if count < RETRIES {
+                        count += 1;
+                        continue;
+                    } else {
+                        return Err(RadioControlProtocolError::IllFormedReponse);
+                    }
+                }
+                Err(e) => return Err(RadioControlProtocolError::Uart(e)),
+            };
+        }
+
+        // let number_bytes = self.uart_handler.receive_frame().await?;
+
+        debug!("Received {} bytes", number_bytes);
 
         if number_bytes < 5 {
             return Err(RadioControlProtocolError::IllFormedReponse);
         }
 
         let framebuffer = self.uart_handler.framebuffer();
+        let command_bytes = self
+            .command_span(framebuffer)
+            .ok_or(RadioControlProtocolError::CommandNotFound)?; //TODO review the error handling here
 
-        let parsed_command = match &framebuffer[0..3] {
-            b"STA" => self.parse_station_parameters(&framebuffer[3..])?,
-            b"DTN" if &framebuffer[3..5] == b":;" => RadioCommand::Detune,
-            b"CFG" if &framebuffer[3..5] == b":;" => RadioCommand::Config,
+        debug!("receive_command::command_bytes: {:?}", command_bytes);
+
+        let parsed_command = match &command_bytes[0..3] {
+            b"STA" => self.parse_station_parameters(&command_bytes[3..])?,
+            b"DTN" if &command_bytes[3..5] == b":;" => RadioCommand::Detune,
+            b"CFG" if &command_bytes[3..5] == b":;" => RadioCommand::Config,
             _ => Err(RadioControlProtocolError::UnknownCommand)?,
         };
 
         Ok(parsed_command)
+    }
+
+    ///Get a slice from the framebuffer thet contains a command.
+    fn command_span(&self, framebuffer: &'a [u8]) -> Option<&'a [u8]> {
+        let mut start = framebuffer.windows(4).position(|w| w == b"CFG:");
+
+        if start.is_none() {
+            start = framebuffer.windows(4).position(|w| w == b"STA:");
+        }
+
+        if start.is_none() {
+            start = framebuffer.windows(4).position(|w| w == b"DTN:");
+        }
+
+        let start = start?; //Ugh!
+
+        let end = framebuffer[start..].windows(1).position(|w| w == b";")?;
+        Some(&framebuffer[start..(end + start + 1)])
+    }
+
+    // TODO this is a thin veneer over  UartHandler::send_acknowledge. Maybe move that to here as
+    // it  handles the semantics.
+    pub async fn send_acknowledge(
+        &mut self,
+        parameters: &Parameters,
+    ) -> Result<(), RadioControlProtocolError> {
+        self.uart_handler
+            .send_acknowledge(parameters)
+            .await
+            .map_err(|_| UartHandlerError::SerialWrite)?;
+
+        Ok(())
+    }
+
+    pub async fn send_error(&mut self, error_number: u8) {
+        let result = self.uart_handler.send_error(error_number).await;
+
+        // As we cannot display errors as the connection has failed, panic.
+        if let Err(e) = result {
+            error!("Unable to send error back: {:?}", e);
+            panic!("Unable to send error back: {:?}", e);
+        }
+    }
+
+    pub async fn flush(&mut self) -> Result<(), RadioControlProtocolError> {
+        self.uart_handler
+            .flush()
+            .await
+            .map_err(|_| UartHandlerError::SerialFlush)?;
+        Ok(())
     }
 
     fn parse_station_parameters(
@@ -226,16 +312,19 @@ pub enum TunerDirection {
 }
 
 #[derive(PartialEq, Debug, Clone)]
+#[repr(u8)]
 pub enum RadioControlProtocolError {
     Uart(UartHandlerError),
-    StationNameNotReceived,
-    ParseParameter,
-    IncorrectNumberParametersReturned,
-    ParameterLengthTooSmall,
-    CannotLoadStationConfig,
-    IllFormedReponse,
-    Timeout,
-    UnknownCommand,
+    StationNameNotReceived = 102,
+    StationIdInvalid = 103,
+    ParseParameter = 104,
+    IncorrectNumberParametersReturned = 105,
+    ParameterLengthTooSmall = 106,
+    CannotLoadStationConfig = 107,
+    IllFormedReponse = 108,
+    Timeout = 109,
+    UnknownCommand = 110,
+    CommandNotFound = 111,
 }
 
 impl From<UartHandlerError> for RadioControlProtocolError {
@@ -244,11 +333,11 @@ impl From<UartHandlerError> for RadioControlProtocolError {
     }
 }
 
-impl From<CapacityError> for RadioControlProtocolError {
-    fn from(_: CapacityError) -> Self {
-        Self::ParameterLengthTooSmall
-    }
-}
+// impl From<CapacityError> for RadioControlProtocolError {
+//     fn from(_: CapacityError) -> Self {
+//         Self::ParameterLengthTooSmall
+//     }
+// }
 
 // TODO should IllFormreposnse carry some extra error information?
 impl From<Utf8Error> for RadioControlProtocolError {
@@ -263,11 +352,20 @@ impl From<ParseIntError> for RadioControlProtocolError {
     }
 }
 
+impl From<RadioControlProtocolError> for u8 {
+    fn from(e: RadioControlProtocolError) -> Self {
+        match e {
+            RadioControlProtocolError::Uart(_) => 101,
+            other => other.into(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use embedded_io_async_mock::{Mock as SerialMock, Transaction as SerialTransaction};
+    use embedded_io_async_mock::Mock as SerialMock;
 
     #[test]
     fn test_parse_station_parameters() {
@@ -305,6 +403,64 @@ mod tests {
         let r = radio_command_protocol.parse_station_parameters(parameters);
 
         assert_eq!(r, Err(RadioControlProtocolError::IllFormedReponse));
+
+        serial.done();
+    }
+
+    #[test]
+    fn test_command_span() {
+        let framebuffer = b"abcdefCFG:;12345";
+
+        let mut serial = SerialMock::new(&[]);
+
+        let rcp = RadioControlProtocol::new(&mut serial);
+
+        let v = rcp.command_span(framebuffer);
+
+        assert!(v.is_some());
+        assert_eq!(5, v.unwrap().len());
+
+        assert_eq!(b"CFG:;", v.unwrap());
+
+        serial.done();
+    }
+
+    #[test]
+    fn test_command_span_with_no_command() {
+        let framebuffer = b"abcdef12345";
+
+        let mut serial = SerialMock::new(&[]);
+
+        let rcp = RadioControlProtocol::new(&mut serial);
+
+        let v = rcp.command_span(framebuffer);
+
+        assert!(v.is_none());
+
+        serial.done();
+    }
+
+    #[test]
+    fn test_command_span_boundaries() {
+        let framebuffer = b"STA:23;abcdef12345"; // At the start
+
+        let mut serial = SerialMock::new(&[]);
+
+        let rcp = RadioControlProtocol::new(&mut serial);
+
+        let v = rcp
+            .command_span(framebuffer)
+            .expect("Could not find command");
+
+        assert_eq!(b"STA:23;", v);
+
+        let framebuffer = b"abcdef12345DTN:;"; // At the end
+
+        let v = rcp
+            .command_span(framebuffer)
+            .expect("Could not find command");
+
+        assert_eq!(b"DTN:;", v);
 
         serial.done();
     }

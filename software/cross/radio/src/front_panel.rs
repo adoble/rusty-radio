@@ -284,8 +284,6 @@ impl FrontPanel {
         // Pins 0 and 1 are the rotatary controller A and B signals and are ignored
         port_a &= 0b1111_1100;
 
-        // esp_println::println!("port_a after partial inversion: {:08b}", port_a);
-
         let mut button_index = None;
         let mut mask: u8 = 0b00000001;
         for i in 0..8 {
@@ -297,8 +295,6 @@ impl FrontPanel {
                 mask <<= 1;
             }
         }
-
-        // esp_println::println!("button index: {:?}", button_index);
 
         let button = match button_index {
             Some(2) => Buttons::RotaryEncoderSwitch,

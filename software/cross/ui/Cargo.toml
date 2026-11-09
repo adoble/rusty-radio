@@ -34,7 +34,7 @@ esp-println = { version = "0.17.0", features = ["esp32c3", "log-04"] }
 
 
 radio-control-protocol = {path = "../../radio-control-protocol"}
-heapless = "0.9.3"
+heapless = "0.8.0"
 
 
 # These are only used for testing on the target and can be removed when development is done.

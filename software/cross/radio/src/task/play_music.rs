@@ -1,4 +1,5 @@
 use crate::task::sync::{CODEC_DRIVER, MUSIC_PIPE, START_PLAYING};
+use log::error;
 
 #[embassy_executor::task]
 pub async fn play_music() {
@@ -21,7 +22,7 @@ pub async fn play_music() {
                 match r {
                     Ok(_) => continue,
                     Err(err) => {
-                        esp_println::println!("ERROR: {:?} in play music", err);
+                        error!("{:?} in play music", err);
                         break;
                     }
                 };

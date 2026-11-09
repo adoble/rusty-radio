@@ -1,6 +1,5 @@
 use crate::STATION_CHANGE_WATCH;
 
-use embassy_executor::Spawner;
 use embassy_net::{
     dns::DnsSocket,
     tcp::{
@@ -11,22 +10,14 @@ use embassy_net::{
     Stack,
     // IpAddress
 };
-//use embedded_io_async::Write;
 
-// use core::net::Ipv4Addr;
 use embassy_time::{Duration, Timer};
-// use embassy_net::tcp::client::{TcpClient, TcpClientState};
-// use embassy_net::Stack;
+
 use core::sync::atomic::{AtomicBool, Ordering};
-// use nourl::Url;
 use reqwless::{client::HttpClient, request::Method};
 use static_cell::StaticCell;
 
-//
-//use http::{Method, Request, RequestError, Response, ResponseStatusCode, MAX_URL_LEN};
 use stations::{Station, StationError, Stations};
-
-use crate::{front_panel::FrontPanel, task::tuner::tuner};
 
 pub const MAX_STATION_NAME_LEN: usize = 40;
 pub const MAX_STATION_URL_LEN: usize = 256;
@@ -42,7 +33,7 @@ static RADIO_STATIONS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 // Development note: This version uses reqwless. A  previous version used TCP sockets directly.
 // This can be found at https://gist.github.com/adoble/6ae04bff12d76949743be39f9222f06d
 #[embassy_executor::task]
-pub async fn radio_stations(spawner: Spawner, stack: Stack<'static>, stations_url: &'static str) {
+pub async fn radio_stations(stack: Stack<'static>, stations_url: &'static str) {
     let mut rx_buffer = [0; 16000];
     let client_state = TcpClientState::<1, 1024, 1024>::new();
     let tcp_client = TcpClient::new(stack, &client_state);

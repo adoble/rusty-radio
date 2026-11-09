@@ -1,7 +1,7 @@
 // [X] (Finally) set up a config so that the streaming statistics are not printed.
 // [ ]  Maybe the code will be simplified if Stations used nourl::Url instead of Strings for URLS.
 
-use crate::task::radio_stations::RadioStation;
+use crate::radio_stations::RadioStation;
 
 use embassy_net::{tcp::TcpSocket, IpAddress, Stack};
 #[cfg(feature = "stats")]
@@ -21,11 +21,11 @@ use nourl::Url;
 
 use heapless::String;
 
-use crate::task::sync::{
-    StationChangeReceiver, AUDIO_BUFFER_SIZE, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH,
-};
+use crate::task::sync::{StationChangeReceiver, MUSIC_PIPE, START_PLAYING, STATION_CHANGE_WATCH};
 
 use http::{Method, Request, Response, ResponseStatusCode, MAX_URL_LEN};
+
+use log::*;
 
 // Empirically determined value. This value  has to be used in
 // conjunction with the wifi tuning parameters in .cargo/config.toml
@@ -148,7 +148,7 @@ pub async fn stream(stack: Stack<'static>) {
             Ok(_) => (), //  stream_station will only return if there is an error
 
             Err(e) => {
-                esp_println::println!("ERROR: {:?}", e);
+                error!("ERROR: {:?}", e);
                 // Wait until the station changes
 
                 let station = station_change_receiver.changed().await;
@@ -398,7 +398,7 @@ async fn stream_audio(
     let initial_fill_len = 3 * MUSIC_PIPE.capacity() / 4;
 
     #[cfg(feature = "stats")]
-    esp_println::println!("DEBUG: Feature stats selected");
+    debug!("Feature stats selected");
     #[cfg(feature = "stats")]
     let (mut total_bytes, mut last_stats) = (0u32, Instant::now());
 
@@ -434,7 +434,7 @@ async fn stream_audio(
                 if last_stats.elapsed().as_millis() >= 1000 {
                     let pipe_usage =
                         (MUSIC_PIPE.len() as f32 / MUSIC_PIPE.capacity() as f32) * 100.0;
-                    esp_println::println!(
+                    debug!(
                         "Stats: {:.2} KB/s, Pipe: {:.1}%, Read: {} bytes in {}us, Write: {}us",
                         (total_bytes as f32) / 1024.0,
                         pipe_usage,
@@ -447,7 +447,7 @@ async fn stream_audio(
                 }
             }
             Err(err) => {
-                esp_println::println!("ERROR: Cannot read from socket [{:?}]", err);
+                error!("Cannot read from socket [{:?}]", err);
                 Timer::after(Duration::from_millis(10)).await;
             }
         }

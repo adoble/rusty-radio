@@ -305,7 +305,6 @@ async fn test_read_frame() {
 
 #[tokio::test]
 async fn test_read_frame_with_buffer_overflow() {
-    const FRAME_BUFFER_LEN: usize = 80;
     let rx_message = b"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \
     XXXXXXXXXXXXXXXXXXXXXX;";
 

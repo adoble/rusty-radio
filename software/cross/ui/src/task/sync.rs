@@ -2,6 +2,7 @@
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     pubsub::{PubSubChannel, Publisher, Subscriber},
+    signal::Signal,
 };
 
 use radio_control_protocol::{RadioControlProtocolError, RadioStationId, RadioStationName};
@@ -17,6 +18,9 @@ use radio_control_protocol::{RadioControlProtocolError, RadioStationId, RadioSta
 //     /// If the user has turned the tuner knob
 //     TunerMoved(TunerDirection),
 // }
+
+pub type RadioReadySignal = Signal<CriticalSectionRawMutex, bool>;
+pub static RADIO_READY_SIGNAL: RadioReadySignal = Signal::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TunerDirection {

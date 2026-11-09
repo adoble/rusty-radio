@@ -20,6 +20,3 @@ pub const NUMBER_SOCKETS_STACK_RESOURCES: usize = 6;
 // This is checked at compilation time by this macro.
 // An alternative would be to use the same constant for setting up both StackResources and TcpClientState
 //const_assert!(NUMBER_SOCKETS_STACK_RESOURCES >= NUMBER_SOCKETS_TCP_CLIENT_STATE);
-
-// The address of the mcp23s17 device. This is hardwared on the front panel.
-pub const MULTIPLEXER_DEVICE_ADDR: u8 = 0x00;

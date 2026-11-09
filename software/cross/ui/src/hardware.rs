@@ -2,7 +2,7 @@
 // Based on https://users.rust-lang.org/t/how-to-borrow-peripherals-struct/83565/3
 use esp_hal::{
     Async,
-    gpio::{Level, Output, OutputConfig},
+    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
     interrupt::software::{SoftwareInterrupt, SoftwareInterruptControl},
     peripherals::Peripherals,
     spi::master::{Config as SpiConfig, Spi},
@@ -20,6 +20,9 @@ pub struct Hardware {
     /// Chip select pin for the display controller
     #[allow(dead_code)]
     pub disp_cs: Output<'static>,
+
+    /// Radio ready pin
+    pub radio_ready: Input<'static>,
 
     // /// Tx pin of the UART
     // pub tx_pin: Output<'static>,
@@ -71,6 +74,12 @@ impl Hardware {
             mux_cs: Output::new(peripherals.GPIO3, Level::High, output_config),
             // Intially set high to display the diplay.
             disp_cs: Output::new(peripherals.GPIO2, Level::High, output_config),
+
+            // This is pulled low by the radio when it is ready
+            radio_ready: Input::new(
+                peripherals.GPIO5,
+                InputConfig::default().with_pull(Pull::None),
+            ),
 
             // Configured UART peripheral
             uart0,

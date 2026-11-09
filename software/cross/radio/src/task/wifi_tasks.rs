@@ -10,10 +10,10 @@ use embassy_time::{Duration, Timer};
 
 use crate::task::sync::WIFI_CONNECTED_SIGNAL;
 
+use log::{error, info};
+
 #[embassy_executor::task]
 pub async fn wifi_connect(controller: &'static mut WifiController<'static>) {
-    esp_println::println!("Wait to get wifi connected");
-
     loop {
         if !matches!(controller.is_started(), Ok(true)) {
             let mut auth_method = AuthMethod::Wpa2Personal;
@@ -21,13 +21,6 @@ pub async fn wifi_connect(controller: &'static mut WifiController<'static>) {
             if PASSWORD.is_empty() {
                 auth_method = AuthMethod::None;
             }
-
-            // let wifi_config = Configuration::Client(ClientConfig {
-            //     ssid: SSID.try_into().unwrap(),
-            //     password: PASSWORD.try_into().unwrap(),
-            //     auth_method, // TODO: Is AuthMethod::WPA2Personal the default?
-            //     ..Default::default()
-            // });
 
             // For esp_radio
             let wifi_config = ModeConfig::Client(
@@ -38,20 +31,19 @@ pub async fn wifi_connect(controller: &'static mut WifiController<'static>) {
             );
 
             // let res = controller.set_configuration(&wifi_config);
-            let res = controller.set_config(&wifi_config);
-            esp_println::println!("Wi-Fi set_configuration returned {:?}", res);
+            let _ = controller.set_config(&wifi_config);
 
             controller.start_async().await.unwrap();
-            esp_println::println!("INFO: Wifi started!");
+            info!("Wifi started!");
         }
 
         match controller.connect_async().await {
             Ok(_) => {
-                esp_println::println!("INFO: Wifi connected!");
+                info!("Wifi connected!");
                 WIFI_CONNECTED_SIGNAL.signal(true)
             }
             Err(e) => {
-                esp_println::println!("ERROR: Failed to connect to wifi: {e:?}");
+                error!("Failed to connect to wifi: {e:?}");
                 WIFI_CONNECTED_SIGNAL.signal(false);
                 Timer::after(Duration::from_millis(5000)).await
             }

@@ -89,7 +89,7 @@ async fn main(spawner: Spawner) {
 
     // Initialise gpio and spi peripherals. The initialised peripherals are then fields in the hardware struct
     // and are given symbolic names.
-    let hardware = Hardware::init(peripherals);
+    let mut hardware = Hardware::init(peripherals);
 
     esp_rtos::start(hardware.system_timer.alarm0, hardware.software_interrupt0);
 
@@ -145,13 +145,20 @@ async fn main(spawner: Spawner) {
 
     let display_events_sub = TUNER_EVENTS_CHANNEL.subscriber().unwrap();
 
-    // Get the stations configuration from the radio processor and make it static
+    // Wait until the radio is ready before getting the configuration.
+    // If the radio laters goes into an unready state (e.g it has been restarted)
+    // then the old loaded configuration will be used and any new configuration will
+    // not be loaded.
+    hardware.radio_ready.wait_for_low().await;
+
+    info!("Radio ready");
+
+    // Get the stations configuration from the radio processor and make it static.
+
     let station_config = load_station_config(uart).await.unwrap();
 
     static STATION_CONFIG: StaticCell<StationConfig> = StaticCell::new();
     let station_config = STATION_CONFIG.init(station_config);
-
-    info!("About to spawn");
 
     // Spawn the tuner task to read in the front panel controls and
     // convert this information to station ids.

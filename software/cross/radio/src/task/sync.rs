@@ -1,17 +1,14 @@
 /// Synchronisation between the different tasks.
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
-    channel::Channel,
     mutex::Mutex,
     pipe::Pipe,
     signal,
-    watch::{Receiver, Watch},
+    watch::{Receiver, Sender, Watch},
 };
 
-use crate::task::radio_stations::RadioStation;
+use crate::radio_stations::RadioStation;
 use crate::Vs1053DriverType;
-
-use crate::sendable_multiplexer_driver::SendableMultiplexerDriver;
 
 // Signal that the web should be accessed
 //pub static ACCESS_WEB_SIGNAL: signal::Signal<CriticalSectionRawMutex, bool> = signal::Signal::new();
@@ -53,15 +50,6 @@ pub static START_PLAYING: signal::Signal<CriticalSectionRawMutex, bool> = signal
 type CodecDriverType = Mutex<CriticalSectionRawMutex, Option<Vs1053DriverType<'static>>>;
 pub static CODEC_DRIVER: CodecDriverType = Mutex::new(None);
 
-// We need to share the front panel driver between tasks so put it in a static mutex
-pub static MULTIPLEXER_DRIVER: Mutex<CriticalSectionRawMutex, Option<SendableMultiplexerDriver>> =
-    Mutex::new(None);
-
-// This signal is used to indicate the current station
-
-//pub static STATION_SELECTED: signal::Signal<CriticalSectionRawMutex, Station> =
-//    signal::Signal::new();
-
 // This watches for changes to the station
 const STATION_CHANGE_WATCHERS: usize = 2;
 pub static STATION_CHANGE_WATCH: Watch<
@@ -77,28 +65,6 @@ pub type StationChangeReceiver = Receiver<
     STATION_CHANGE_WATCHERS,
 >;
 
-// This channel transports commands to the display.
-const UI_COMMAND_BUFFER_DEPTH: usize = 3;
-pub static UI_COMMANDS_CHANNEL: Channel<
-    CriticalSectionRawMutex,
-    UiCommand,
-    UI_COMMAND_BUFFER_DEPTH,
-> = Channel::new();
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UiCommand {
-    /// Indicates if the wifi is connected
-    WiFiConnected(bool),
-
-    /// The selected station id
-    StationSelect(usize),
-
-    /// If the user has turned the tuner knob
-    TunerMoved(TunerDirection),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TunerDirection {
-    Clockwise,
-    CounterClockwise,
-}
+const STATION_CHANGE_SENDERS: usize = 2;
+pub type StationChangeSender =
+    Sender<'static, CriticalSectionRawMutex, Option<RadioStation>, STATION_CHANGE_SENDERS>;

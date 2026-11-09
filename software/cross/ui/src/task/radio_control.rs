@@ -1,5 +1,5 @@
 use embassy_time::{Duration, WithTimeout};
-use esp_hal::{Async, uart::Uart};
+use esp_hal::{Async, gpio::Input, uart::Uart};
 
 // use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
@@ -13,7 +13,9 @@ use radio_control_protocol::{
 
 const UART_TIMEOUT: Duration = Duration::from_millis(100);
 
-use crate::task::sync::{TunerEvent, TunerEventsChannelPublisher, TunerEventsChannelSubscriber};
+use crate::task::sync::{
+    RadioReadySignal, TunerEvent, TunerEventsChannelPublisher, TunerEventsChannelSubscriber,
+};
 
 /// Process the events from the tuner
 #[embassy_executor::task]
@@ -22,6 +24,9 @@ pub async fn radio_control(
     tuner_event_subscriber: TunerEventsChannelSubscriber,
     tuner_event_publisher: TunerEventsChannelPublisher,
 ) {
+    // Clear the uart buffer from any any bootup text from the radio before sending anything.
+    uart.flush().unwrap(); //TODO error handling
+
     run_radio_control(uart, tuner_event_subscriber, tuner_event_publisher).await;
 }
 
