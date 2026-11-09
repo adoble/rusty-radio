@@ -7,7 +7,7 @@
 	(title_block
 		(title "Rusty Radio")
 		(date "2026-03-20")
-		(rev "0.7.0")
+		(rev "0.8.0")
 		(company "Doble Audio")
 		(comment 1 "Using a XIAO ESP32C3  board for UI and XIAO ESP32S3 for radio")
 		(comment 2 "See https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/")
@@ -1615,6 +1615,307 @@
 						)
 					)
 					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Device:C_Polarized"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.635 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "C_Polarized"
+				(at 0.635 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Polarized capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "CP_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "C_Polarized_0_1"
+				(rectangle
+					(start -2.286 0.508)
+					(end 2.286 1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.778 2.286) (xy -0.762 2.286)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 2.794) (xy -1.27 1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start 2.286 -0.508)
+					(end -2.286 -1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+			)
+			(symbol "C_Polarized_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Device:C_Small"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.254 1.778 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "C_Small"
+				(at 0.254 -2.032 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Unpolarized capacitor, small symbol"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "capacitor cap"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "C_Small_0_1"
+				(polyline
+					(pts
+						(xy -1.524 0.508) (xy 1.524 0.508)
+					)
+					(stroke
+						(width 0.3048)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.524 -0.508) (xy 1.524 -0.508)
+					)
+					(stroke
+						(width 0.3302)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "C_Small_1_1"
+				(pin passive line
+					(at 0 2.54 270)
+					(length 2.032)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -2.54 90)
+					(length 2.032)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -4298,6 +4599,26 @@
 		)
 		(uuid "43eaf85b-ea96-4f5c-b35a-2bd3add2bbb7")
 	)
+	(text_box "Place near the radio processor \npower supply.\n\nThese are important to stop \ntransient power gliches from \nthe esp32-c3 causing a \nbrownout reset."
+		(exclude_from_sim no)
+		(at 14.605 14.605 0)
+		(size 68.5164 27.94)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type dash)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "4fb0c734-a0fe-4f03-b00a-215bfe74429b")
+	)
 	(text_box "Ext. PSU Connection"
 		(exclude_from_sim no)
 		(at 353.695 38.1 0)
@@ -4472,6 +4793,18 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "93cc8988-2e66-4bb0-a857-6bd0932841a7")
+	)
+	(junction
+		(at 62.23 24.13)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "a8fd52ec-edef-4c51-8f58-07816fc71f84")
+	)
+	(junction
+		(at 62.23 31.75)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "ce9b6302-1ab3-4ae3-a265-c708fe99368a")
 	)
 	(junction
 		(at 181.61 19.05)
@@ -5201,6 +5534,16 @@
 		)
 		(uuid "41ee1b60-9562-446d-80b1-03b4a777aa80")
 	)
+	(wire
+		(pts
+			(xy 52.07 24.13) (xy 62.23 24.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "42a0a654-a358-48f5-9cf3-28c9435c26fc")
+	)
 	(bus
 		(pts
 			(xy 190.5 128.27) (xy 193.04 128.27)
@@ -5313,6 +5656,16 @@
 	)
 	(wire
 		(pts
+			(xy 62.23 31.75) (xy 71.12 31.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5297b423-3c48-40f6-ac30-aba64095cc4d")
+	)
+	(wire
+		(pts
 			(xy 241.3 194.31) (xy 241.3 200.66)
 		)
 		(stroke
@@ -5401,6 +5754,16 @@
 			(type default)
 		)
 		(uuid "601a8774-f969-4ac1-8b9b-ebddda69ae2f")
+	)
+	(wire
+		(pts
+			(xy 71.12 30.48) (xy 71.12 31.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "63634259-0489-40ec-a43c-844b422afc3c")
 	)
 	(bus
 		(pts
@@ -5521,6 +5884,16 @@
 			(type default)
 		)
 		(uuid "7a33242d-5747-49a4-bb75-9f37c170ee4c")
+	)
+	(wire
+		(pts
+			(xy 62.23 21.59) (xy 62.23 24.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7c67a2cf-700b-48e7-ad98-2ea370b5755e")
 	)
 	(wire
 		(pts
@@ -5834,6 +6207,16 @@
 	)
 	(wire
 		(pts
+			(xy 52.07 31.75) (xy 62.23 31.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b1f2a775-7903-41f1-9691-2459f1b27f35")
+	)
+	(wire
+		(pts
 			(xy 149.86 58.42) (xy 149.86 82.55)
 		)
 		(stroke
@@ -5901,6 +6284,16 @@
 			(type default)
 		)
 		(uuid "b74774a4-5f51-49ac-a2c7-88512534957b")
+	)
+	(wire
+		(pts
+			(xy 62.23 31.75) (xy 62.23 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b7738047-4b8a-464c-9c7d-9fbebe50aa0f")
 	)
 	(wire
 		(pts
@@ -6081,6 +6474,16 @@
 			(type default)
 		)
 		(uuid "cb3c475b-4eb1-48c4-aef8-c9d08e6df103")
+	)
+	(wire
+		(pts
+			(xy 71.12 24.13) (xy 71.12 25.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cd335534-739b-4bba-a846-28f524f2ffef")
 	)
 	(wire
 		(pts
@@ -6271,6 +6674,16 @@
 			(type default)
 		)
 		(uuid "e97e6697-0c9a-48e7-a8da-d6f0f3d3f731")
+	)
+	(wire
+		(pts
+			(xy 62.23 24.13) (xy 71.12 24.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ec42fe92-2a5f-4b73-8112-77bcba4f1d8d")
 	)
 	(wire
 		(pts
@@ -7881,6 +8294,72 @@
 	)
 	(symbol
 		(lib_id "power:+3.3V")
+		(at 62.23 21.59 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "44a6cf68-f762-435f-9ee8-501d693d8f3c")
+		(property "Reference" "#PWR026"
+			(at 62.23 25.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3.3V"
+			(at 62.23 16.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 62.23 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 62.23 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
+			(at 62.23 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "af3065ea-8fb3-4249-ae30-2f2dc2b11e20")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "#PWR026")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3.3V")
 		(at 303.53 224.79 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -8549,7 +9028,6 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "66f57f00-4b46-453f-afe7-ee8b88f12ddd")
 		(property "Reference" "#PWR01"
 			(at 125.73 31.75 0)
@@ -9357,6 +9835,76 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Polarized")
+		(at 52.07 27.94 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "9489c6c4-9d10-4764-9a0a-ac9151f984ff")
+		(property "Reference" "C1"
+			(at 55.88 25.7809 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "C_Polarized"
+			(at 55.88 28.3209 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 53.0352 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 52.07 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Polarized capacitor"
+			(at 52.07 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "3965b526-4899-4450-8cd9-97f8001065ae")
+		)
+		(pin "1"
+			(uuid "3a7cb32d-79ec-452f-9af2-b47b62db53c0")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "C1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_name "R_Small_1")
 		(lib_id "Device:R_Small")
 		(at 308.61 222.25 0)
@@ -9913,6 +10461,76 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C_Small")
+		(at 71.12 27.94 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "caf90df6-aec0-4533-a592-9d334420f7d3")
+		(property "Reference" "C2"
+			(at 73.66 26.6762 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "C_Small"
+			(at 73.66 29.2162 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 71.12 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 71.12 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor, small symbol"
+			(at 71.12 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "4be35d1f-a589-47b3-a0f7-4b0d587a21e0")
+		)
+		(pin "1"
+			(uuid "3fc481e6-5de2-4e2f-971a-c0ac06485f40")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "C2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector_Generic:Conn_02x04_Odd_Even")
 		(at 382.27 191.77 0)
 		(mirror y)
@@ -10204,6 +10822,72 @@
 			(project "schematic-xiao"
 				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
 					(reference "#PWR010")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 62.23 35.56 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "dfd0e9d1-b40a-4e61-8a40-e716b9908ec8")
+		(property "Reference" "#PWR027"
+			(at 62.23 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 62.23 40.64 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 62.23 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 62.23 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 62.23 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3c9ea1af-b6e2-4a7e-a15e-0b9a0b75d486")
+		)
+		(instances
+			(project "schematic-xiao"
+				(path "/534ff280-9d30-482d-b1ef-90495e32ecfb"
+					(reference "#PWR027")
 					(unit 1)
 				)
 			)
