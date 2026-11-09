@@ -36,6 +36,11 @@
         "mock-uart/Cargo.toml"
     ],
 
+    "files.readonlyInclude": {
+    "cross/ui/**": false,
+    "cross/radio/**": false,
+  }
+
 
 
 }
